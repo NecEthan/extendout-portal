@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { ApiError } from "@/lib/api/client";
 import { applicationRoutes } from "@/utils/applicationRoutes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,12 +33,17 @@ export default function VersionHistoryPage() {
   const [file, setFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const { data: versions, isError: versionsError } = useDocumentVersions(documentId);
+  const { data: versions, error: versionsError } = useDocumentVersions(documentId);
   const uploadVersion = useUploadDocumentVersion(documentId);
   const activateVersion = useActivateDocumentVersion(documentId);
 
   useEffect(() => {
-    if (versionsError) router.replace(applicationRoutes.documents);
+    // 401s are handled globally (QueryProvider) — this only covers
+    // "document not found / not permitted" (403/404), where bouncing
+    // to the documents list (not login) is the right move.
+    if (versionsError instanceof ApiError && versionsError.status !== 401) {
+      router.replace(applicationRoutes.documents);
+    }
   }, [versionsError, router]);
 
   function handleUploadVersion(e: React.FormEvent) {

@@ -1,9 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { ApiError } from "@/lib/api/client";
-import { applicationRoutes } from "@/utils/applicationRoutes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +11,6 @@ import { useSearchQuery } from "@/hooks/useSearchQuery";
 import { getErrorMessage } from "@/lib/errorMessage";
 
 export default function SearchPage() {
-  const router = useRouter();
   const [question, setQuestion] = useState("");
   const [mode, setMode] = useState<"current" | "historical">("current");
   const search = useSearchQuery();
@@ -21,16 +18,7 @@ export default function SearchPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!question.trim()) return;
-    search.mutate(
-      { question: question.trim(), mode },
-      {
-        onError: (err) => {
-          if (err instanceof ApiError && err.status === 401) {
-            router.replace(applicationRoutes.login);
-          }
-        },
-      },
-    );
+    search.mutate({ question: question.trim(), mode });
   }
 
   const result = search.data ?? null;

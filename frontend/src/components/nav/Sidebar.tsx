@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { FileText, Search } from "lucide-react";
@@ -16,12 +15,8 @@ const baseNavItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { data: user, isError } = useUser();
+  const { data: user } = useUser();
   const logoutMutation = useLogout();
-
-  useEffect(() => {
-    if (isError) router.replace(applicationRoutes.login);
-  }, [isError, router]);
 
   const navItems = baseNavItems;
 
