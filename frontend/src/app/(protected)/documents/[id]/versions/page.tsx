@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ApiError } from "@/lib/api/client";
 import { applicationRoutes } from "@/utils/applicationRoutes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,18 +32,9 @@ export default function VersionHistoryPage() {
   const [file, setFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const { data: versions, error: versionsError } = useDocumentVersions(documentId);
+  const versionsQuery = useDocumentVersions(documentId);
   const uploadVersion = useUploadDocumentVersion(documentId);
   const activateVersion = useActivateDocumentVersion(documentId);
-
-  useEffect(() => {
-    // 401s are handled globally (QueryProvider) — this only covers
-    // "document not found / not permitted" (403/404), where bouncing
-    // to the documents list (not login) is the right move.
-    if (versionsError instanceof ApiError && versionsError.status !== 401) {
-      router.replace(applicationRoutes.documents);
-    }
-  }, [versionsError, router]);
 
   function handleUploadVersion(e: React.FormEvent) {
     e.preventDefault();
@@ -58,11 +48,22 @@ export default function VersionHistoryPage() {
   }
 
   const error = firstErrorMessage([
+    [versionsQuery, "Failed to load versions"],
     [uploadVersion, "Upload failed"],
     [activateVersion, "Activation failed"],
   ]);
 
-  if (!versions) return null;
+  if (!versionsQuery.data) {
+    return (
+      <div className="flex flex-col items-center py-12 px-4 gap-8">
+        <div className="w-full max-w-2xl">
+          <ErrorAlert message={error} />
+        </div>
+      </div>
+    );
+  }
+
+  const versions = versionsQuery.data;
 
   return (
     <div className="flex flex-col items-center py-12 px-4 gap-8">
