@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError } from "@/lib/api/client";
 import { applicationRoutes } from "@/utils/applicationRoutes";
@@ -18,16 +18,19 @@ export default function SearchPage() {
   const [mode, setMode] = useState<"current" | "historical">("current");
   const search = useSearchQuery();
 
-  useEffect(() => {
-    if (search.error instanceof ApiError && search.error.status === 401) {
-      router.replace(applicationRoutes.login);
-    }
-  }, [search.error, router]);
-
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!question.trim()) return;
-    search.mutate({ question: question.trim(), mode });
+    search.mutate(
+      { question: question.trim(), mode },
+      {
+        onError: (err) => {
+          if (err instanceof ApiError && err.status === 401) {
+            router.replace(applicationRoutes.login);
+          }
+        },
+      },
+    );
   }
 
   const result = search.data ?? null;

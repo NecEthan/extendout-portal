@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { FileText, Search } from "lucide-react";
-import type { User } from "@/interfaces";
-import { getUser, logout } from "@/lib/api/auth";
 import { applicationRoutes } from "@/utils/applicationRoutes";
 import { Button } from "@/components/ui/button";
+import { useLogout, useUser } from "@/hooks/useUser";
 
 const baseNavItems = [
   { href: applicationRoutes.documents, label: "Documents", icon: FileText },
@@ -17,19 +16,19 @@ const baseNavItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const { data: user, isError } = useUser();
+  const logoutMutation = useLogout();
 
   useEffect(() => {
-    getUser()
-      .then(setUser)
-      .catch(() => router.replace(applicationRoutes.login));
-  }, [router]);
+    if (isError) router.replace(applicationRoutes.login);
+  }, [isError, router]);
 
   const navItems = baseNavItems;
 
-  async function handleLogout() {
-    await logout();
-    router.replace(applicationRoutes.login);
+  function handleLogout() {
+    logoutMutation.mutate(undefined, {
+      onSuccess: () => router.replace(applicationRoutes.login),
+    });
   }
 
   return (

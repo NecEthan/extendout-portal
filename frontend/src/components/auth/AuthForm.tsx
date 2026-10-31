@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { login } from "@/lib/api/auth";
-import { ApiError } from "@/lib/api/client";
 import { applicationRoutes } from "@/utils/applicationRoutes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,32 +13,25 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ErrorAlert } from "@/components/ui/error-alert";
+import { useLogin } from "@/hooks/useUser";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 export function AuthForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const loginMutation = useLogin();
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
-    setLoading(true);
-    try {
-      await login(email, password);
-      router.push(applicationRoutes.documents);
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError("An unexpected error occurred.");
-      }
-    } finally {
-      setLoading(false);
-    }
+    loginMutation.mutate(
+      { email, password },
+      { onSuccess: () => router.push(applicationRoutes.documents) },
+    );
   }
+
+  const error = getErrorMessage(loginMutation, "An unexpected error occurred.");
 
   return (
     <main className="flex min-h-screen items-center justify-center">
@@ -51,11 +42,7 @@ export function AuthForm() {
 
         <form onSubmit={handleSubmit}>
           <CardContent className="flex flex-col gap-4">
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+            <ErrorAlert message={error} />
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="email">Email</Label>
@@ -83,8 +70,8 @@ export function AuthForm() {
           </CardContent>
 
           <CardFooter>
-            <Button type="submit" disabled={loading} className="w-full">
-              {loading ? "Signing in…" : "Sign in"}
+            <Button type="submit" className="w-full">
+              Sign in
             </Button>
           </CardFooter>
         </form>
