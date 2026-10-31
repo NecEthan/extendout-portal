@@ -39,6 +39,24 @@ describe("httpClient", () => {
     });
   });
 
+  it("joins FastAPI's auto-validation array-shaped detail into a readable message", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 422,
+      json: () =>
+        Promise.resolve({
+          detail: [
+            { loc: ["body", "email"], msg: "field required", type: "missing" },
+            { loc: ["body", "password"], msg: "string too short", type: "value_error" },
+          ],
+        }),
+    });
+    await expect(httpClient("/auth/register", { method: "POST" })).rejects.toMatchObject({
+      status: 422,
+      message: "field required, string too short",
+    });
+  });
+
   it("throws ApiError instance", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,

@@ -26,6 +26,11 @@
         "./src/*"
       ]
     },
+    "types": [
+      "jest",
+      "node",
+      "@testing-library/jest-dom"
+    ],
     "target": "ES2017"
   },
   "include": [
@@ -36,7 +41,6 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules",
-    "src/__tests__"
+    "node_modules"
   ]
 }
