@@ -114,7 +114,7 @@ async def test_list_versions(auth_client, db, test_user):
 
     response = await auth_client.get(f"/documents/{doc_id}/versions")
     assert response.status_code == 200
-    versions = response.json()
+    versions = response.json()["items"]
     assert len(versions) == 2
     # ordered newest first
     assert versions[0]["version_number"] == 2

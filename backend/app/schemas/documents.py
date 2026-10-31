@@ -39,6 +39,20 @@ class DocumentDetailResponse(DocumentResponse):
     versions: list[DocumentVersionResponse]
 
 
+class PaginatedDocumentsResponse(BaseModel):
+    items: list[DocumentResponse]
+    total: int
+    limit: int
+    offset: int
+
+
+class PaginatedDocumentVersionsResponse(BaseModel):
+    items: list[DocumentVersionResponse]
+    total: int
+    limit: int
+    offset: int
+
+
 class DocumentUpdateRequest(BaseModel):
     title: str
 

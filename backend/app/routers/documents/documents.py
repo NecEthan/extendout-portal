@@ -2,13 +2,17 @@ import asyncio
 
 import structlog
 from arq.connections import ArqRedis
-from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, UploadFile
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_arq_pool, get_current_user, get_db, sensitivity_filters
 from app.models.base import Document, User
-from app.schemas.documents import DocumentResponse, DocumentUploadedResponse
+from app.schemas.documents import (
+    DocumentResponse,
+    DocumentUploadedResponse,
+    PaginatedDocumentsResponse,
+)
 from app.services import storage
 from app.services.documents import (
     assert_no_duplicate,
@@ -74,14 +78,25 @@ async def upload_document(
     return DocumentUploadedResponse(id=doc.id, status="accepted")
 
 
-@router.get("", response_model=list[DocumentResponse])
+@router.get("", response_model=PaginatedDocumentsResponse)
 async def list_documents(
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[DocumentResponse]:
+) -> PaginatedDocumentsResponse:
+    filters = sensitivity_filters(current_user)
+
+    total = await db.scalar(select(func.count()).select_from(Document).where(*filters))
+
     result = await db.execute(
         select(Document)
-        .where(*sensitivity_filters(current_user))
+        .where(*filters)
         .order_by(Document.created_at.desc())
+        .limit(limit)
+        .offset(offset)
     )
-    return [DocumentResponse.model_validate(d) for d in result.scalars().all()]
+    items = [DocumentResponse.model_validate(d) for d in result.scalars().all()]
+    return PaginatedDocumentsResponse(
+        items=items, total=total or 0, limit=limit, offset=offset
+    )

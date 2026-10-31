@@ -2,13 +2,17 @@ import asyncio
 import uuid
 
 from arq.connections import ArqRedis
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_arq_pool, get_current_user, get_db, sensitivity_filters
 from app.models.base import Document, DocumentVersion, ProcessingJob, User
-from app.schemas.documents import DocumentVersionResponse, VersionUploadedResponse
+from app.schemas.documents import (
+    DocumentVersionResponse,
+    PaginatedDocumentVersionsResponse,
+    VersionUploadedResponse,
+)
 from app.services import storage
 from app.services.activation import activate_version
 from app.services.documents import compute_hash, generate_storage_key, read_and_validate
@@ -92,13 +96,15 @@ async def upload_document_version(
 
 @router.get(
     "/{document_id}/versions",
-    response_model=list[DocumentVersionResponse],
+    response_model=PaginatedDocumentVersionsResponse,
 )
 async def list_document_versions(
     document_id: uuid.UUID,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[DocumentVersionResponse]:
+) -> PaginatedDocumentVersionsResponse:
     result = await db.execute(
         select(Document)
         .where(Document.id == document_id)
@@ -107,12 +113,23 @@ async def list_document_versions(
     if result.scalar_one_or_none() is None:
         raise HTTPException(status_code=404, detail="Document not found")
 
+    total = await db.scalar(
+        select(func.count())
+        .select_from(DocumentVersion)
+        .where(DocumentVersion.document_id == document_id)
+    )
+
     result = await db.execute(
         select(DocumentVersion)
         .where(DocumentVersion.document_id == document_id)
         .order_by(DocumentVersion.version_number.desc())
+        .limit(limit)
+        .offset(offset)
     )
-    return [DocumentVersionResponse.model_validate(v) for v in result.scalars().all()]
+    items = [DocumentVersionResponse.model_validate(v) for v in result.scalars().all()]
+    return PaginatedDocumentVersionsResponse(
+        items=items, total=total or 0, limit=limit, offset=offset
+    )
 
 
 @router.get(

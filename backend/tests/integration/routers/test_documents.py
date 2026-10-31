@@ -98,7 +98,7 @@ async def test_list_documents(auth_client):
 
     response = await auth_client.get("/documents")
     assert response.status_code == 200
-    titles = [d["title"] for d in response.json()]
+    titles = [d["title"] for d in response.json()["items"]]
     assert "Listed Doc" in titles
 
 
@@ -158,7 +158,7 @@ async def test_user_cannot_see_sensitive_docs(auth_client, admin_client):
 
     response = await auth_client.get("/documents")
     assert response.status_code == 200
-    titles = [d["title"] for d in response.json()]
+    titles = [d["title"] for d in response.json()["items"]]
     assert "Hidden From Users" not in titles
 
 
@@ -175,7 +175,7 @@ async def test_admin_sees_sensitive_docs(admin_client):
 
     response = await admin_client.get("/documents")
     assert response.status_code == 200
-    titles = [d["title"] for d in response.json()]
+    titles = [d["title"] for d in response.json()["items"]]
     assert "Admin Visible" in titles
 
 

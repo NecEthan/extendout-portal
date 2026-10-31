@@ -76,15 +76,16 @@ describe("deleteDocument", () => {
 });
 
 describe("listDocuments", () => {
-  it("calls GET /documents", async () => {
+  it("calls GET /documents with limit/offset query params", async () => {
+    const page = { items: [], total: 0, limit: 20, offset: 0 };
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve([]),
+      json: () => Promise.resolve(page),
     });
 
-    const result = await listDocuments();
-    expect(result).toEqual([]);
+    const result = await listDocuments(20, 0);
+    expect(result).toEqual(page);
     const [url] = mockFetch.mock.calls[0] as [string];
-    expect(url).toContain("/documents");
+    expect(url).toContain("/documents?limit=20&offset=0");
   });
 });

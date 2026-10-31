@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ErrorAlert } from "@/components/ui/error-alert";
+import { Pagination } from "@/components/ui/pagination";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   useActivateDocumentVersion,
@@ -24,6 +25,8 @@ const STATUS_STYLES: Record<string, string> = {
   REVIEW_REQUIRED: "bg-orange-100 text-orange-800",
 };
 
+const PAGE_SIZE = 20;
+
 export default function VersionHistoryPage() {
   const params = useParams<{ id: string }>();
   const documentId = params.id;
@@ -31,8 +34,9 @@ export default function VersionHistoryPage() {
 
   const [file, setFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [offset, setOffset] = useState(0);
 
-  const versionsQuery = useDocumentVersions(documentId);
+  const versionsQuery = useDocumentVersions(documentId, PAGE_SIZE, offset);
   const uploadVersion = useUploadDocumentVersion(documentId);
   const activateVersion = useActivateDocumentVersion(documentId);
 
@@ -63,7 +67,7 @@ export default function VersionHistoryPage() {
     );
   }
 
-  const versions = versionsQuery.data;
+  const versions = versionsQuery.data.items;
 
   return (
     <div className="flex flex-col items-center py-12 px-4 gap-8">
@@ -95,7 +99,7 @@ export default function VersionHistoryPage() {
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               />
             </div>
-            <Button type="submit" disabled={!file}>
+            <Button type="submit" disabled={uploadVersion.isPending || !file}>
               Upload new version
             </Button>
           </form>
@@ -106,7 +110,7 @@ export default function VersionHistoryPage() {
         <CardHeader>
           <CardTitle>Versions</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-4">
           {versions.length === 0 ? (
             <span className="text-sm text-muted-foreground">No versions yet.</span>
           ) : (
@@ -130,6 +134,7 @@ export default function VersionHistoryPage() {
                       <Button
                         variant="outline"
                         size="sm"
+                        disabled={activateVersion.isPending && activateVersion.variables === v.id}
                         onClick={() => activateVersion.mutate(v.id)}
                       >
                         Set as active
@@ -148,6 +153,12 @@ export default function VersionHistoryPage() {
               ))}
             </div>
           )}
+          <Pagination
+            offset={offset}
+            limit={PAGE_SIZE}
+            total={versionsQuery.data.total}
+            onOffsetChange={setOffset}
+          />
         </CardContent>
       </Card>
     </div>

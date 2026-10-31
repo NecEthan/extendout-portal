@@ -51,6 +51,7 @@ export function DocumentList({ documents }: DocumentListProps) {
             <Button
               variant="destructive"
               size="sm"
+              disabled={deleteDocument.isPending && deleteDocument.variables === doc.id}
               onClick={() => deleteDocument.mutate(doc.id)}
             >
               Delete

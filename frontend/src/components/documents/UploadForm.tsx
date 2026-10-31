@@ -91,7 +91,7 @@ export function UploadForm({ userRole }: UploadFormProps) {
         </div>
       )}
 
-      <Button type="submit" disabled={!file}>
+      <Button type="submit" disabled={uploadDocument.isPending || !file}>
         Upload document
       </Button>
     </form>

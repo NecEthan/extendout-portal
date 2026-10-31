@@ -1,8 +1,8 @@
 import type {
-  Document,
-  DocumentDetail,
   DocumentUploadedResponse,
   DocumentVersion,
+  PaginatedDocumentVersions,
+  PaginatedDocuments,
   VersionUploadedResponse,
 } from "@/interfaces";
 import { httpClient, throwIfError } from "./client";
@@ -30,19 +30,11 @@ export async function uploadDocument(
   return res.json();
 }
 
-export async function listDocuments(): Promise<Document[]> {
-  return httpClient<Document[]>("/documents");
-}
-
-export async function getDocument(id: string): Promise<DocumentDetail> {
-  return httpClient<DocumentDetail>(`/documents/${id}`);
-}
-
-export async function updateDocument(id: string, title: string): Promise<Document> {
-  return httpClient<Document>(`/documents/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify({ title }),
-  });
+export async function listDocuments(
+  limit: number,
+  offset: number,
+): Promise<PaginatedDocuments> {
+  return httpClient<PaginatedDocuments>(`/documents?limit=${limit}&offset=${offset}`);
 }
 
 export async function uploadDocumentVersion(
@@ -63,15 +55,14 @@ export async function uploadDocumentVersion(
   return res.json();
 }
 
-export async function listDocumentVersions(documentId: string): Promise<DocumentVersion[]> {
-  return httpClient<DocumentVersion[]>(`/documents/${documentId}/versions`);
-}
-
-export async function getDocumentVersion(
+export async function listDocumentVersions(
   documentId: string,
-  versionId: string,
-): Promise<DocumentVersion> {
-  return httpClient<DocumentVersion>(`/documents/${documentId}/versions/${versionId}`);
+  limit: number,
+  offset: number,
+): Promise<PaginatedDocumentVersions> {
+  return httpClient<PaginatedDocumentVersions>(
+    `/documents/${documentId}/versions?limit=${limit}&offset=${offset}`,
+  );
 }
 
 export async function activateDocumentVersion(

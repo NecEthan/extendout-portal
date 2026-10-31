@@ -70,7 +70,7 @@ export default function SearchPage() {
               </Button>
             </div>
 
-            <Button type="submit" disabled={!question.trim()}>
+            <Button type="submit" disabled={search.isPending || !question.trim()}>
               Search
             </Button>
           </form>

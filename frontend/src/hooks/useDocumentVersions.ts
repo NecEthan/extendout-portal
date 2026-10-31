@@ -5,10 +5,10 @@ import {
   uploadDocumentVersion,
 } from "@/lib/api/documents";
 
-export function useDocumentVersions(documentId: string) {
+export function useDocumentVersions(documentId: string, limit: number, offset: number) {
   return useQuery({
-    queryKey: ["documentVersions", documentId],
-    queryFn: () => listDocumentVersions(documentId),
+    queryKey: ["documentVersions", documentId, limit, offset],
+    queryFn: () => listDocumentVersions(documentId, limit, offset),
   });
 }
 

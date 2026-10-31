@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { deleteDocument, listDocuments, uploadDocument } from "@/lib/api/documents";
 
-export function useDocuments() {
+export function useDocuments(limit: number, offset: number) {
   return useQuery({
-    queryKey: ["documents"],
-    queryFn: listDocuments,
+    queryKey: ["documents", limit, offset],
+    queryFn: () => listDocuments(limit, offset),
   });
 }
 

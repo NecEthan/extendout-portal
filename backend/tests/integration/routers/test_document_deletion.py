@@ -164,7 +164,7 @@ async def test_deleted_doc_not_in_list(auth_client):
 
     r = await auth_client.get("/documents")
     assert r.status_code == 200
-    assert doc_id not in [d["id"] for d in r.json()]
+    assert doc_id not in [d["id"] for d in r.json()["items"]]
 
 
 async def test_deleted_doc_get_returns_404(auth_client):

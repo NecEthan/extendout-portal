@@ -70,7 +70,7 @@ export function AuthForm() {
           </CardContent>
 
           <CardFooter>
-            <Button type="submit" className="w-full">
+            <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
               Sign in
             </Button>
           </CardFooter>

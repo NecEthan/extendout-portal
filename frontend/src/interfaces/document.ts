@@ -32,10 +32,6 @@ export interface DocumentVersion {
 
 export type ProcessingJobStatus = "QUEUED" | "PROCESSING" | "COMPLETE" | "FAILED";
 
-export interface DocumentDetail extends Document {
-  versions: DocumentVersion[];
-}
-
 export interface DocumentUploadedResponse {
   id: string;
   status: string;
@@ -46,4 +42,18 @@ export interface VersionUploadedResponse {
   document_id: string;
   version_number: number;
   status: string;
+}
+
+export interface PaginatedDocuments {
+  items: Document[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface PaginatedDocumentVersions {
+  items: DocumentVersion[];
+  total: number;
+  limit: number;
+  offset: number;
 }

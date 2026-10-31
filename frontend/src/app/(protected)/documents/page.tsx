@@ -1,16 +1,21 @@
 "use client";
 
+import { useState } from "react";
 import { UploadForm } from "@/components/documents/UploadForm";
 import { DocumentList } from "@/components/documents/DocumentList";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorAlert } from "@/components/ui/error-alert";
+import { Pagination } from "@/components/ui/pagination";
 import { useUser } from "@/hooks/useUser";
 import { useDocuments } from "@/hooks/useDocuments";
 import { firstErrorMessage } from "@/lib/errorMessage";
 
+const PAGE_SIZE = 20;
+
 export default function DocumentsPage() {
+  const [offset, setOffset] = useState(0);
   const user = useUser();
-  const documents = useDocuments();
+  const documents = useDocuments(PAGE_SIZE, offset);
 
   const error = firstErrorMessage([
     [user, "Failed to load your account"],
@@ -50,8 +55,14 @@ export default function DocumentsPage() {
         <CardHeader>
           <CardTitle>Your documents</CardTitle>
         </CardHeader>
-        <CardContent>
-          <DocumentList documents={documents.data} />
+        <CardContent className="flex flex-col gap-4">
+          <DocumentList documents={documents.data.items} />
+          <Pagination
+            offset={offset}
+            limit={PAGE_SIZE}
+            total={documents.data.total}
+            onOffsetChange={setOffset}
+          />
         </CardContent>
       </Card>
     </div>
