@@ -1,55 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { QueryResponse } from "@/types";
-import { runQuery } from "@/lib/api/query";
 import { ApiError } from "@/lib/api/client";
 import { applicationRoutes } from "@/utils/applicationRoutes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { ErrorAlert } from "@/components/ui/error-alert";
+import { useSearchQuery } from "@/hooks/useSearchQuery";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 export default function SearchPage() {
   const router = useRouter();
   const [question, setQuestion] = useState("");
   const [mode, setMode] = useState<"current" | "historical">("current");
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<QueryResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const search = useSearchQuery();
 
-  async function handleSubmit(e: React.FormEvent) {
+  useEffect(() => {
+    if (search.error instanceof ApiError && search.error.status === 401) {
+      router.replace(applicationRoutes.login);
+    }
+  }, [search.error, router]);
+
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!question.trim()) return;
-
-    setLoading(true);
-    setResult(null);
-    setError(null);
-
-    try {
-      const response = await runQuery({ question: question.trim(), mode });
-      setResult(response);
-    } catch (err) {
-      if (err instanceof ApiError) {
-        if (err.status === 401) {
-          router.replace(applicationRoutes.login);
-          return;
-        }
-        if (err.status === 503) {
-          setError(
-            "The AI service is temporarily unavailable. Please try again later."
-          );
-        } else {
-          setError("Something went wrong. Please try again.");
-        }
-      } else {
-        setError("Something went wrong. Please try again.");
-      }
-    } finally {
-      setLoading(false);
-    }
+    search.mutate({ question: question.trim(), mode });
   }
+
+  const result = search.data ?? null;
+  const unauthorized = search.error instanceof ApiError && search.error.status === 401;
+  const error = unauthorized
+    ? null
+    : getErrorMessage(search, "Something went wrong. Please try again.", {
+        503: "The AI service is temporarily unavailable. Please try again later.",
+      });
 
   return (
     <main className="flex min-h-screen flex-col items-center py-12 px-4 gap-8">
@@ -70,7 +57,6 @@ export default function SearchPage() {
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
                 placeholder="What is the annual leave policy?"
-                disabled={loading}
               />
             </div>
 
@@ -79,7 +65,6 @@ export default function SearchPage() {
                 type="button"
                 variant={mode === "current" ? "default" : "outline"}
                 onClick={() => setMode("current")}
-                disabled={loading}
                 aria-pressed={mode === "current"}
               >
                 Current
@@ -88,27 +73,22 @@ export default function SearchPage() {
                 type="button"
                 variant={mode === "historical" ? "default" : "outline"}
                 onClick={() => setMode("historical")}
-                disabled={loading}
                 aria-pressed={mode === "historical"}
               >
                 Historical
               </Button>
             </div>
 
-            <Button type="submit" disabled={loading || !question.trim()}>
-              {loading ? "Searching..." : "Search"}
+            <Button type="submit" disabled={!question.trim()}>
+              Search
             </Button>
           </form>
         </CardContent>
       </Card>
 
-      {error && (
-        <Card className="w-full max-w-2xl border-destructive">
-          <CardContent className="pt-6">
-            <p className="text-destructive">{error}</p>
-          </CardContent>
-        </Card>
-      )}
+      <div className="w-full max-w-2xl">
+        <ErrorAlert message={error} />
+      </div>
 
       {result && (
         <>

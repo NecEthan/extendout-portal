@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { FileText, Search } from "lucide-react";
-import type { User } from "@/types";
+import type { User } from "@/interfaces";
 import { getUser, logout } from "@/lib/api/auth";
 import { applicationRoutes } from "@/utils/applicationRoutes";
 import { Button } from "@/components/ui/button";

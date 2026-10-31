@@ -1,55 +1,48 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { UserRole } from "@/types";
-import { uploadDocument } from "@/lib/api/documents";
-import { ApiError } from "@/lib/api/client";
+import type { UserRole } from "@/interfaces";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ErrorAlert } from "@/components/ui/error-alert";
+import { useUploadDocument } from "@/hooks/useDocuments";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 interface UploadFormProps {
-  onUploaded: () => void;
   userRole: UserRole;
 }
 
-export function UploadForm({ onUploaded, userRole }: UploadFormProps) {
+export function UploadForm({ userRole }: UploadFormProps) {
   const [title, setTitle] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [sensitivity, setSensitivity] = useState<"STANDARD" | "SENSITIVE">(
     "STANDARD",
   );
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const uploadDocument = useUploadDocument();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!file) return;
-    setError(null);
-    setLoading(true);
-    try {
-      await uploadDocument(file, title || file.name, sensitivity);
-      setTitle("");
-      setFile(null);
-      setSensitivity("STANDARD");
-      if (fileRef.current) fileRef.current.value = "";
-      onUploaded();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Upload failed");
-    } finally {
-      setLoading(false);
-    }
+    uploadDocument.mutate(
+      { file, title: title || file.name, sensitivity },
+      {
+        onSuccess: () => {
+          setTitle("");
+          setFile(null);
+          setSensitivity("STANDARD");
+          if (fileRef.current) fileRef.current.value = "";
+        },
+      },
+    );
   }
+
+  const error = getErrorMessage(uploadDocument, "Upload failed");
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+      <ErrorAlert message={error} />
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="upload-title">Title</Label>
@@ -98,8 +91,8 @@ export function UploadForm({ onUploaded, userRole }: UploadFormProps) {
         </div>
       )}
 
-      <Button type="submit" disabled={loading || !file}>
-        {loading ? "Uploading…" : "Upload document"}
+      <Button type="submit" disabled={!file}>
+        Upload document
       </Button>
     </form>
   );

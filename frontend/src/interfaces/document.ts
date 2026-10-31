@@ -1,12 +1,3 @@
-export type UserRole = "admin" | "user";
-
-export interface User {
-  id: string;
-  email: string;
-  role: UserRole;
-  created_at: string;
-}
-
 export type DocumentSourceType = "upload" | "google_docs";
 
 export type DocumentSensitivity = "STANDARD" | "SENSITIVE";
@@ -39,26 +30,20 @@ export interface DocumentVersion {
   created_by: string;
 }
 
-export type ProcessingJobStatus =
-  "QUEUED" | "PROCESSING" | "COMPLETE" | "FAILED";
+export type ProcessingJobStatus = "QUEUED" | "PROCESSING" | "COMPLETE" | "FAILED";
 
-export interface QueryRequest {
-  question: string;
-  mode: "current" | "historical";
+export interface DocumentDetail extends Document {
+  versions: DocumentVersion[];
 }
 
-export interface QueryCitation {
-  document_title: string;
+export interface DocumentUploadedResponse {
+  id: string;
+  status: string;
+}
+
+export interface VersionUploadedResponse {
+  id: string;
+  document_id: string;
   version_number: number;
-  status: DocumentVersionStatus;
-  updated_at: string;
-}
-
-export interface QueryResponse {
-  answer: string;
-  citations: QueryCitation[];
-}
-
-export interface ApiError {
-  detail: string;
+  status: string;
 }

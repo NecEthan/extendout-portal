@@ -1,4 +1,4 @@
-import type { User } from "@/types";
+import type { User } from "@/interfaces";
 import { httpClient } from "./client";
 
 export async function register(email: string, password: string): Promise<User> {

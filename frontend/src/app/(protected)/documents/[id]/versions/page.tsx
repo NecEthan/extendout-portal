@@ -1,20 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import type { DocumentVersion } from "@/types";
-import {
-  activateDocumentVersion,
-  listDocumentVersions,
-  uploadDocumentVersion,
-} from "@/lib/api/documents";
-import { ApiError } from "@/lib/api/client";
 import { applicationRoutes } from "@/utils/applicationRoutes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  useActivateDocumentVersion,
+  useDocumentVersions,
+  useUploadDocumentVersion,
+} from "@/hooks/useDocumentVersions";
+import { firstErrorMessage } from "@/lib/errorMessage";
 
 const STATUS_STYLES: Record<string, string> = {
   ACTIVE: "bg-green-100 text-green-800",
@@ -30,54 +29,34 @@ export default function VersionHistoryPage() {
   const documentId = params.id;
   const router = useRouter();
 
-  const [versions, setVersions] = useState<DocumentVersion[] | null>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [activating, setActivating] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const loadVersions = useCallback(() => {
-    listDocumentVersions(documentId)
-      .then(setVersions)
-      .catch(() => router.replace(applicationRoutes.documents));
-  }, [documentId, router]);
+  const { data: versions, isError: versionsError } = useDocumentVersions(documentId);
+  const uploadVersion = useUploadDocumentVersion(documentId);
+  const activateVersion = useActivateDocumentVersion(documentId);
 
   useEffect(() => {
-    loadVersions();
-  }, [loadVersions]);
+    if (versionsError) router.replace(applicationRoutes.documents);
+  }, [versionsError, router]);
 
-  async function handleActivate(versionId: string) {
-    setActivating(versionId);
-    setError(null);
-    try {
-      await activateDocumentVersion(documentId, versionId);
-      loadVersions();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Activation failed");
-    } finally {
-      setActivating(null);
-    }
-  }
-
-  async function handleUploadVersion(e: React.FormEvent) {
+  function handleUploadVersion(e: React.FormEvent) {
     e.preventDefault();
     if (!file) return;
-    setError(null);
-    setUploading(true);
-    try {
-      await uploadDocumentVersion(documentId, file);
-      setFile(null);
-      if (fileRef.current) fileRef.current.value = "";
-      loadVersions();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Upload failed");
-    } finally {
-      setUploading(false);
-    }
+    uploadVersion.mutate(file, {
+      onSuccess: () => {
+        setFile(null);
+        if (fileRef.current) fileRef.current.value = "";
+      },
+    });
   }
 
-  if (versions === null) return null;
+  const error = firstErrorMessage([
+    [uploadVersion, "Upload failed"],
+    [activateVersion, "Activation failed"],
+  ]);
+
+  if (!versions) return null;
 
   return (
     <div className="flex flex-col items-center py-12 px-4 gap-8">
@@ -97,11 +76,7 @@ export default function VersionHistoryPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleUploadVersion} className="flex flex-col gap-4">
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+            <ErrorAlert message={error} />
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="version-file">File</Label>
               <Input
@@ -113,8 +88,8 @@ export default function VersionHistoryPage() {
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               />
             </div>
-            <Button type="submit" disabled={uploading || !file}>
-              {uploading ? "Uploading…" : "Upload new version"}
+            <Button type="submit" disabled={!file}>
+              Upload new version
             </Button>
           </form>
         </CardContent>
@@ -148,10 +123,9 @@ export default function VersionHistoryPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        disabled={activating === v.id}
-                        onClick={() => handleActivate(v.id)}
+                        onClick={() => activateVersion.mutate(v.id)}
                       >
-                        {activating === v.id ? "Activating…" : "Set as active"}
+                        Set as active
                       </Button>
                     )}
                     <span

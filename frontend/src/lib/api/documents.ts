@@ -1,23 +1,13 @@
-import type { Document, DocumentVersion } from "@/types";
+import type {
+  Document,
+  DocumentDetail,
+  DocumentUploadedResponse,
+  DocumentVersion,
+  VersionUploadedResponse,
+} from "@/interfaces";
 import { ApiError, httpClient } from "./client";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
-export interface VersionUploadedResponse {
-  id: string;
-  document_id: string;
-  version_number: number;
-  status: string;
-}
-
-export interface DocumentDetail extends Document {
-  versions: DocumentVersion[];
-}
-
-export interface DocumentUploadedResponse {
-  id: string;
-  status: string;
-}
 
 export async function uploadDocument(
   file: File,

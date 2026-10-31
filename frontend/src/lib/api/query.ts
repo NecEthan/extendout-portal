@@ -1,4 +1,4 @@
-import type { QueryRequest, QueryResponse } from "@/types";
+import type { QueryRequest, QueryResponse } from "@/interfaces";
 import { httpClient } from "./client";
 
 export async function runQuery(request: QueryRequest): Promise<QueryResponse> {

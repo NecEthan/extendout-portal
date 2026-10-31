@@ -79,3 +79,12 @@ The pool is set to `pool_size=30, max_overflow=20` (50 max per worker). With 2 H
 
 The right long-term solution at higher scale is PgBouncer — a connection pooler that sits in front of PostgreSQL and multiplexes thousands of application connections down to a small number of real database connections, since PostgreSQL is memory-intensive per connection (~5–10 MB RAM each).
 
+# Frontend: TanStack Query for Server State
+
+Pages (`documents`, `versions`, `search`) are `"use client"`, fetching client-side
+
+Each page was hand-rolling `useState` x3 (data/loading/error) + `useEffect` fetch + try/catch mutations + callback props (`onUploaded`) just to trigger refetch. Replaced with `useQuery`/`useMutation` (`src/hooks/`):
+
+- Less state — `isPending`/`isError`/`data` from hook, no manual triple-state per page
+- `invalidateQueries` on mutation success replaces callback-prop refetch
+- Free cache/dedupe — revisit page = instant stale data, shared key = one request not N
