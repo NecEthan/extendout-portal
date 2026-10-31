@@ -148,7 +148,6 @@ No reranking model, no separate retrieval service — fusion and permission filt
 - TanStack Query (`useQuery`/`useMutation`) owns all server state — no manual fetch/loading/error `useState`.
 - 401 handled globally (`QueryProvider`'s `QueryCache`/`MutationCache` `onError`) → redirect to `/login`. Every other error (403/404/409/413/415/422/429/503/network) shown inline via `ErrorAlert`, next to the action that failed.
 - `not-found.tsx` for unmatched routes; nested `error.tsx` boundaries (`(protected)` + root) for render crashes.
-- Zero `useEffect` in the app — all reactive logic lives in query/mutation state.
 
 ---
 
