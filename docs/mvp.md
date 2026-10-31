@@ -7,7 +7,7 @@ Build a production style enterprise knowledge platform that demonstrates how AI 
 ## User Story
 
 1. User signs up and logs in
-2. User uploads a document (PDF, DOCX, TXT, Markdown, or Google Doc)
+2. User uploads a document (PDF, DOCX, TXT, or Markdown)
 3. System processes the document — extracts text, chunks, generates embeddings, indexes
 4. User sees document appear in their document list with processing status
 5. User asks a question in natural language via the AI search interface
@@ -17,7 +17,6 @@ Build a production style enterprise knowledge platform that demonstrates how AI 
 9. System supersedes the old version and indexes the new one
 10. The same question now returns an answer based on the new version
 11. User deletes a document — system removes it from all indexes and search results
-12. Admin inspects the audit log to review queries, uploads, version changes, and deletions
 
 ---
 
@@ -30,9 +29,8 @@ The MVP supports:
 3. DOCX
 4. TXT
 5. Markdown
-6. Google Docs
 
-The initial product intentionally starts with simple sources before expanding into larger enterprise ecosystems.
+Connectors to external systems (Google Docs, SharePoint, etc.) are not built — file upload is the only ingestion path.
 
 ## Document Management
 
@@ -40,11 +38,11 @@ Users can:
 
 1. Upload documents
 2. View documents
-3. Update documents
+3. Update documents (new version)
 4. Delete documents
 5. View metadata
 6. View processing status
-7. View document history
+7. View document version history
 
 ## Versioning
 
@@ -55,14 +53,14 @@ Example:
 ```text
 Annual Leave Policy
 
-v3  CURRENT
+v3  ACTIVE
 v2  SUPERSEDED
 v1  SUPERSEDED
 ```
 
-Only one version can be current at any time.
+Only one version can be active at any time.
 
-Normal AI queries retrieve the current version.
+Normal AI queries retrieve the active version.
 
 Historical queries can explicitly retrieve previous versions.
 
@@ -81,13 +79,11 @@ User Query
     ↓
 Authentication
     ↓
-Permission Check
+Permission Check (role + sensitivity)
     ↓
-Current Version Filtering
+Active Version Filtering
     ↓
-Knowledge Retrieval
-    ↓
-Ranking
+Hybrid Retrieval (vector + full-text, fused with RRF)
     ↓
 LLM
     ↓
@@ -103,74 +99,29 @@ AI responses show:
 3. Document status
 4. Last updated information
 
-Example:
-
-```text
-Annual Leave Policy
-Version 3
-Current
-Updated 14 September 2026
-```
-
 ## Permissions
 
-Users must only retrieve information they are authorised to access.
+Access is role-based, not a per-document grant system: `admin` sees everything; `user` is excluded from documents marked `SENSITIVE`. Ownership has no effect on access.
 
 Permission filtering happens before content is sent to the LLM.
 
-This prevents unauthorised documents from becoming AI context.
-
 ## Deletion
 
-Deleting a document must remove it from the AI knowledge system.
+Deleting a document removes it (and its MinIO object) so it can no longer be retrieved by AI queries.
 
-This includes handling:
-
-1. Original document
-2. Extracted text
-3. Chunks
-4. Embeddings
-5. Search indexes
-6. Caches
-
-A document should not appear in AI results after deletion.
-
-## Audit Log
-
-Important actions are recorded.
-
-Example:
+## Document Lifecycle
 
 ```text
-14 Sep 2026 18:02
-USER QUERY
-"What is the annual leave policy?"
-Retrieved Annual Leave Policy v3
-Permission ALLOWED
-
-14 Sep 2026 17:41
-USER UPLOAD
-Annual Leave Policy v3
-Previous v2
-New v3 CURRENT
-
-14 Sep 2026 17:42
-SYSTEM INDEX UPDATE
-Removed v2
-Indexed v3
+PROCESSING
+    ↓
+ACTIVE
+    ↓
+SUPERSEDED
+    ↓
+DELETED
 ```
 
-## Knowledge Health
-
-The dashboard provides an overview of the knowledge system.
-
-```text
-128 Documents
-91 Current Versions
-7 Review Required
-3 Processing Failures
-2 Permission Issues
-```
+Versions can also enter `FAILED` (processing error, retries exhausted) or `REVIEW_REQUIRED`.
 
 ---
 
@@ -210,7 +161,7 @@ The system changes:
 
 ```text
 v1  SUPERSEDED
-v2  CURRENT
+v2  ACTIVE
 ```
 
 ### 5. Ask Again
@@ -219,51 +170,15 @@ The same question now retrieves v2.
 
 ### 6. Historical Query
 
-The user asks:
-
-```text
-What did the annual leave policy say before the latest version?
-```
-
-The system intentionally retrieves v1.
+The user asks the system to retrieve a previous version explicitly. It intentionally returns v1.
 
 ### 7. Delete
 
-The policy is deleted.
-
-The document and associated AI retrieval data are removed.
+The policy is deleted. The document and its stored chunks/embeddings are removed.
 
 ### 8. Permission Test
 
-An unauthorised user attempts to ask about the document.
-
-The document is not included in their retrieval context.
-
-### 9. Audit
-
-The entire lifecycle can be inspected through the audit log.
-
----
-
-# Document Lifecycle
-
-```text
-PROCESSING
-    ↓
-ACTIVE
-    ↓
-SUPERSEDED
-    ↓
-DELETED
-```
-
-Documents can also enter:
-
-```text
-REVIEW_REQUIRED
-```
-
-when they require review or have exceeded a configured review period.
+An unauthorised user (non-admin, document marked `SENSITIVE`) attempts to ask about the document. It is excluded from their retrieval context.
 
 ---
 
@@ -272,169 +187,72 @@ when they require review or have exceeded a configured review period.
 ```text
 Upload
    ↓
-API
+API (validate, upload to MinIO, insert DB rows in one transaction)
    ↓
-Database + Object Storage
+Redis job queue (best-effort enqueue; poller retries if Redis is down)
    ↓
-Processing Queue
+ARQ Worker
    ↓
-Worker
-   ↓
-Text Extraction
+Text Extraction (+ OCR for scanned PDFs)
    ↓
 Chunking
    ↓
-Embeddings
+Embeddings (OpenAI)
    ↓
-Vector / Search Index
+Store chunks + pgvector embeddings, update full-text index
    ↓
-READY
+ACTIVE
 ```
 
-Processing is asynchronous so large documents do not block API requests.
-
-Workers handle failures and retries.
-
-Processing jobs are designed to be idempotent so duplicate events do not create duplicate indexed content.
-
----
-
-# Google Docs Integration
-
-The MVP also supports Google Docs.
-
-```text
-Google OAuth
-    ↓
-Select Document
-    ↓
-Import Content
-    ↓
-Create Version
-    ↓
-Process
-    ↓
-Index
-```
-
-When the document changes:
-
-```text
-Change Detected
-    ↓
-Create New Version
-    ↓
-Previous Version SUPERSEDED
-    ↓
-Process New Version
-    ↓
-Update Index
-```
+Processing is asynchronous so large documents do not block API requests. Jobs use a deterministic id so re-enqueuing by the poller never creates duplicate work.
 
 ---
 
 # AI Retrieval
-
-The retrieval system is designed around version and permission correctness.
 
 ```text
 User Query
      ↓
 Authentication
      ↓
-Permission Filtering
+Permission Filtering (role + sensitivity)
      ↓
-Current Version Filtering
+Active Version Filtering
      ↓
-Hybrid Retrieval
+Hybrid Retrieval (pgvector cosine + Postgres full-text)
      ↓
-Ranking
+RRF Fusion
      ↓
 Context Construction
      ↓
 LLM
      ↓
-Answer
-     ↓
-Citations
+Answer + Citations
 ```
-
-The system should never simply retrieve the most semantically similar document.
-
-It must first determine whether that document is:
-
-1. Current
-2. Active
-3. Authorised
-4. Relevant
-
----
-
-# Evaluation
-
-The platform includes an evaluation dataset containing:
-
-```text
-Question
-Expected Answer
-Expected Source
-Expected Version
-User Permission
-```
-
-Metrics include:
-
-1. Retrieval accuracy
-2. Correct version accuracy
-3. Answer accuracy
-4. Citation accuracy
-5. Permission accuracy
-6. Stale retrieval rate
-
-A key target is:
-
-```text
-0% stale retrieval
-```
-
-for normal current information queries.
 
 ---
 
 # Architecture
 
 ```text
-                    ┌──────────────────┐
-                    │     Web App      │
-                    └────────┬─────────┘
-                             │
-                             ▼
-                    ┌──────────────────┐
-                    │    API Layer     │
-                    └────────┬─────────┘
-                             │
-              ┌──────────────┼──────────────┐
-              ▼              ▼              ▼
-       ┌────────────┐ ┌────────────┐ ┌────────────┐
-       │ Documents  │ │   Query    │ │    Auth    │
-       └─────┬──────┘ └─────┬──────┘ └────────────┘
-             │              │
-             ▼              ▼
-       ┌────────────┐ ┌────────────┐
-       │ PostgreSQL │ │ Retrieval  │
-       └────────────┘ └─────┬──────┘
-                            │
-                    ┌───────┴────────┐
-                    ▼                ▼
-              ┌──────────┐    ┌──────────┐
-              │  Vector  │    │  Search  │
-              │    DB    │    │  Index   │
-              └────┬─────┘    └────┬─────┘
-                   └───────┬───────┘
-                           ▼
-                      ┌─────────┐
-                      │   LLM   │
-                      └─────────┘
+┌──────────────────┐
+│   Next.js (CSR)   │
+└────────┬──────────┘
+         │
+         ▼
+┌──────────────────┐
+│    FastAPI        │
+└────────┬──────────┘
+         │
+ ┌───────┼──────────────┐
+ ▼       ▼               ▼
+Documents  Query         Auth
+ │          │
+ ▼          ▼
+PostgreSQL  (vector search + full-text search, same DB)
+ │
+ ▼
+LLM (OpenAI)
 ```
 
 Document processing runs asynchronously:
@@ -442,9 +260,9 @@ Document processing runs asynchronously:
 ```text
 API
  ↓
-Queue
+Redis queue
  ↓
-Workers
+ARQ Worker
  ↓
 Extraction
  ↓
@@ -459,23 +277,18 @@ Indexing
 
 # Data Model
 
-Core entities:
+Core entities (PostgreSQL):
 
 ```text
 users
-
 documents
-
 document_versions
-
-document_permissions
-
-document_chunks
-
+document_chunks        -- content + pgvector embedding
 processing_jobs
-
-audit_events
+sessions                -- server-side session auth
 ```
+
+There is no `document_permissions` table — access is role + sensitivity based, not per-document grants. There is no `audit_events` table — audit logging was built and later removed from the codebase.
 
 Example document:
 
@@ -484,8 +297,8 @@ documents
     id
     title
     owner_id
-    source_type
-    sensitivity    -- STANDARD | SENSITIVE
+    source_type     -- "upload" (only value in use)
+    sensitivity      -- STANDARD | SENSITIVE
     created_at
 ```
 
@@ -510,14 +323,11 @@ document_chunks
     document_version_id
     content
     embedding
-    metadata
 ```
 
 ---
 
 # Core API
-
-Example REST endpoints:
 
 ```text
 POST   /documents
@@ -528,28 +338,15 @@ DELETE /documents/:id
 
 POST   /documents/:id/versions
 GET    /documents/:id/versions
-GET    /documents/:id/history
+GET    /documents/:id/versions/:version_id
+PATCH  /documents/:id/versions/:version_id/activate
 
 POST   /query
-
-GET    /audit
 ```
 
 ---
 
 # UI
-
-## Dashboard
-
-```text
-Knowledge Overview
-
-128 Documents
-91 Current Versions
-7 Review Required
-3 Processing Failures
-2 Permission Issues
-```
 
 ## AI Search
 
@@ -566,7 +363,7 @@ Source
 Annual Leave Policy
 
 Version
-v3 CURRENT
+v3 ACTIVE
 
 Updated
 14 September 2026
@@ -575,11 +372,10 @@ Updated
 ## Documents
 
 ```text
-Name                  Source       Version    Status
+Name                  Status
 
-Annual Leave Policy   Upload       v3         CURRENT
-Security Policy       Google Docs  v4         CURRENT
-Employee Handbook     Upload       v2         CURRENT
+Annual Leave Policy   ACTIVE
+Employee Handbook     ACTIVE
 ```
 
 ## Version History
@@ -587,44 +383,33 @@ Employee Handbook     Upload       v2         CURRENT
 ```text
 Annual Leave Policy
 
-v3  CURRENT
+v3  ACTIVE
 v2  SUPERSEDED
 v1  SUPERSEDED
 ```
 
-Users can inspect previous versions and compare changes.
+Users can activate a previous version from this screen.
 
-## Audit Log
-
-Shows document changes, queries, permission decisions, indexing events, and lifecycle transitions.
-
-## Observability
-
-Important metrics include:
+## Observability (backend logs, no dashboard UI)
 
 ```text
 API latency
 Document processing latency
 Queue depth
 Processing failures
-Search latency
-Retrieval latency
 LLM latency
 Token usage
 Cost per query
-Stale retrievals
 ```
 
-## Auditability
-
-Important knowledge lifecycle events must be traceable.
+Exposed via structured (`structlog`) logs only — there is no dashboard, metrics UI, audit log viewer, or knowledge-health screen in the product.
 
 # Success Criteria
 
-The MVP should demonstrate:
+The MVP demonstrates:
 
 ```text
-Current version retrieval works correctly
+Active version retrieval works correctly
 
 Superseded versions are excluded from normal queries
 
@@ -638,12 +423,10 @@ Every AI answer has traceable sources
 
 Document processing failures are visible
 
-Document lifecycle changes are auditable
-
 Duplicate processing is handled safely
 ```
 
-The system should ultimately optimise for:
+The system optimises for:
 
 ```text
 Correct information

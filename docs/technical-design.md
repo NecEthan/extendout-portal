@@ -131,7 +131,7 @@ API keys and other credentials are stored as environment or secret configuration
 
 ### Rate Limiting
 
-API endpoints that are expensive or can be abused — particularly document uploads and processing requests — are rate limited to prevent excessive resource consumption.
+`/auth/login`, `/auth/register`, and `/query` are rate limited per-IP (slowapi + Redis) — login/register to prevent credential attacks and bcrypt flooding, `/query` because each call costs two OpenAI API calls. Document upload/version endpoints are not currently rate limited.
 
 ### Observability
 
@@ -143,9 +143,7 @@ The application writes structured logs to stdout/stderr. In local development, t
 
 **Audits**
 
-The system records important business and security events, such as document access, document deletion, version creation, metadata changes, access denied events, and role changes. 
-Audit events are stored in the database and exposed through a restricted admin interface so authorized administrators can review activity and investigate potential unauthorized access to sensitive information.
-If the audit table grows significantly and begins to impact database performance or storage costs, older audit records can be archived to cheaper external storage at a later stage while keeping recent audit data in PostgreSQL.
+An audit event system (`audit_events` table, emitted on upload/query/deletion/etc.) was built and later removed from the codebase. There is no audit log in the current system — activity is only visible through structured request/job logs, not a queryable business-event record.
 
 
 ### Resource Limits
@@ -210,7 +208,6 @@ When a new version is uploaded:
    - Current `ACTIVE` version updated to `SUPERSEDED`
    - New version updated to `ACTIVE`
    - Old chunks remain in the database but are no longer reachable via normal queries (version filter excludes them)
-   - Audit event emitted for both transitions
 4. On failure, new version moves to `FAILED`. Previous `ACTIVE` version remains active.
 
 Transition is atomic. There is never a moment where zero versions are active (assuming one existed before).
@@ -221,11 +218,10 @@ Transition is atomic. There is never a moment where zero versions are active (as
 
 Deleting a document is a hard delete. All associated rows are removed from the database in FK-dependency order within a single transaction.
 
-1. Audit event emitted (`DOCUMENT_DELETED`)
-2. All `document_chunks` for all versions deleted
-3. All `processing_jobs` for all versions deleted
-4. All `document_versions` for the document deleted
-5. The `document` row deleted
+1. All `document_chunks` for all versions deleted
+2. All `processing_jobs` for all versions deleted
+3. All `document_versions` for the document deleted
+4. The `document` row deleted
 
 After deletion the document cannot appear in any query result. Access attempts return `404`.
 
@@ -235,7 +231,7 @@ After deletion the document cannot appear in any query result. Access attempts r
 
 ### Authentication
 
-Session cookie-based. On login, the backend creates a server-side session containing `user_id` and `role`, and sends the session ID to the browser as an `HttpOnly`, `Secure`, `SameSite=Strict` cookie. Sessions are stored server-side and can be invalidated at any time. Sessions expire after 24 hours of inactivity.
+Session cookie-based. On login, the backend creates a server-side session containing `user_id` and `role`, and sends the session ID to the browser as an `HttpOnly`, `Secure`, `SameSite=Strict` cookie. Sessions are stored server-side and can be invalidated at any time. Sessions expire 24 hours after login — a fixed expiry, not a sliding inactivity window.
 
 Passwords stored as bcrypt hashes. Minimum 8 characters enforced at registration.
 
@@ -265,25 +261,7 @@ Deny by default for sensitive content. STANDARD documents are accessible to all 
 
 ## 11. Audit Log
 
-All significant events are written to `audit_events` as append-only records.
-
-Events captured:
-
-| Event                | Triggered by            |
-| -------------------- | ----------------------- |
-| `USER_REGISTERED`    | Registration            |
-| `USER_LOGIN`         | Login                   |
-| `DOCUMENT_UPLOADED`  | Upload                  |
-| `VERSION_CREATED`    | New version upload      |
-| `VERSION_SUPERSEDED` | Version transition      |
-| `VERSION_ACTIVATED`  | Manual version activate |
-| `DOCUMENT_DELETED`   | Deletion                |
-| `QUERY_EXECUTED`     | Any query               |
-| `PERMISSION_DENIED`  | Failed permission check |
-| `PROCESSING_FAILED`  | Worker failure          |
-| `INDEX_UPDATED`      | Successful indexing     |
-
-The audit log is not editable. No update or delete operations on `audit_events`.
+Not present. An `audit_events` table and emission logic were built and later removed from the codebase — there is no audit log in the current system.
 
 ---
 
@@ -292,10 +270,10 @@ The audit log is not editable. No update or delete operations on `audit_events`.
 | Scenario                          | Behaviour                                                |
 | --------------------------------- | -------------------------------------------------------- |
 | Missing or invalid session cookie | `401 Unauthorized`                                       |
-| Permission denied                 | `403 Forbidden`, audit event written                     |
+| Permission denied                 | `403 Forbidden`                                          |
 | Document not found                | `404 Not Found`                                          |
 | Unsupported file type             | `422 Unprocessable Entity`                               |
-| Processing failure                | Version marked `FAILED`, visible in dashboard            |
+| Processing failure                | Version marked `FAILED`, visible via status in the UI    |
 | LLM API failure                   | `503 Service Unavailable`, query not answered            |
 | Duplicate processing job          | Idempotency check prevents duplicate chunks              |
 | Version transition failure        | Transaction rolled back, previous version stays `ACTIVE` |
@@ -327,14 +305,7 @@ The audit log is not editable. No update or delete operations on `audit_events`.
 - User deletes document, document no longer appears
 - Unauthorised user cannot access restricted document
 
-### Evaluation Dataset
-
-Fixed test cases with known correct answers, sources, versions, and permissions. Run on every deployment. Tracks:
-
-- Stale retrieval rate (target: 0%)
-- Unauthorised retrieval rate (target: 0%)
-- Correct version citation rate (target: 100%)
-- Answer accuracy (target: 85%+)
+There is no evaluation framework or automated accuracy/stale-retrieval tracking — that was planned but never built.
 
 ---
 

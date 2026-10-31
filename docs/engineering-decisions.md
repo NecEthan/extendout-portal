@@ -88,3 +88,12 @@ Each page was hand-rolling `useState` x3 (data/loading/error) + `useEffect` fetc
 - Less state — `isPending`/`isError`/`data` from hook, no manual triple-state per page
 - `invalidateQueries` on mutation success replaces callback-prop refetch
 - Free cache/dedupe — revisit page = instant stale data, shared key = one request not N
+
+# Frontend: Error Handling
+
+- **401** — global, one place. `QueryProvider.tsx` sets `onError` on `QueryCache`/`MutationCache`; any query/mutation hitting 401 redirects to `/login`. Covers every hook, no per-hook wiring.
+- **Everything else (403/404/409/413/415/422/429/503/network)** — inline, next to the failing action. `getErrorMessage()`/`firstErrorMessage()` (`src/lib/errorMessage.ts`) pull the message off `ApiError`, rendered via `<ErrorAlert>`.
+- **422 array-shaped detail** — FastAPI's auto Pydantic validation sends `detail` as `[{msg, loc, type}]`, not a string. `client.ts`'s `extractErrorDetail()` joins the `msg` fields instead of stringifying the array.
+- **429 body shape** — slowapi default returns `{"error": ...}`; backend's custom handler (`main.py`) normalizes to `{"detail": ...}` to match every other endpoint.
+- **Unmatched routes** — `src/app/not-found.tsx`. Not an error, a routing miss.
+- **Render crashes** — two nested Error Boundaries: `src/app/(protected)/error.tsx` (keeps sidebar alive) and `src/app/error.tsx` (catches `/login` and outside). Only catch thrown render exceptions, not API errors or 404s.

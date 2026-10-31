@@ -7,7 +7,7 @@
 ```
 ┌─────────────────────────────────┐
 │           Browser               │
-│         React Web App           │
+│   Next.js (App Router, CSR)     │
 └────────────────┬────────────────┘
                  │ HTTP / REST
                  ▼
@@ -21,14 +21,14 @@
 ┌────────────┐ ┌──────────────────────────┐ ┌─────────┐
 │ PostgreSQL │ │        Retrieval          │ │  Redis  │
 │            │ │                          │ │         │
-│ documents  │ │  Permission Filter       │ │  job    │
-│ versions   │ │  Version Filter          │ │  queue  │
-│ chunks     │ │  Vector Search(pgvector) │ └────┬────┘
-│ perms      │ │  Full-Text Search        │      │
-│ audit      │ │  Ranking                 │      ▼
+│ users      │ │  Permission Filter       │ │  job    │
+│ documents  │ │  Version Filter          │ │  queue  │
+│ versions   │ │  Vector Search(pgvector) │ └────┬────┘
+│ chunks     │ │  Full-Text Search        │      │
+│ sessions   │ │  RRF Fusion               │      ▼
 └────────────┘ └──────────┬───────────────┘ ┌─────────┐
-                          │                 │ Worker  │
-                ┌─────────▼──────────┐      │ Process │
+                          │                 │ ARQ     │
+                ┌─────────▼──────────┐      │ Worker  │
                 │      OpenAI        │      └─────────┘
                 │       (LLM)        │
                 └────────────────────┘
@@ -37,6 +37,8 @@
 │   MinIO    │  ← raw file storage (PDFs, DOCX, etc.)
 └────────────┘
 ```
+
+No separate vector database, no reranking model, no Google Docs or other external connectors, no audit log, no evaluation framework, no knowledge-health dashboard — file upload + the pipeline below is the whole system.
 
 ---
 
@@ -108,7 +110,7 @@ User submits question
        │
        ▼
 ┌─────────────────────┐
-│  Version Filter     │  ← keep only CURRENT versions
+│  Version Filter     │  ← keep only ACTIVE versions
 └──────┬──────────────┘
        │
        ▼
@@ -148,11 +150,10 @@ User submits question
 PostgreSQL
 ├── users
 ├── documents
-├── document_versions      ← versioned, one CURRENT per document
+├── document_versions      ← versioned, one ACTIVE per document
 ├── document_chunks        ← text + pgvector embeddings
-├── document_permissions   ← reserved for future per-doc grants (MVP uses role+sensitivity)
 ├── processing_jobs        ← async job state
-└── audit_events           ← immutable event log
+└── sessions               ← server-side session auth
 
 MinIO
 └── raw files              ← original uploads, retrievable by version
@@ -161,17 +162,20 @@ Redis
 └── processing queue       ← jobs waiting for workers
 ```
 
+No `document_permissions` table (access is role + sensitivity, not per-document grants) and no `audit_events` table (built, then removed from the codebase).
+
 ---
 
 ## Infrastructure (Local / MVP)
 
 ```
 Docker Compose
-├── react (frontend)
-├── fastapi (backend)
-├── postgresql (database + vector search)
+├── frontend (Next.js)
+├── backend (FastAPI, uvicorn --workers 2)
+├── worker (ARQ, max_jobs=5)
+├── postgres (pgvector + full-text search)
 ├── minio (file storage)
-└── redis (job queue)
+└── redis (job queue + rate-limit counters)
 ```
 
 All services run locally via Docker Compose. One command brings the full stack up.
