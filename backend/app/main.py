@@ -3,9 +3,9 @@ from contextlib import asynccontextmanager
 
 from arq import create_pool
 from arq.connections import RedisSettings
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import _rate_limit_exceeded_handler
+from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
@@ -42,7 +42,22 @@ app = FastAPI(
 )
 
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+def rate_limit_exceeded_handler(
+    request: Request, exc: RateLimitExceeded
+) -> JSONResponse:
+    # slowapi's default handler responds with {"error": ...}; every other
+    # endpoint in this API responds with {"detail": ...} on failure, so the
+    # frontend's error parsing (which reads body.detail) only works if we
+    # normalize the shape here.
+    detail = f"Rate limit exceeded: {exc.detail}"
+    response = JSONResponse({"detail": detail}, status_code=429)
+    limiter_state = request.app.state.limiter
+    return limiter_state._inject_headers(response, request.state.view_rate_limit)
+
+
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 # RequestLoggingMiddleware must be added before CORSMiddleware so that
 # request_id is bound before any early-exit CORS responses are logged.
