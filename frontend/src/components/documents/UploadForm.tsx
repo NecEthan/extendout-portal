@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { Loader2 } from "lucide-react";
 import type { UserRole } from "@/interfaces";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -92,7 +93,8 @@ export function UploadForm({ userRole }: UploadFormProps) {
       )}
 
       <Button type="submit" disabled={uploadDocument.isPending || !file}>
-        Upload document
+        {uploadDocument.isPending && <Loader2 className="size-4 animate-spin" />}
+        {uploadDocument.isPending ? "Uploading…" : "Upload document"}
       </Button>
     </form>
   );

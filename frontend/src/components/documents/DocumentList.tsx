@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ErrorAlert } from "@/components/ui/error-alert";
 import { useDeleteDocument } from "@/hooks/useDocuments";
 import { getErrorMessage } from "@/lib/errorMessage";
+import { STATUS_STYLES } from "@/utils/documentStatus";
 
 interface DocumentListProps {
   documents: Document[];
@@ -35,6 +36,16 @@ export function DocumentList({ documents }: DocumentListProps) {
               {doc.sensitivity === "SENSITIVE" && (
                 <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
                   Sensitive
+                </span>
+              )}
+              {doc.latest_version_status && (
+                <span
+                  data-testid="document-status"
+                  className={`text-xs font-semibold rounded px-2 py-0.5 ${
+                    STATUS_STYLES[doc.latest_version_status] ?? "bg-gray-100 text-gray-600"
+                  }`}
+                >
+                  {doc.latest_version_status}
                 </span>
               )}
             </div>

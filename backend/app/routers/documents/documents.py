@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_arq_pool, get_current_user, get_db, sensitivity_filters
-from app.models.base import Document, User
+from app.models.base import Document, DocumentVersion, User
 from app.schemas.documents import (
     DocumentResponse,
     DocumentUploadedResponse,
@@ -89,14 +89,34 @@ async def list_documents(
 
     total = await db.scalar(select(func.count()).select_from(Document).where(*filters))
 
+    latest_status = (
+        select(DocumentVersion.status)
+        .where(DocumentVersion.document_id == Document.id)
+        .order_by(DocumentVersion.version_number.desc())
+        .limit(1)
+        .correlate(Document)
+        .scalar_subquery()
+    )
+
     result = await db.execute(
-        select(Document)
+        select(Document, latest_status.label("latest_version_status"))
         .where(*filters)
         .order_by(Document.created_at.desc())
         .limit(limit)
         .offset(offset)
     )
-    items = [DocumentResponse.model_validate(d) for d in result.scalars().all()]
+    items = [
+        DocumentResponse(
+            id=doc.id,
+            title=doc.title,
+            owner_id=doc.owner_id,
+            source_type=doc.source_type,
+            sensitivity=doc.sensitivity,
+            created_at=doc.created_at,
+            latest_version_status=status,
+        )
+        for doc, status in result.all()
+    ]
     return PaginatedDocumentsResponse(
         items=items, total=total or 0, limit=limit, offset=offset
     )

@@ -33,6 +33,7 @@ class DocumentResponse(BaseModel):
     source_type: str
     sensitivity: str
     created_at: datetime
+    latest_version_status: str | None = None
 
 
 class DocumentDetailResponse(DocumentResponse):

@@ -1,10 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { deleteDocument, listDocuments, uploadDocument } from "@/lib/api/documents";
+import { isProcessing } from "@/utils/documentStatus";
 
 export function useDocuments(limit: number, offset: number) {
   return useQuery({
     queryKey: ["documents", limit, offset],
     queryFn: () => listDocuments(limit, offset),
+    refetchInterval: (query) => {
+      const hasProcessing = query.state.data?.items.some((d) =>
+        isProcessing(d.latest_version_status),
+      );
+      return hasProcessing ? 3000 : false;
+    },
   });
 }
 

@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { Loader2 } from "lucide-react";
 import { applicationRoutes } from "@/utils/applicationRoutes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,15 +16,7 @@ import {
   useUploadDocumentVersion,
 } from "@/hooks/useDocumentVersions";
 import { firstErrorMessage } from "@/lib/errorMessage";
-
-const STATUS_STYLES: Record<string, string> = {
-  ACTIVE: "bg-green-100 text-green-800",
-  PROCESSING: "bg-yellow-100 text-yellow-800",
-  SUPERSEDED: "bg-gray-100 text-gray-500",
-  FAILED: "bg-red-100 text-red-700",
-  DELETED: "bg-gray-100 text-gray-400",
-  REVIEW_REQUIRED: "bg-orange-100 text-orange-800",
-};
+import { STATUS_STYLES } from "@/utils/documentStatus";
 
 const PAGE_SIZE = 20;
 
@@ -100,7 +93,8 @@ export default function VersionHistoryPage() {
               />
             </div>
             <Button type="submit" disabled={uploadVersion.isPending || !file}>
-              Upload new version
+              {uploadVersion.isPending && <Loader2 className="size-4 animate-spin" />}
+              {uploadVersion.isPending ? "Uploading…" : "Upload new version"}
             </Button>
           </form>
         </CardContent>

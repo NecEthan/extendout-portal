@@ -4,11 +4,16 @@ import {
   listDocumentVersions,
   uploadDocumentVersion,
 } from "@/lib/api/documents";
+import { isProcessing } from "@/utils/documentStatus";
 
 export function useDocumentVersions(documentId: string, limit: number, offset: number) {
   return useQuery({
     queryKey: ["documentVersions", documentId, limit, offset],
     queryFn: () => listDocumentVersions(documentId, limit, offset),
+    refetchInterval: (query) => {
+      const hasProcessing = query.state.data?.items.some((v) => isProcessing(v.status));
+      return hasProcessing ? 3000 : false;
+    },
   });
 }
 

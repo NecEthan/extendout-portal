@@ -2,15 +2,6 @@ export type DocumentSourceType = "upload" | "google_docs";
 
 export type DocumentSensitivity = "STANDARD" | "SENSITIVE";
 
-export interface Document {
-  id: string;
-  title: string;
-  owner_id: string;
-  source_type: DocumentSourceType;
-  sensitivity: DocumentSensitivity;
-  created_at: string;
-}
-
 export type DocumentVersionStatus =
   | "PROCESSING"
   | "ACTIVE"
@@ -18,6 +9,16 @@ export type DocumentVersionStatus =
   | "DELETED"
   | "REVIEW_REQUIRED"
   | "FAILED";
+
+export interface Document {
+  id: string;
+  title: string;
+  owner_id: string;
+  source_type: DocumentSourceType;
+  sensitivity: DocumentSensitivity;
+  created_at: string;
+  latest_version_status: DocumentVersionStatus | null;
+}
 
 export interface DocumentVersion {
   id: string;
