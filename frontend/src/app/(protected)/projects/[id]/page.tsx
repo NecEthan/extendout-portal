@@ -1,37 +1,57 @@
+"use client";
+
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { ArrowLeft, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { Tabs } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { MockBanner } from "@/components/portal/MockBanner";
-import { StatCard } from "@/components/portal/StatCard";
 import { StatusBadge } from "@/components/portal/StatusBadge";
 import { MilestoneTimeline } from "@/components/portal/projects/MilestoneTimeline";
 import { SiteEvidenceTabs } from "@/components/portal/evidence/SiteEvidenceTabs";
 import { ProjectDocuments } from "@/components/documents/ProjectDocuments";
 import { ProjectSearch } from "@/components/search/ProjectSearch";
-import { getMockProject } from "@/mocks/projects";
 import { mockMilestones, mockPlanItems } from "@/mocks/planning";
 import { mockTeam } from "@/mocks/team";
 import { mockInspections, mockIssues, mockPhotos } from "@/mocks/evidence";
 import { applicationRoutes } from "@/utils/applicationRoutes";
-import { formatDate, formatGBP } from "@/lib/format";
+import { ErrorAlert } from "@/components/ui/error-alert";
+import { useProject } from "@/hooks/useProjects";
+import { getErrorMessage } from "@/lib/errorMessage";
+import { formatDate } from "@/lib/format";
 
-export default async function ProjectDetailPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string }>;
-}) {
-  const { id } = await params;
-  const { tab } = await searchParams;
-  const project = getMockProject(id);
-  if (!project) notFound();
+const backLink = (
+  <Link
+    href={applicationRoutes.projects}
+    className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary"
+  >
+    <ArrowLeft size={14} /> All projects
+  </Link>
+);
+
+export default function ProjectDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const tab = useSearchParams().get("tab") ?? undefined;
+  const projectQuery = useProject(id);
+
+  const project = projectQuery.data;
+  if (!project) {
+    // Loading (renders just the back link), or 403 / 404 from the API.
+    return (
+      <>
+        {backLink}
+        <ErrorAlert
+          message={getErrorMessage(projectQuery, "Failed to load project", {
+            403: "You don't have access to this project. Ask an admin to add you as a member.",
+            404: "Project not found.",
+          })}
+        />
+      </>
+    );
+  }
 
   const milestones = mockMilestones.filter((m) => m.projectId === id);
   const plan = mockPlanItems.filter((p) => p.projectId === id);
@@ -50,23 +70,12 @@ export default async function ProjectDetailPage({
           {[
             ["Client", project.client],
             ["Address", project.address],
-            ["Type", project.type],
-            ["Site manager", project.manager],
-            ["Start", formatDate(project.startDate)],
-            ["Target completion", formatDate(project.endDate)],
           ].map(([k, v]) => (
             <div key={k} className="flex flex-col gap-0.5">
               <span className="text-xs text-muted-foreground">{k}</span>
               <span className="font-medium">{v}</span>
             </div>
           ))}
-          <div className="col-span-2 flex flex-col gap-1.5">
-            <div className="flex justify-between text-xs">
-              <span>{project.stage}</span>
-              <span className="font-medium">{project.progress}%</span>
-            </div>
-            <Progress value={project.progress} />
-          </div>
         </CardContent>
       </Card>
       <Card>
@@ -151,27 +160,13 @@ export default async function ProjectDetailPage({
 
   return (
     <>
-      <Link
-        href={applicationRoutes.projects}
-        className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary"
-      >
-        <ArrowLeft size={14} /> All projects
-      </Link>
+      {backLink}
       <PageHeader
         title={project.name}
-        description={`${project.type} for ${project.client}`}
+        description={`For ${project.client}`}
         actions={<StatusBadge status={project.health} />}
       />
       <MockBanner />
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-3">
-        <StatCard label="Contract value" value={formatGBP(project.budget)} />
-        <StatCard
-          label="Costs to date"
-          value={formatGBP(project.spent)}
-          hint={`${Math.round((project.spent / project.budget) * 100)}% of budget`}
-        />
-        <StatCard label="Completion" value={formatDate(project.endDate)} />
-      </div>
       <Tabs
         defaultValue={tab}
         tabs={[

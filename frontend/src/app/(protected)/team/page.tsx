@@ -13,7 +13,7 @@ import {
 import { PageHeader } from "@/components/portal/PageHeader";
 import { MockBanner } from "@/components/portal/MockBanner";
 import { mockTeam } from "@/mocks/team";
-import { getMockProject } from "@/mocks/projects";
+import { ProjectName } from "@/components/portal/projects/ProjectName";
 
 const ROLE_VARIANT = {
   Admin: "solid",
@@ -73,7 +73,7 @@ export default function TeamPage() {
                     <div className="flex flex-wrap gap-1">
                       {t.projectIds.map((id) => (
                         <Badge key={id} variant="outline">
-                          {getMockProject(id)?.name}
+                          <ProjectName id={id} />
                         </Badge>
                       ))}
                     </div>

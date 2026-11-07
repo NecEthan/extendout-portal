@@ -29,7 +29,13 @@ async def test_admin_sees_all_projects(admin_client, make_project):
 async def test_get_project_as_member(auth_client):
     response = await auth_client.get(f"/projects/{TEST_PROJECT_ID}")
     assert response.status_code == 200
-    assert response.json() == {"id": TEST_PROJECT_ID, "name": "Test Project"}
+    body = response.json()
+    assert body["id"] == TEST_PROJECT_ID
+    assert body["name"] == "Test Project"
+    # Detail fields fall back to column defaults for a bare project.
+    assert body["client"] == ""
+    assert body["address"] == ""
+    assert body["health"] == "On track"
 
 
 async def test_get_project_non_member_forbidden(auth_client, make_project):

@@ -2,7 +2,7 @@
 
 import uuid
 
-from sqlalchemy import delete, func, update
+from sqlalchemy import func, update
 
 from app.database import AsyncSessionLocal
 from app.models.base import DocumentChunk, DocumentVersion

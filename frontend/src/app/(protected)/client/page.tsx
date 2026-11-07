@@ -1,20 +1,35 @@
+"use client";
+
 import { CalendarCheck, Mail, Phone } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { MockBanner } from "@/components/portal/MockBanner";
 import { MilestoneTimeline } from "@/components/portal/projects/MilestoneTimeline";
-import { clientWelcome } from "@/mocks/client";
-import { clientProjectId, getMockProject } from "@/mocks/projects";
+import { ErrorAlert } from "@/components/ui/error-alert";
+import { useProject } from "@/hooks/useProjects";
+import { getErrorMessage } from "@/lib/errorMessage";
+import { clientProjectId, clientWelcome } from "@/mocks/client";
 import { mockMilestones } from "@/mocks/planning";
 import { formatDate } from "@/lib/format";
 
 export default function ClientOverviewPage() {
-  const project = getMockProject(clientProjectId)!;
+  const projectQuery = useProject(clientProjectId);
   const milestones = mockMilestones.filter(
     (m) => m.projectId === clientProjectId
   );
   const next = milestones.find((m) => m.status !== "Complete");
+
+  const project = projectQuery.data;
+  if (!project) {
+    return (
+      <ErrorAlert
+        message={getErrorMessage(projectQuery, "Failed to load your project", {
+          403: "You don't have access to this project.",
+          404: "Project not found.",
+        })}
+      />
+    );
+  }
 
   return (
     <>
@@ -32,16 +47,6 @@ export default function ClientOverviewPage() {
             </span>
             <h2 className="text-xl font-semibold">{clientWelcome.headline}</h2>
             <p className="text-sm text-white/70">{clientWelcome.summary}</p>
-          </div>
-          <div className="flex w-full flex-col gap-2 md:w-64">
-            <div className="flex justify-between text-xs text-white/70">
-              <span>{project.stage}</span>
-              <span>{project.progress}%</span>
-            </div>
-            <Progress value={project.progress} className="bg-white/15" />
-            <span className="text-xs text-white/60">
-              Estimated handover {formatDate(project.endDate)}
-            </span>
           </div>
         </CardContent>
       </Card>

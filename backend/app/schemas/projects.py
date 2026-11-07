@@ -6,3 +6,6 @@ class ProjectResponse(BaseModel):
 
     id: str
     name: str
+    client: str
+    address: str
+    health: str

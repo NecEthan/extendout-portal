@@ -6,11 +6,11 @@ import { PageHeader } from "@/components/portal/PageHeader";
 import { MockBanner } from "@/components/portal/MockBanner";
 import { ProjectCard } from "@/components/portal/projects/ProjectCard";
 import { ErrorAlert } from "@/components/ui/error-alert";
-import { useAccessibleProjects } from "@/hooks/useProjects";
+import { useProjects } from "@/hooks/useProjects";
 import { getErrorMessage } from "@/lib/errorMessage";
 
 export default function ProjectsPage() {
-  const projects = useAccessibleProjects();
+  const projects = useProjects();
 
   return (
     <>

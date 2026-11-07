@@ -1,24 +1,5 @@
 // Types for mock-backed portal features (no backend yet).
-
-export type ProjectType =
-  "Extension" | "Loft conversion" | "Renovation" | "New build";
-export type ProjectHealth = "On track" | "At risk" | "Delayed" | "Complete";
-
-export interface Project {
-  id: string;
-  name: string;
-  client: string;
-  address: string;
-  type: ProjectType;
-  stage: string;
-  progress: number;
-  budget: number;
-  spent: number;
-  startDate: string;
-  endDate: string;
-  manager: string;
-  health: ProjectHealth;
-}
+// Projects themselves come from the API: see ./project.ts.
 
 export type PlanBucket = "Now" | "Next" | "Then";
 

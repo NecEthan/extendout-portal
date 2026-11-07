@@ -1,6 +1,9 @@
 import type { ProgressUpdate } from "@/interfaces/portal";
 import { mockPhotos } from "./evidence";
 
+/** The project shown in the Client view (homeowner perspective). */
+export const clientProjectId = "p-101";
+
 export const clientWelcome = {
   clientName: "Sarah",
   headline: "Your rear extension is 58% complete",

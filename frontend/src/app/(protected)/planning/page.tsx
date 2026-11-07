@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/portal/PageHeader";
 import { MockBanner } from "@/components/portal/MockBanner";
 import { MilestoneTimeline } from "@/components/portal/projects/MilestoneTimeline";
 import { mockMilestones, mockPlanItems } from "@/mocks/planning";
-import { getMockProject } from "@/mocks/projects";
+import { ProjectName } from "@/components/portal/projects/ProjectName";
 import { formatDate } from "@/lib/format";
 import type { PlanBucket } from "@/interfaces/portal";
 
@@ -52,7 +52,7 @@ export default function PlanningPage() {
                 <Card key={p.id} size="sm" className="gap-1 px-3">
                   <span className="text-sm font-medium">{p.title}</span>
                   <span className="text-xs text-primary">
-                    {getMockProject(p.projectId)?.name}
+                    <ProjectName id={p.projectId} />
                   </span>
                   <span className="text-xs text-muted-foreground">
                     {p.trade} · {formatDate(p.start)} to {formatDate(p.end)}

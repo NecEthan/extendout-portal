@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { MockBanner } from "@/components/portal/MockBanner";
 import { materialColumns, mockMaterials } from "@/mocks/materials";
-import { getMockProject } from "@/mocks/projects";
+import { ProjectName } from "@/components/portal/projects/ProjectName";
 import { formatDate, formatGBP } from "@/lib/format";
 
 export default function MaterialsPage() {
@@ -38,7 +38,7 @@ export default function MaterialsPage() {
                 <Card key={m.id} size="sm" className="gap-1.5 px-3">
                   <span className="text-sm font-medium">{m.item}</span>
                   <span className="text-xs text-primary">
-                    {getMockProject(m.projectId)?.name}
+                    <ProjectName id={m.projectId} />
                   </span>
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>{m.quantity}</span>

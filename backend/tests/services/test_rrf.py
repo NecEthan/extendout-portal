@@ -5,7 +5,6 @@ These tests have no database dependency — pure Python only.
 
 import uuid
 
-import pytest
 
 from app.services.rrf import rrf_combine
 
