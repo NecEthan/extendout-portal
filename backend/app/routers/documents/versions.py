@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_arq_pool, get_current_user, get_db, sensitivity_filters
+from app.dependencies import get_arq_pool, get_current_user, get_db
 from app.models.base import Document, DocumentVersion, ProcessingJob, User
 from app.schemas.documents import (
     DocumentVersionResponse,
@@ -16,6 +16,7 @@ from app.schemas.documents import (
 from app.services import storage
 from app.services.activation import activate_version
 from app.services.documents import compute_hash, generate_storage_key, read_and_validate
+from app.services.permissions import document_access_filters
 from app.utils.enqueue import enqueue_processing_job
 
 router = APIRouter(tags=["documents"])
@@ -36,7 +37,7 @@ async def upload_document_version(
     result = await db.execute(
         select(Document)
         .where(Document.id == document_id)
-        .where(*sensitivity_filters(current_user))
+        .where(*document_access_filters(current_user))
     )
     if result.scalar_one_or_none() is None:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -108,7 +109,7 @@ async def list_document_versions(
     result = await db.execute(
         select(Document)
         .where(Document.id == document_id)
-        .where(*sensitivity_filters(current_user))
+        .where(*document_access_filters(current_user))
     )
     if result.scalar_one_or_none() is None:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -145,7 +146,7 @@ async def get_document_version(
     result = await db.execute(
         select(Document)
         .where(Document.id == document_id)
-        .where(*sensitivity_filters(current_user))
+        .where(*document_access_filters(current_user))
     )
     if result.scalar_one_or_none() is None:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -176,14 +177,13 @@ async def activate_document_version(
     current_user: User = Depends(get_current_user),
 ) -> DocumentVersionResponse:
     doc_result = await db.execute(
-        select(Document).where(Document.id == document_id)
+        select(Document)
+        .where(Document.id == document_id)
+        .where(*document_access_filters(current_user))
     )
     doc = doc_result.scalar_one_or_none()
     if doc is None:
         raise HTTPException(status_code=404, detail="Document not found")
-
-    if doc.owner_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized")
 
     ver_result = await db.execute(
         select(DocumentVersion)

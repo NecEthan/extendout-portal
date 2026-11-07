@@ -6,39 +6,24 @@ import { DocumentList } from "@/components/documents/DocumentList";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorAlert } from "@/components/ui/error-alert";
 import { Pagination } from "@/components/ui/pagination";
-import { useUser } from "@/hooks/useUser";
 import { useDocuments } from "@/hooks/useDocuments";
 import { firstErrorMessage } from "@/lib/errorMessage";
-import { PageHeader } from "@/components/portal/PageHeader";
 
 const PAGE_SIZE = 20;
 
-export default function DocumentsPage() {
+/** Upload, list and track processing of one project's documents. */
+export function ProjectDocuments({ projectId }: { projectId: string }) {
   const [offset, setOffset] = useState(0);
-  const user = useUser();
-  const documents = useDocuments(PAGE_SIZE, offset);
+  const documents = useDocuments(projectId, PAGE_SIZE, offset);
 
-  const error = firstErrorMessage([
-    [user, "Failed to load your account"],
-    [documents, "Failed to load documents"],
-  ]);
+  const error = firstErrorMessage([[documents, "Failed to load documents"]]);
 
-  if (!documents.data || !user.data) {
-    return (
-      <div className="flex flex-col gap-6">
-        <PageHeader title="Documents" />
-        <ErrorAlert message={error} />
-      </div>
-    );
+  if (!documents.data) {
+    return <ErrorAlert message={error} />;
   }
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Documents"
-        description="Drawings, contracts, specifications and site records, versioned and searchable."
-      />
-
       <ErrorAlert message={error} />
 
       <div className="grid items-start gap-6 lg:grid-cols-3">
@@ -47,13 +32,13 @@ export default function DocumentsPage() {
             <CardTitle>Upload document</CardTitle>
           </CardHeader>
           <CardContent>
-            <UploadForm userRole={user.data.role} />
+            <UploadForm projectId={projectId} />
           </CardContent>
         </Card>
 
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Your documents</CardTitle>
+            <CardTitle>Project documents</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <DocumentList documents={documents.data.items} />

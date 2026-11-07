@@ -8,7 +8,6 @@ Verifies that DELETE /documents/:id:
 """
 
 import uuid
-from datetime import UTC, datetime
 from unittest.mock import patch
 
 from sqlalchemy import select, update
@@ -19,13 +18,14 @@ from app.models.base import (
     DocumentVersion,
     ProcessingJob,
 )
+from tests.fixtures.auth import TEST_PROJECT_ID
 
 
 def _txt_file(name: str = "test.txt") -> dict:
     return {"file": (name, b"Hello KnowledgeGuard", "text/plain")}
 
 
-async def _upload(client, title: str = "Doc", sensitivity: str = "STANDARD") -> str:
+async def _upload(client, title: str = "Doc", project_id: str = TEST_PROJECT_ID) -> str:
     """Upload a document and return its id."""
     with (
         patch("app.services.storage.upload_bytes"),
@@ -34,7 +34,7 @@ async def _upload(client, title: str = "Doc", sensitivity: str = "STANDARD") -> 
         r = await client.post(
             "/documents",
             files=_txt_file(),
-            data={"title": title, "sensitivity": sensitivity},
+            data={"title": title, "project_id": project_id},
         )
     assert r.status_code == 202
     return r.json()["id"]
@@ -204,16 +204,18 @@ async def test_delete_requires_auth(client):
 # ── Permission checks ──────────────────────────────────────────────────────────
 
 
-async def test_user_cannot_delete_sensitive_doc(auth_client, admin_client):
-    doc_id = await _upload(admin_client, sensitivity="SENSITIVE")
+async def test_non_member_cannot_delete_doc(auth_client, admin_client, make_project):
+    outsider_project = await make_project(member=None)
+    doc_id = await _upload(admin_client, project_id=outsider_project)
 
-    # Non-admin cannot see (or delete) sensitive docs.
+    # Not a member of the project: the document is invisible (and undeletable).
     r = await auth_client.delete(f"/documents/{doc_id}")
     assert r.status_code == 404
 
 
-async def test_admin_can_delete_sensitive_doc(admin_client):
-    doc_id = await _upload(admin_client, sensitivity="SENSITIVE")
+async def test_admin_can_delete_doc_in_any_project(admin_client, make_project):
+    outsider_project = await make_project(member=None)
+    doc_id = await _upload(admin_client, project_id=outsider_project)
 
     r = await admin_client.delete(f"/documents/{doc_id}")
     assert r.status_code == 204
@@ -231,7 +233,7 @@ async def test_delete_removes_all_versions_and_chunks(auth_client, db):
         r = await auth_client.post(
             "/documents",
             files=_txt_file(),
-            data={"title": "MultiVer", "sensitivity": "STANDARD"},
+            data={"title": "MultiVer", "project_id": TEST_PROJECT_ID},
         )
         doc_id = r.json()["id"]
 

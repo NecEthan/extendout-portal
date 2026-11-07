@@ -20,6 +20,7 @@ from sqlalchemy import select
 from app.models.base import Document, DocumentChunk, DocumentVersion, ProcessingJob
 from app.services.documents import compute_hash, generate_storage_key
 from app.workers.activation import DocumentDeletedError, activate_version
+from tests.fixtures.auth import TEST_PROJECT_ID
 from tests.helpers.processing import TXT_CONTENT, run_worker
 
 
@@ -29,7 +30,7 @@ async def _create_document(db, user_id: uuid.UUID) -> tuple[Document, DocumentVe
         title="Race Condition Doc",
         owner_id=user_id,
         source_type="upload",
-        sensitivity="STANDARD",
+        project_id=TEST_PROJECT_ID,
     )
     db.add(doc)
     await db.flush()

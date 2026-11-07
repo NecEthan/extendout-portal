@@ -1,10 +1,14 @@
-import type { User } from "@/interfaces";
+import type { User, UserRole } from "@/interfaces";
 import { httpClient } from "./client";
 
-export async function register(email: string, password: string): Promise<User> {
+export async function register(
+  email: string,
+  password: string,
+  role: UserRole
+): Promise<User> {
   return httpClient<User>("/auth/register", {
     method: "POST",
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, role }),
   });
 }
 

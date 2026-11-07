@@ -85,7 +85,7 @@ Requires all services running. Auth state is persisted to `.auth/user.json` by `
 
 `POST /documents` in `app/routers/documents/documents.py`. The `documents/` router is a package split into `documents.py` (list/upload), `document.py` (get/patch/delete by id), `versions.py` (version endpoints), combined in `__init__.py` via `router.routes.extend()`.
 
-1. Validate sensitivity (`STANDARD|SENSITIVE`) — 403 if non-admin uploads SENSITIVE.
+1. Check project access (`ensure_project_access`) — `project_id` is required; 404 unknown project, 403 if a non-admin isn't a member.
 2. Validate file type (allowed: pdf, txt, docx, md).
 3. Upload bytes to MinIO.
 4. Insert `Document`, `DocumentVersion` (status=PROCESSING), `ProcessingJob` (status=QUEUED) — all in one DB transaction.
@@ -100,8 +100,9 @@ Requires all services running. Auth state is persisted to `.auth/user.json` by `
 ### Data model (key relationships)
 
 ```
-User (role: admin|user)
- └── Document (owner_id, sensitivity: STANDARD|SENSITIVE)
+User (role: admin|builder|client)
+ └── ProjectMember (user_id, project_id)  ── Project (id e.g. "p-101", name)
+Document (owner_id, project_id → Project)
       └── DocumentVersion (version_number, status: PROCESSING|ACTIVE|SUPERSEDED|DELETED|REVIEW_REQUIRED|FAILED)
            ├── DocumentChunk (content + Vector(1536) embedding)
            └── ProcessingJob (status: QUEUED|DISPATCHED|PROCESSING|COMPLETE|FAILED)
@@ -111,22 +112,20 @@ Only one `DocumentVersion` per document may have status=ACTIVE (partial unique i
 
 ### Access control
 
-Role governs all access — ownership has no effect:
+Access is decided by **role + project membership** — document ownership has no effect:
 
-| Action | `user` role | `admin` role |
+| Action | `builder` / `client` | `admin` |
 |---|---|---|
-| Upload STANDARD doc | ✅ | ✅ |
-| Upload SENSITIVE doc | ❌ 403 | ✅ |
-| List / read / edit / delete STANDARD doc | ✅ | ✅ |
-| List / read / edit / delete SENSITIVE doc | ❌ excluded | ✅ |
-| Query RAG — STANDARD results | ✅ | ✅ |
-| Query RAG — SENSITIVE results | ❌ | ✅ |
+| See a project (`GET /projects`) | only projects they're a member of | all |
+| Upload / list / read / edit / version / delete docs | only in member projects (403 otherwise; 404 for a doc outside them) | all |
+| Query RAG | only documents in member projects (403 if `project_id` is a non-member project) | all |
 
-Sensitivity filter applied in `app/dependencies.py` (`sensitivity_filters(user)`) — returns `[Document.sensitivity == "STANDARD"]` for non-admins, `[]` for admins. Used in all document CRUD routes and `app/services/permissions.py` for RAG.
+Builders and clients have identical document permissions. Rules live in `app/services/permissions.py`: `document_access_filters(user)` (WHERE clauses for all document routes), `ensure_project_access(db, user, project_id)` (404 unknown project / 403 non-member), `build_permitted_doc_ids(user, project_id)` (RAG). Documents with `project_id IS NULL` (legacy, pre-projects) are admin-only.
 
-All new users register as `user` role. Promote to `admin` via direct DB update:
+Users pick their role at registration (`POST /auth/register` requires `role`: `admin|builder|client`; enforced by `ck_users_role`). Add project members via SQL:
 ```sql
-UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
+INSERT INTO project_members (project_id, user_id)
+SELECT 'p-101', id FROM users WHERE email = 'you@example.com';
 ```
 
 ### Worker
@@ -173,7 +172,7 @@ Tests live in `backend/tests/`. Structure:
 - `tests/services/` — unit tests for individual services
 
 - Shared fixtures in `tests/fixtures/` (`db.py`, `auth.py`, `arq.py`), loaded via `pytest_plugins` in `tests/conftest.py` (top-level — NOT in `tests/integration/conftest.py`)
-- `auth.py` provides `test_user` (role=user) and `admin_user`/`admin_client` (role=admin) fixtures
+- `auth.py` provides `test_user` (role=builder, member of `TEST_PROJECT_ID`) and `admin_user`/`admin_client` (role=admin) fixtures, plus `make_project(member=...)` for extra projects (pass `member=None` for a project the user can't access)
 - `override_db` is autouse — patches `get_db` for every test
 - `_arq_app_state` is autouse — sets `app.state.arq_pool` (lifespan doesn't run in ASGI tests)
 - `mock_pool` overrides the `get_arq_pool` dependency; use when a test needs to assert on `enqueue_job` calls

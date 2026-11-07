@@ -1,10 +1,9 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Text, func
+from sqlalchemy import DateTime, ForeignKey, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import ForeignKey
 
 from app.database import Base
 
@@ -20,7 +19,11 @@ class Document(Base):
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )
     source_type: Mapped[str] = mapped_column(Text, nullable=False)  # upload | google_docs
-    sensitivity: Mapped[str] = mapped_column(Text, nullable=False)  # STANDARD | SENSITIVE
+    # Access is granted per project via project_members (admins see everything).
+    # Nullable only for legacy documents uploaded before projects existed.
+    project_id: Mapped[str | None] = mapped_column(
+        Text, ForeignKey("projects.id"), nullable=True, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

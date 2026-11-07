@@ -14,7 +14,7 @@ from tests.helpers.processing import FAKE_EMBEDDING
 def _fake_embeddings():
     """Return a fake embedding for every chunk — avoids real OpenAI calls."""
 
-    async def _generate(texts):
+    async def _generate(texts, **kwargs):
         return [FAKE_EMBEDDING[:] for _ in texts]
 
     with patch("app.workers.main.generate_embeddings", side_effect=_generate):

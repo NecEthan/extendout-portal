@@ -2,11 +2,11 @@ import asyncio
 
 import structlog
 from arq.connections import ArqRedis
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, Form, Query, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_arq_pool, get_current_user, get_db, sensitivity_filters
+from app.dependencies import get_arq_pool, get_current_user, get_db
 from app.models.base import Document, DocumentVersion, User
 from app.schemas.documents import (
     DocumentResponse,
@@ -21,42 +21,32 @@ from app.services.documents import (
     generate_storage_key,
     read_and_validate,
 )
+from app.services.permissions import document_access_filters, ensure_project_access
 from app.utils.enqueue import enqueue_processing_job
 
 router = APIRouter(tags=["documents"])
 logger = structlog.get_logger(__name__)
 
-_VALID_SENSITIVITIES = {"STANDARD", "SENSITIVE"}
-
-
-async def _check_sensitivity_permission(
-    sensitivity: str, current_user: User
-) -> None:
-    if sensitivity not in _VALID_SENSITIVITIES:
-        raise HTTPException(
-            status_code=422,
-            detail=f"sensitivity must be one of {sorted(_VALID_SENSITIVITIES)}",
-        )
-    if sensitivity == "SENSITIVE" and current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Only admins can upload sensitive documents")
-
-
 @router.post("", status_code=202, response_model=DocumentUploadedResponse)
 async def upload_document(
     file: UploadFile,
     title: str = Form(),
-    sensitivity: str = Form(),
+    project_id: str = Form(),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     arq_pool: ArqRedis = Depends(get_arq_pool),
 ) -> DocumentUploadedResponse:
-    logger.info("document_upload_start", filename=file.filename, sensitivity=sensitivity)
+    logger.info(
+        "document_upload_start",
+        filename=file.filename,
+        project_id=project_id,
+    )
 
-    await _check_sensitivity_permission(sensitivity, current_user)
+    await ensure_project_access(db, current_user, project_id)
 
     content, content_type = await read_and_validate(file)
     content_hash = compute_hash(content)
-    await assert_no_duplicate(db, content_hash)
+    await assert_no_duplicate(db, content_hash, project_id)
 
     storage_key = generate_storage_key()
     loop = asyncio.get_running_loop()
@@ -65,7 +55,7 @@ async def upload_document(
 
     try:
         doc, version, job = await create_document_records(
-            db, title, sensitivity, content_hash, storage_key, current_user
+            db, title, content_hash, storage_key, current_user, project_id
         )
     except Exception:
         await db.rollback()
@@ -82,10 +72,14 @@ async def upload_document(
 async def list_documents(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    project_id: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> PaginatedDocumentsResponse:
-    filters = sensitivity_filters(current_user)
+    filters = document_access_filters(current_user)
+    if project_id is not None:
+        await ensure_project_access(db, current_user, project_id)
+        filters.append(Document.project_id == project_id)
 
     total = await db.scalar(select(func.count()).select_from(Document).where(*filters))
 
@@ -111,7 +105,7 @@ async def list_documents(
             title=doc.title,
             owner_id=doc.owner_id,
             source_type=doc.source_type,
-            sensitivity=doc.sensitivity,
+            project_id=doc.project_id,
             created_at=doc.created_at,
             latest_version_status=status,
         )

@@ -1,9 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import { applicationRoutes } from "@/utils/applicationRoutes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +23,15 @@ export default function VersionHistoryPage() {
   const params = useParams<{ id: string }>();
   const documentId = params.id;
   const router = useRouter();
+  const projectId = useSearchParams().get("project");
+
+  function handleBack() {
+    if (projectId) {
+      router.push(`/projects/${encodeURIComponent(projectId)}?tab=documents`);
+    } else {
+      router.back();
+    }
+  }
 
   const [file, setFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -66,10 +74,7 @@ export default function VersionHistoryPage() {
         <h1 className="text-2xl font-semibold tracking-tight">
           Version History
         </h1>
-        <Button
-          variant="outline"
-          onClick={() => router.push(applicationRoutes.documents)}
-        >
+        <Button variant="outline" onClick={handleBack}>
           Back to documents
         </Button>
       </div>

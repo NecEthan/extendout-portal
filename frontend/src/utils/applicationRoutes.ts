@@ -1,8 +1,6 @@
 export const applicationRoutes = {
   login: "/login",
   dashboard: "/dashboard",
-  documents: "/documents",
-  search: "/search",
   // Office
   projects: "/projects",
   planning: "/planning",

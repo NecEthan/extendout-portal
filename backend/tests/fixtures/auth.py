@@ -6,7 +6,8 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import delete, select
+from sqlalchemy import delete, exists, select
+from sqlalchemy.dialects.postgresql import insert
 
 from app.main import app
 from app.models.base import (
@@ -14,30 +15,27 @@ from app.models.base import (
     DocumentChunk,
     DocumentVersion,
     ProcessingJob,
+    Project,
+    ProjectMember,
     Session,
     User,
 )
 from app.services.auth import hash_password
 
+# Shared project that test_user is a member of. Upload test documents here.
+TEST_PROJECT_ID = "test-project"
 
-@pytest.fixture
-async def test_user(db):
-    user = User(
-        email=f"test+{uuid.uuid4().hex[:8]}@example.com",
-        password_hash=await hash_password("password"),
-        role="user",
+
+async def _ensure_test_project(db) -> None:
+    await db.execute(
+        insert(Project)
+        .values(id=TEST_PROJECT_ID, name="Test Project")
+        .on_conflict_do_nothing()
     )
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    user_id = (
-        user.id
-    )  # capture before yield — expire_all() in tests makes user.id inaccessible
 
-    yield user
 
-    # Delete in FK order: chunks/jobs → versions → documents → sessions → user
-    doc_ids = select(Document.id).where(Document.owner_id == user_id)
+async def _delete_documents(db, doc_ids) -> None:
+    """Delete documents (and their versions, chunks, jobs) matching a doc-id select."""
     version_ids = select(DocumentVersion.id).where(
         DocumentVersion.document_id.in_(doc_ids)
     )
@@ -50,9 +48,42 @@ async def test_user(db):
     await db.execute(
         delete(DocumentVersion).where(DocumentVersion.document_id.in_(doc_ids))
     )
-    await db.execute(delete(Document).where(Document.owner_id == user_id))
+    await db.execute(delete(Document).where(Document.id.in_(doc_ids)))
+
+
+async def _delete_test_project_if_unused(db) -> None:
+    await db.execute(
+        delete(Project)
+        .where(Project.id == TEST_PROJECT_ID)
+        .where(~exists().where(Document.project_id == TEST_PROJECT_ID))
+    )
+
+
+@pytest.fixture
+async def test_user(db):
+    user = User(
+        email=f"test+{uuid.uuid4().hex[:8]}@example.com",
+        password_hash=await hash_password("password"),
+        role="builder",
+    )
+    db.add(user)
+    await _ensure_test_project(db)
+    await db.flush()
+    db.add(ProjectMember(project_id=TEST_PROJECT_ID, user_id=user.id))
+    await db.commit()
+    await db.refresh(user)
+    user_id = (
+        user.id
+    )  # capture before yield — expire_all() in tests makes user.id inaccessible
+
+    yield user
+
+    # Delete in FK order: chunks/jobs → versions → documents → sessions → user
+    # (project memberships cascade with the user).
+    await _delete_documents(db, select(Document.id).where(Document.owner_id == user_id))
     await db.execute(delete(Session).where(Session.user_id == user_id))
     await db.execute(delete(User).where(User.id == user_id))
+    await _delete_test_project_if_unused(db)
     await db.commit()
 
 
@@ -64,29 +95,48 @@ async def admin_user(db):
         role="admin",
     )
     db.add(user)
+    await _ensure_test_project(db)
     await db.commit()
     await db.refresh(user)
     user_id = user.id
 
     yield user
 
-    doc_ids = select(Document.id).where(Document.owner_id == user_id)
-    version_ids = select(DocumentVersion.id).where(
-        DocumentVersion.document_id.in_(doc_ids)
-    )
-    await db.execute(
-        delete(DocumentChunk).where(DocumentChunk.document_version_id.in_(version_ids))
-    )
-    await db.execute(
-        delete(ProcessingJob).where(ProcessingJob.document_version_id.in_(version_ids))
-    )
-    await db.execute(
-        delete(DocumentVersion).where(DocumentVersion.document_id.in_(doc_ids))
-    )
-    await db.execute(delete(Document).where(Document.owner_id == user_id))
+    # Delete in FK order: chunks/jobs → versions → documents → sessions → user
+    # (project memberships cascade with the user).
+    await _delete_documents(db, select(Document.id).where(Document.owner_id == user_id))
     await db.execute(delete(Session).where(Session.user_id == user_id))
     await db.execute(delete(User).where(User.id == user_id))
+    await _delete_test_project_if_unused(db)
     await db.commit()
+
+
+@pytest.fixture
+async def make_project(db):
+    """Factory for extra projects: make_project(member=user) -> project id.
+
+    Pass member=None for a project the user is NOT a member of.
+    """
+    created: list[str] = []
+
+    async def _make(member: User | None = None) -> str:
+        project_id = f"test-{uuid.uuid4().hex[:8]}"
+        db.add(Project(id=project_id, name=f"Project {project_id}"))
+        await db.flush()
+        if member is not None:
+            db.add(ProjectMember(project_id=project_id, user_id=member.id))
+        await db.commit()
+        created.append(project_id)
+        return project_id
+
+    yield _make
+
+    if created:
+        await _delete_documents(
+            db, select(Document.id).where(Document.project_id.in_(created))
+        )
+        await db.execute(delete(Project).where(Project.id.in_(created)))
+        await db.commit()
 
 
 @pytest.fixture

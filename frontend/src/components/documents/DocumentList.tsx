@@ -35,11 +35,6 @@ export function DocumentList({ documents }: DocumentListProps) {
           <div className="flex flex-col gap-0.5">
             <div className="flex items-center gap-2">
               <span className="font-medium">{doc.title}</span>
-              {doc.sensitivity === "SENSITIVE" && (
-                <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
-                  Sensitive
-                </span>
-              )}
               {doc.latest_version_status && (
                 <span
                   data-testid="document-status"
@@ -57,7 +52,13 @@ export function DocumentList({ documents }: DocumentListProps) {
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <Link href={`/documents/${doc.id}/versions`}>
+            <Link
+              href={
+                doc.project_id
+                  ? `/documents/${doc.id}/versions?project=${encodeURIComponent(doc.project_id)}`
+                  : `/documents/${doc.id}/versions`
+              }
+            >
               <Button variant="outline" size="sm">
                 Versions
               </Button>

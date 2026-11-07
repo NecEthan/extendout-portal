@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.base import DocumentVersion, ProcessingJob
 from app.services.documents import compute_hash, generate_storage_key
 from app.workers.main import process_document
+from tests.fixtures.auth import TEST_PROJECT_ID
 
 TXT_CONTENT = (
     b"Hello KnowledgeGuard. This is the first paragraph about company policies.\n\n"
@@ -29,7 +30,7 @@ async def upload_doc(
         response = await auth_client.post(
             "/documents",
             files={"file": (filename, content, "text/plain")},
-            data={"title": title, "sensitivity": "STANDARD"},
+            data={"title": title, "project_id": TEST_PROJECT_ID},
         )
     assert response.status_code == 202
     return uuid.UUID(response.json()["id"])

@@ -1,12 +1,16 @@
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+UserRole = Literal["admin", "builder", "client"]
 
 
 class RegisterRequest(BaseModel):
     email: str
     password: str = Field(min_length=8)
+    role: UserRole
 
     @field_validator("password")
     @classmethod

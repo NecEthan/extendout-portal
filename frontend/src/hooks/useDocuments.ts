@@ -1,34 +1,31 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { deleteDocument, listDocuments, uploadDocument } from "@/lib/api/documents";
+import {
+  deleteDocument,
+  listDocuments,
+  uploadDocument,
+} from "@/lib/api/documents";
 import { isProcessing } from "@/utils/documentStatus";
 
-export function useDocuments(limit: number, offset: number) {
+export function useDocuments(projectId: string, limit: number, offset: number) {
   return useQuery({
-    queryKey: ["documents", limit, offset],
-    queryFn: () => listDocuments(limit, offset),
+    queryKey: ["documents", projectId, limit, offset],
+    queryFn: () => listDocuments(limit, offset, projectId),
     refetchInterval: (query) => {
       const hasProcessing = query.state.data?.items.some((d) =>
-        isProcessing(d.latest_version_status),
+        isProcessing(d.latest_version_status)
       );
       return hasProcessing ? 3000 : false;
     },
   });
 }
 
-export function useUploadDocument() {
+export function useUploadDocument(projectId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      file,
-      title,
-      sensitivity,
-    }: {
-      file: File;
-      title: string;
-      sensitivity: string;
-    }) => uploadDocument(file, title, sensitivity),
+    mutationFn: ({ file, title }: { file: File; title: string }) =>
+      uploadDocument(file, title, projectId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["documents", projectId] });
     },
   });
 }

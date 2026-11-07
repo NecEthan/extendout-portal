@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, FileText, Upload } from "lucide-react";
+import { ArrowLeft, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -12,6 +12,8 @@ import { StatCard } from "@/components/portal/StatCard";
 import { StatusBadge } from "@/components/portal/StatusBadge";
 import { MilestoneTimeline } from "@/components/portal/projects/MilestoneTimeline";
 import { SiteEvidenceTabs } from "@/components/portal/evidence/SiteEvidenceTabs";
+import { ProjectDocuments } from "@/components/documents/ProjectDocuments";
+import { ProjectSearch } from "@/components/search/ProjectSearch";
 import { getMockProject } from "@/mocks/projects";
 import { mockMilestones, mockPlanItems } from "@/mocks/planning";
 import { mockTeam } from "@/mocks/team";
@@ -19,45 +21,15 @@ import { mockInspections, mockIssues, mockPhotos } from "@/mocks/evidence";
 import { applicationRoutes } from "@/utils/applicationRoutes";
 import { formatDate, formatGBP } from "@/lib/format";
 
-const mockProjectDocuments = [
-  {
-    name: "Planning approval notice.pdf",
-    folder: "Planning",
-    updated: "2026-05-18",
-    version: 1,
-  },
-  {
-    name: "Architectural drawings, rev C.pdf",
-    folder: "Drawings",
-    updated: "2026-06-30",
-    version: 3,
-  },
-  {
-    name: "Structural calculations.pdf",
-    folder: "Engineering",
-    updated: "2026-06-12",
-    version: 2,
-  },
-  {
-    name: "Signed JCT contract.pdf",
-    folder: "Contracts",
-    updated: "2026-06-20",
-    version: 1,
-  },
-  {
-    name: "Building control completion checklist.docx",
-    folder: "Compliance",
-    updated: "2026-10-30",
-    version: 4,
-  },
-];
-
 export default async function ProjectDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const { id } = await params;
+  const { tab } = await searchParams;
   const project = getMockProject(id);
   if (!project) notFound();
 
@@ -158,29 +130,6 @@ export default async function ProjectDetailPage({
     </div>
   );
 
-  const documents = (
-    <Card>
-      <CardContent className="flex flex-col divide-y">
-        {mockProjectDocuments.map((d) => (
-          <div key={d.name} className="flex items-center justify-between py-3">
-            <div className="flex items-center gap-3">
-              <span className="grid size-8 place-items-center rounded-md bg-accent text-accent-foreground">
-                <FileText size={16} />
-              </span>
-              <div className="flex flex-col">
-                <span className="text-sm font-medium">{d.name}</span>
-                <span className="text-xs text-muted-foreground">
-                  {d.folder} · updated {formatDate(d.updated)}
-                </span>
-              </div>
-            </div>
-            <Badge variant="outline">v{d.version}</Badge>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
-  );
-
   const teamTab = (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       {team.map((t) => (
@@ -224,6 +173,7 @@ export default async function ProjectDetailPage({
         <StatCard label="Completion" value={formatDate(project.endDate)} />
       </div>
       <Tabs
+        defaultValue={tab}
         tabs={[
           { value: "overview", label: "Overview", content: overview },
           { value: "planning", label: "Planning", content: planning },
@@ -232,7 +182,16 @@ export default async function ProjectDetailPage({
             label: "Site evidence",
             content: siteEvidence,
           },
-          { value: "documents", label: "Documents", content: documents },
+          {
+            value: "documents",
+            label: "Documents",
+            content: <ProjectDocuments projectId={id} />,
+          },
+          {
+            value: "search",
+            label: "Search",
+            content: <ProjectSearch projectId={id} />,
+          },
           { value: "team", label: "Team", content: teamTab },
         ]}
       />

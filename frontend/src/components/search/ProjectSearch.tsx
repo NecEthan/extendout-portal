@@ -9,9 +9,9 @@ import { Label } from "@/components/ui/label";
 import { ErrorAlert } from "@/components/ui/error-alert";
 import { useSearchQuery } from "@/hooks/useSearchQuery";
 import { getErrorMessage } from "@/lib/errorMessage";
-import { PageHeader } from "@/components/portal/PageHeader";
 
-export default function SearchPage() {
+/** Ask questions answered only from this project's documents. */
+export function ProjectSearch({ projectId }: { projectId: string }) {
   const [question, setQuestion] = useState("");
   const [mode, setMode] = useState<"current" | "historical">("current");
   const {
@@ -25,7 +25,7 @@ export default function SearchPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!question.trim()) return;
-    mutate({ question: question.trim(), mode });
+    mutate({ question: question.trim(), mode, project_id: projectId });
   }
 
   const result = data ?? null;
@@ -42,15 +42,14 @@ export default function SearchPage() {
       );
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-      <PageHeader
-        title="Search knowledge base"
-        description="Ask anything about your project documents. Every reply cites the file and version it came from."
-      />
-
+    <div className="flex max-w-3xl flex-col gap-6">
       <Card>
         <CardHeader>
           <CardTitle>Ask a question</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Answers come only from this project&apos;s documents, citing the
+            file and version.
+          </p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">

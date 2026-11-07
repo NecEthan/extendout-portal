@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { FolderKanban, PoundSterling } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,13 +7,14 @@ import { PageHeader } from "@/components/portal/PageHeader";
 import { StatCard } from "@/components/portal/StatCard";
 import { MockBanner } from "@/components/portal/MockBanner";
 import { ProjectCard } from "@/components/portal/projects/ProjectCard";
-import { mockProjects } from "@/mocks/projects";
+import { useAccessibleProjects } from "@/hooks/useProjects";
 import { mockActivity } from "@/mocks/dashboard";
 import { applicationRoutes } from "@/utils/applicationRoutes";
 import { formatGBP } from "@/lib/format";
 
 export default function DashboardPage() {
-  const active = mockProjects.filter((p) => p.health !== "Complete");
+  const projects = useAccessibleProjects().data ?? [];
+  const active = projects.filter((p) => p.health !== "Complete");
   const valueOnSite = active.reduce((sum, p) => sum + p.budget, 0);
 
   return (
@@ -26,7 +29,7 @@ export default function DashboardPage() {
         <StatCard
           label="Active projects"
           value={String(active.length)}
-          hint={`${mockProjects.length} total`}
+          hint={`${projects.length} total`}
           icon={FolderKanban}
         />
         <StatCard

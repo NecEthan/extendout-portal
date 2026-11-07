@@ -2,7 +2,6 @@
 
 import { useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
-import type { UserRole } from "@/interfaces";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,28 +10,24 @@ import { useUploadDocument } from "@/hooks/useDocuments";
 import { getErrorMessage } from "@/lib/errorMessage";
 
 interface UploadFormProps {
-  userRole: UserRole;
+  projectId: string;
 }
 
-export function UploadForm({ userRole }: UploadFormProps) {
+export function UploadForm({ projectId }: UploadFormProps) {
   const [title, setTitle] = useState("");
   const [file, setFile] = useState<File | null>(null);
-  const [sensitivity, setSensitivity] = useState<"STANDARD" | "SENSITIVE">(
-    "STANDARD"
-  );
   const fileRef = useRef<HTMLInputElement>(null);
-  const uploadDocument = useUploadDocument();
+  const uploadDocument = useUploadDocument(projectId);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!file) return;
     uploadDocument.mutate(
-      { file, title: title || file.name, sensitivity },
+      { file, title: title || file.name },
       {
         onSuccess: () => {
           setTitle("");
           setFile(null);
-          setSensitivity("STANDARD");
           if (fileRef.current) fileRef.current.value = "";
         },
       }
@@ -67,30 +62,6 @@ export function UploadForm({ userRole }: UploadFormProps) {
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
         />
       </div>
-
-      {userRole === "admin" && (
-        <div className="flex flex-col gap-1.5">
-          <Label>Sensitivity</Label>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant={sensitivity === "STANDARD" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSensitivity("STANDARD")}
-            >
-              Standard
-            </Button>
-            <Button
-              type="button"
-              variant={sensitivity === "SENSITIVE" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSensitivity("SENSITIVE")}
-            >
-              Sensitive
-            </Button>
-          </div>
-        </div>
-      )}
 
       <Button type="submit" disabled={uploadDocument.isPending || !file}>
         {uploadDocument.isPending && (

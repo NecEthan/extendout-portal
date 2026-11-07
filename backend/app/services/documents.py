@@ -84,11 +84,18 @@ def generate_storage_key() -> str:
     return f"documents/{uuid.uuid4()}"
 
 
-async def assert_no_duplicate(db: AsyncSession, content_hash: str) -> None:
-    from app.models.base import DocumentVersion
+async def assert_no_duplicate(
+    db: AsyncSession, content_hash: str, project_id: str | None = None
+) -> None:
+    """Reject identical content within the same project (the same file may exist in
+    different projects)."""
+    from app.models.base import Document, DocumentVersion
 
     result = await db.execute(
-        select(DocumentVersion).where(DocumentVersion.content_hash == content_hash)
+        select(DocumentVersion)
+        .join(Document, Document.id == DocumentVersion.document_id)
+        .where(DocumentVersion.content_hash == content_hash)
+        .where(Document.project_id.is_not_distinct_from(project_id))
     )
     if result.scalars().first() is not None:
         raise HTTPException(status_code=409, detail="Document with identical content already exists")
@@ -97,10 +104,10 @@ async def assert_no_duplicate(db: AsyncSession, content_hash: str) -> None:
 async def create_document_records(
     db: AsyncSession,
     title: str,
-    sensitivity: str,
     content_hash: str,
     storage_key: str,
     current_user,
+    project_id: str,
 ):
     from app.models.base import Document, DocumentVersion, ProcessingJob
 
@@ -108,7 +115,7 @@ async def create_document_records(
         title=title,
         owner_id=current_user.id,
         source_type="upload",
-        sensitivity=sensitivity,
+        project_id=project_id,
     )
     db.add(doc)
     await db.flush()

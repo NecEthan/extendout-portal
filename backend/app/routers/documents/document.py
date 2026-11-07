@@ -5,7 +5,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.dependencies import get_current_user, get_db, sensitivity_filters
+from app.dependencies import get_current_user, get_db
 from app.models.base import (
     Document,
     DocumentChunk,
@@ -18,6 +18,7 @@ from app.schemas.documents import (
     DocumentResponse,
     DocumentUpdateRequest,
 )
+from app.services.permissions import document_access_filters
 
 router = APIRouter(tags=["documents"])
 
@@ -31,7 +32,7 @@ async def get_document(
     result = await db.execute(
         select(Document)
         .where(Document.id == document_id)
-        .where(*sensitivity_filters(current_user))
+        .where(*document_access_filters(current_user))
         .options(selectinload(Document.versions))
     )
     doc = result.scalar_one_or_none()
@@ -50,7 +51,7 @@ async def update_document(
     result = await db.execute(
         select(Document)
         .where(Document.id == document_id)
-        .where(*sensitivity_filters(current_user))
+        .where(*document_access_filters(current_user))
     )
     doc = result.scalar_one_or_none()
     if doc is None:
@@ -69,7 +70,7 @@ async def delete_document(
     result = await db.execute(
         select(Document)
         .where(Document.id == document_id)
-        .where(*sensitivity_filters(current_user))
+        .where(*document_access_filters(current_user))
     )
     doc = result.scalar_one_or_none()
     if doc is None:

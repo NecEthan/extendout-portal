@@ -1,7 +1,5 @@
 export type DocumentSourceType = "upload" | "google_docs";
 
-export type DocumentSensitivity = "STANDARD" | "SENSITIVE";
-
 export type DocumentVersionStatus =
   | "PROCESSING"
   | "ACTIVE"
@@ -15,7 +13,7 @@ export interface Document {
   title: string;
   owner_id: string;
   source_type: DocumentSourceType;
-  sensitivity: DocumentSensitivity;
+  project_id: string | null;
   created_at: string;
   latest_version_status: DocumentVersionStatus | null;
 }
@@ -31,7 +29,8 @@ export interface DocumentVersion {
   created_by: string;
 }
 
-export type ProcessingJobStatus = "QUEUED" | "PROCESSING" | "COMPLETE" | "FAILED";
+export type ProcessingJobStatus =
+  "QUEUED" | "PROCESSING" | "COMPLETE" | "FAILED";
 
 export interface DocumentUploadedResponse {
   id: string;

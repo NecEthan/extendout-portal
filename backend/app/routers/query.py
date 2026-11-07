@@ -2,7 +2,7 @@
 
 Pipeline:
   1. Authentication (get_current_user dependency)
-  2. Permission filtering  — documents owned by or shared with the user
+  2. Permission filtering  — admins: all documents; others: their projects only
   3. Version filtering     — ACTIVE only (current) or ACTIVE+SUPERSEDED (historical)
   4. Hybrid retrieval      — pgvector cosine similarity + PostgreSQL FTS
   5. Reciprocal Rank Fusion
@@ -31,7 +31,7 @@ from app.services.context_builder import (
 from app.services.embedder import generate_embeddings
 from app.services.fts_search import fts_search
 from app.services.llm import generate_answer
-from app.services.permissions import build_permitted_doc_ids
+from app.services.permissions import build_permitted_doc_ids, ensure_project_access
 from app.services.rrf import rrf_combine
 from app.services.vector_search import vector_search
 
@@ -55,6 +55,9 @@ async def run_query(
     mode = body.mode
     allowed_statuses = ["ACTIVE"] if mode == "current" else ["ACTIVE", "SUPERSEDED"]
 
+    if body.project_id is not None:
+        await ensure_project_access(db, current_user, body.project_id)
+
     # 1. Generate query embedding
     try:
         embeddings = await generate_embeddings([question])
@@ -65,7 +68,7 @@ async def run_query(
     query_embedding = embeddings[0]
 
     # 2. Permission subquery — enforced at DB level
-    permitted_doc_ids = build_permitted_doc_ids(current_user)
+    permitted_doc_ids = build_permitted_doc_ids(current_user, body.project_id)
 
     # 3 + 4. Vector search + full-text search (timed together as hybrid retrieval)
     search_start = time.monotonic()

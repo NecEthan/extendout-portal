@@ -3,6 +3,7 @@ import type { DocumentVersionStatus } from "./document";
 export interface QueryRequest {
   question: string;
   mode: "current" | "historical";
+  project_id?: string;
 }
 
 export interface QueryCitation {

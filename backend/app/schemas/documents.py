@@ -31,7 +31,7 @@ class DocumentResponse(BaseModel):
     title: str
     owner_id: uuid.UUID | None
     source_type: str
-    sensitivity: str
+    project_id: str | None = None
     created_at: datetime
     latest_version_status: str | None = None
 

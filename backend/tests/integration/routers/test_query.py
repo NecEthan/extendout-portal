@@ -9,7 +9,7 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, update
 
 from app.models.base import (
     Document,
@@ -18,7 +18,7 @@ from app.models.base import (
     User,
 )
 from app.services.auth import hash_password
-
+from tests.fixtures.auth import TEST_PROJECT_ID
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -69,7 +69,7 @@ async def indexed_document(db, test_user):
         title="Annual Leave Policy",
         owner_id=test_user.id,
         source_type="upload",
-        sensitivity="STANDARD",
+        project_id=TEST_PROJECT_ID,
     )
     db.add(doc)
     await db.flush()
@@ -223,13 +223,12 @@ async def test_embedding_unavailable_returns_503(auth_client, indexed_document):
 
 
 async def test_deleted_document_excluded(auth_client, db, test_user):
-    from datetime import UTC, datetime
 
     doc = Document(
         title="Deleted Doc",
         owner_id=test_user.id,
         source_type="upload",
-        sensitivity="STANDARD",
+        project_id=TEST_PROJECT_ID,
     )
     db.add(doc)
     await db.flush()
@@ -286,7 +285,7 @@ async def test_current_mode_excludes_superseded(auth_client, db, test_user):
         title="Policy v1",
         owner_id=test_user.id,
         source_type="upload",
-        sensitivity="STANDARD",
+        project_id=TEST_PROJECT_ID,
     )
     db.add(doc)
     await db.flush()
@@ -339,7 +338,7 @@ async def test_historical_mode_includes_superseded(auth_client, db, test_user):
         title="Historical Policy",
         owner_id=test_user.id,
         source_type="upload",
-        sensitivity="STANDARD",
+        project_id=TEST_PROJECT_ID,
     )
     db.add(doc)
     await db.flush()
@@ -396,7 +395,7 @@ async def test_restricted_document_not_visible_to_other_user(auth_client, db, te
     user_b = User(
         email=f"userb+{uuid.uuid4().hex[:8]}@example.com",
         password_hash=await hash_password("password"),
-        role="user",
+        role="builder",
     )
     db.add(user_b)
     await db.flush()
@@ -405,7 +404,6 @@ async def test_restricted_document_not_visible_to_other_user(auth_client, db, te
         title="User B Confidential",
         owner_id=user_b.id,
         source_type="upload",
-        sensitivity="STANDARD",
     )
     db.add(doc_b)
     await db.flush()
@@ -468,7 +466,7 @@ async def test_restricted_document_not_visible_historical_mode(auth_client, db, 
     user_c = User(
         email=f"userc+{uuid.uuid4().hex[:8]}@example.com",
         password_hash=await hash_password("password"),
-        role="user",
+        role="builder",
     )
     db.add(user_c)
     await db.flush()
@@ -477,7 +475,6 @@ async def test_restricted_document_not_visible_historical_mode(auth_client, db, 
         title="User C Old Document",
         owner_id=user_c.id,
         source_type="upload",
-        sensitivity="STANDARD",
     )
     db.add(doc_c)
     await db.flush()
@@ -532,3 +529,93 @@ async def test_restricted_document_not_visible_historical_mode(auth_client, db, 
     await db.execute(delete(Document).where(Document.id == doc_c.id))
     await db.execute(delete(User).where(User.id == user_c.id))
     await db.commit()
+
+
+# ── Project scoping ───────────────────────────────────────────────────────────
+
+
+async def test_query_scoped_to_project(auth_client, indexed_document):
+    question = {"question": "How many days of annual leave do employees get?"}
+    citations = [{"document_title": "Annual Leave Policy", "version_number": 1}]
+
+    mock_emb = _mock_embedding_call()
+    mock_chat = _mock_chat_call(answer="25 days.", citations=citations)
+    with _openai_ctx(mock_emb, mock_chat):
+        response = await auth_client.post(
+            "/query", json={**question, "project_id": TEST_PROJECT_ID}
+        )
+    assert response.status_code == 200
+    assert [c["document_title"] for c in response.json()["citations"]] == [
+        "Annual Leave Policy"
+    ]
+
+
+async def test_query_other_project_excludes_documents(
+    auth_client, indexed_document, make_project, test_user
+):
+    # A second project the user belongs to, with no documents in it.
+    empty_project = await make_project(member=test_user)
+
+    mock_emb = _mock_embedding_call()
+    mock_chat = _mock_chat_call(answer="25 days.")
+    with _openai_ctx(mock_emb, mock_chat):
+        response = await auth_client.post(
+            "/query",
+            json={"question": "annual leave", "project_id": empty_project},
+        )
+    assert response.status_code == 200
+    assert response.json()["citations"] == []
+    mock_chat.assert_not_awaited()
+
+
+async def test_query_non_member_project_forbidden(auth_client, make_project):
+    outsider_project = await make_project(member=None)
+    response = await auth_client.post(
+        "/query", json={"question": "anything", "project_id": outsider_project}
+    )
+    assert response.status_code == 403
+
+
+async def test_query_without_project_excludes_non_member_projects(
+    auth_client, db, admin_user, make_project
+):
+    """Searching across all projects only covers projects the user belongs to."""
+    outsider_project = await make_project(member=None)
+    doc = Document(
+        title="Outsider Plans",
+        owner_id=admin_user.id,
+        source_type="upload",
+        project_id=outsider_project,
+    )
+    db.add(doc)
+    await db.flush()
+    version = DocumentVersion(
+        document_id=doc.id,
+        version_number=1,
+        status="ACTIVE",
+        content_hash=secrets.token_hex(16),
+        storage_key=f"uploads/{doc.id}/v1.txt",
+    )
+    db.add(version)
+    await db.flush()
+    db.add(
+        DocumentChunk(
+            document_version_id=version.id,
+            chunk_index=0,
+            content="Outsider plans mention the steel beam size.",
+            embedding=_fake_embedding(),
+            token_count=8,
+        )
+    )
+    await db.commit()
+
+    mock_emb = _mock_embedding_call()
+    mock_chat = _mock_chat_call(answer="No idea.")
+    with _openai_ctx(mock_emb, mock_chat):
+        response = await auth_client.post(
+            "/query", json={"question": "steel beam size"}
+        )
+    assert response.status_code == 200
+    assert all(
+        c["document_title"] != "Outsider Plans" for c in response.json()["citations"]
+    )

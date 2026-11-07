@@ -7,9 +7,10 @@ Requires postgres running. MinIO and Redis are mocked.
 import uuid
 from unittest.mock import patch
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from app.models.base import DocumentVersion, ProcessingJob
+from tests.fixtures.auth import TEST_PROJECT_ID
 
 
 def _txt_file(name: str = "v2.txt") -> dict:
@@ -22,7 +23,7 @@ async def _upload_doc(auth_client) -> str:
         response = await auth_client.post(
             "/documents",
             files={"file": ("v1.txt", b"Version one content", "text/plain")},
-            data={"title": "Versioned Doc", "sensitivity": "STANDARD"},
+            data={"title": "Versioned Doc", "project_id": TEST_PROJECT_ID},
         )
     assert response.status_code == 202
     return response.json()["id"]
@@ -255,13 +256,14 @@ async def test_activate_requires_auth(client):
     assert response.status_code == 401
 
 
-async def test_activate_403_wrong_owner(auth_client, admin_client, db, test_user, admin_user):
-    """Admin uploads doc; regular user cannot activate its versions."""
+async def test_activate_404_non_member(auth_client, admin_client, db, make_project):
+    """Admin uploads to a project the user isn't in; the user cannot activate it."""
+    outsider_project = await make_project(member=None)
     with patch("app.services.storage.upload_bytes"):
         r = await admin_client.post(
             "/documents",
             files={"file": ("doc.txt", b"admin doc", "text/plain")},
-            data={"title": "Admin Doc", "sensitivity": "STANDARD"},
+            data={"title": "Admin Doc", "project_id": outsider_project},
         )
     assert r.status_code == 202
     doc_id = r.json()["id"]
@@ -274,7 +276,36 @@ async def test_activate_403_wrong_owner(auth_client, admin_client, db, test_user
     response = await auth_client.patch(
         f"/documents/{doc_id}/versions/{v1.id}/activate"
     )
-    assert response.status_code == 403
+    assert response.status_code == 404
+
+
+async def test_member_can_activate_other_users_doc(auth_client, admin_client, db):
+    """Any project member may manage documents, not just the uploader."""
+    with patch("app.services.storage.upload_bytes"):
+        r = await admin_client.post(
+            "/documents",
+            files={"file": ("doc.txt", b"shared doc", "text/plain")},
+            data={"title": "Shared Doc", "project_id": TEST_PROJECT_ID},
+        )
+    assert r.status_code == 202
+    doc_id = r.json()["id"]
+
+    result = await db.execute(
+        select(DocumentVersion).where(DocumentVersion.document_id == uuid.UUID(doc_id))
+    )
+    v1 = result.scalar_one()
+    await db.execute(
+        update(DocumentVersion)
+        .where(DocumentVersion.id == v1.id)
+        .values(status="SUPERSEDED")
+    )
+    await db.commit()
+
+    response = await auth_client.patch(
+        f"/documents/{doc_id}/versions/{v1.id}/activate"
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "ACTIVE"
 
 
 async def test_activate_404_document_not_found(auth_client, test_user):
@@ -294,7 +325,6 @@ async def test_activate_404_version_not_found(auth_client, db, test_user):
 
 async def _make_version_with_status(db, doc_id: str, status: str) -> uuid.UUID:
     """Insert a DocumentVersion with arbitrary status directly in DB."""
-    from sqlalchemy import update as sa_update
 
     result = await db.execute(
         select(DocumentVersion)

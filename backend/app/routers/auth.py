@@ -30,7 +30,7 @@ async def register(
     user = User(
         email=body.email,
         password_hash=await hash_password(body.password),
-        role="admin",
+        role=body.role,
     )
     db.add(user)
     await db.flush()

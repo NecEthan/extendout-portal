@@ -12,12 +12,12 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 export async function uploadDocument(
   file: File,
   title: string,
-  sensitivity: string,
+  projectId: string
 ): Promise<DocumentUploadedResponse> {
   const form = new FormData();
   form.append("file", file);
   form.append("title", title);
-  form.append("sensitivity", sensitivity);
+  form.append("project_id", projectId);
 
   const res = await fetch(`${API_BASE_URL}/documents`, {
     method: "POST",
@@ -33,13 +33,19 @@ export async function uploadDocument(
 export async function listDocuments(
   limit: number,
   offset: number,
+  projectId?: string
 ): Promise<PaginatedDocuments> {
-  return httpClient<PaginatedDocuments>(`/documents?limit=${limit}&offset=${offset}`);
+  const project = projectId
+    ? `&project_id=${encodeURIComponent(projectId)}`
+    : "";
+  return httpClient<PaginatedDocuments>(
+    `/documents?limit=${limit}&offset=${offset}${project}`
+  );
 }
 
 export async function uploadDocumentVersion(
   documentId: string,
-  file: File,
+  file: File
 ): Promise<VersionUploadedResponse> {
   const form = new FormData();
   form.append("file", file);
@@ -58,20 +64,20 @@ export async function uploadDocumentVersion(
 export async function listDocumentVersions(
   documentId: string,
   limit: number,
-  offset: number,
+  offset: number
 ): Promise<PaginatedDocumentVersions> {
   return httpClient<PaginatedDocumentVersions>(
-    `/documents/${documentId}/versions?limit=${limit}&offset=${offset}`,
+    `/documents/${documentId}/versions?limit=${limit}&offset=${offset}`
   );
 }
 
 export async function activateDocumentVersion(
   documentId: string,
-  versionId: string,
+  versionId: string
 ): Promise<DocumentVersion> {
   return httpClient<DocumentVersion>(
     `/documents/${documentId}/versions/${versionId}/activate`,
-    { method: "PATCH" },
+    { method: "PATCH" }
   );
 }
 

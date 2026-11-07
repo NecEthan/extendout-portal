@@ -1,12 +1,10 @@
 import {
   CalendarRange,
-  FileText,
   FolderKanban,
   Home,
   Images,
   LayoutDashboard,
   Package,
-  Search,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -32,8 +30,6 @@ export const navSections: NavSection[] = [
         label: "Dashboard",
         icon: LayoutDashboard,
       },
-      { href: applicationRoutes.documents, label: "Documents", icon: FileText },
-      { href: applicationRoutes.search, label: "Search", icon: Search },
     ],
   },
   {
@@ -68,7 +64,7 @@ export const navSections: NavSection[] = [
 
 const allItems = navSections.flatMap((s) => s.items);
 
-/** Longest-prefix match so /client/progress beats /client and /documents/x/versions maps to Documents. */
+/** Longest-prefix match so /client/progress beats /client. */
 export function findActiveNavItem(pathname: string): NavItem | undefined {
   return allItems
     .filter(
