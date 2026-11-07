@@ -122,11 +122,12 @@ Access is decided by **role + project membership** — document ownership has no
 
 Builders and clients have identical document permissions. Rules live in `app/services/permissions.py`: `document_access_filters(user)` (WHERE clauses for all document routes), `ensure_project_access(db, user, project_id)` (404 unknown project / 403 non-member), `build_permitted_doc_ids(user, project_id)` (RAG). Documents with `project_id IS NULL` (legacy, pre-projects) are admin-only.
 
-Users pick their role at registration (`POST /auth/register` requires `role`: `admin|builder|client`; enforced by `ck_users_role`). Add project members via SQL:
-```sql
-INSERT INTO project_members (project_id, user_id)
-SELECT 'p-101', id FROM users WHERE email = 'you@example.com';
-```
+Users pick their role at registration (`POST /auth/register` requires `role`: `admin|builder|client`, optional `name`; enforced by `ck_users_role`).
+
+Team management is **admin only** (`app/routers/team.py`, `app/routers/project_members.py`, all guarded by `require_admin` in `app/dependencies.py`). The frontend hides the Team sidebar link (`adminOnly` in `navConfig.ts`) and each project's Team tab from builders/clients.
+- `GET /team` — every user with their `project_ids`.
+- `PATCH /team/{user_id}` `{role}` — admins can't change their own role.
+- `GET /projects/{id}/members`, `POST /projects/{id}/members` `{user_id}`, `DELETE /projects/{id}/members/{user_id}`.
 
 ### Worker
 

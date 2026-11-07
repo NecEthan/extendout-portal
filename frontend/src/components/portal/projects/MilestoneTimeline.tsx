@@ -1,7 +1,7 @@
 import { CheckCircle2, Circle, CircleDot, AlertCircle } from "lucide-react";
 import { StatusBadge } from "@/components/portal/StatusBadge";
 import { formatDate } from "@/lib/format";
-import type { Milestone } from "@/interfaces/portal";
+import type { Milestone } from "@/interfaces/portal-interface";
 
 const ICONS = {
   Complete: <CheckCircle2 size={18} className="text-success" />,

@@ -1,4 +1,4 @@
-import type { MaterialItem } from "@/interfaces/portal";
+import type { MaterialItem } from "@/interfaces/portal-interface";
 
 export const mockMaterials: MaterialItem[] = [
   {

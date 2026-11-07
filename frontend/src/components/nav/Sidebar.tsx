@@ -14,6 +14,13 @@ export function Sidebar() {
   const { data: user } = useUser();
   const logoutMutation = useLogout();
   const activeHref = findActiveNavItem(pathname)?.href;
+  const isAdmin = user?.role === "admin";
+  const sections = navSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => !item.adminOnly || isAdmin),
+    }))
+    .filter((section) => section.items.length > 0);
 
   function handleLogout() {
     logoutMutation.mutate(undefined, {
@@ -38,7 +45,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 pb-4">
-        {navSections.map((section) => (
+        {sections.map((section) => (
           <div key={section.title} className="flex flex-col gap-0.5">
             <span className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/40">
               {section.title}

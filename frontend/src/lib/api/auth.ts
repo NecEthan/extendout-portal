@@ -4,11 +4,12 @@ import { httpClient } from "./client";
 export async function register(
   email: string,
   password: string,
-  role: UserRole
+  role: UserRole,
+  name?: string
 ): Promise<User> {
   return httpClient<User>("/auth/register", {
     method: "POST",
-    body: JSON.stringify({ email, password, role }),
+    body: JSON.stringify({ email, password, role, name }),
   });
 }
 

@@ -62,18 +62,6 @@ export interface Issue {
   status: "Open" | "In progress" | "Resolved";
 }
 
-export type TeamRole = "Admin" | "Manager" | "Field";
-
-export interface TeamMember {
-  id: string;
-  name: string;
-  email: string;
-  role: TeamRole;
-  trade: string;
-  projectIds: string[];
-  phone: string;
-}
-
 export interface ActivityEntry {
   id: string;
   who: string;

@@ -1,4 +1,4 @@
-import type { ProgressUpdate } from "@/interfaces/portal";
+import type { ProgressUpdate } from "@/interfaces/portal-interface";
 import { mockPhotos } from "./evidence";
 
 /** The project shown in the Client view (homeowner perspective). */

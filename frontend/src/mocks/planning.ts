@@ -1,4 +1,4 @@
-import type { Milestone, PlanItem } from "@/interfaces/portal";
+import type { Milestone, PlanItem } from "@/interfaces/portal-interface";
 
 export const mockPlanItems: PlanItem[] = [
   {

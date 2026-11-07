@@ -1,6 +1,6 @@
 import { Camera } from "lucide-react";
 import { formatDate } from "@/lib/format";
-import type { SitePhoto } from "@/interfaces/portal";
+import type { SitePhoto } from "@/interfaces/portal-interface";
 
 /** Placeholder photo tile (gradient) until real uploads exist. */
 export function PhotoTile({ photo }: { photo: SitePhoto }) {

@@ -14,12 +14,13 @@ import { MilestoneTimeline } from "@/components/portal/projects/MilestoneTimelin
 import { SiteEvidenceTabs } from "@/components/portal/evidence/SiteEvidenceTabs";
 import { ProjectDocuments } from "@/components/documents/ProjectDocuments";
 import { ProjectSearch } from "@/components/search/ProjectSearch";
+import { ProjectTeam } from "@/components/team/ProjectTeam";
 import { mockMilestones, mockPlanItems } from "@/mocks/planning";
-import { mockTeam } from "@/mocks/team";
 import { mockInspections, mockIssues, mockPhotos } from "@/mocks/evidence";
 import { applicationRoutes } from "@/utils/applicationRoutes";
 import { ErrorAlert } from "@/components/ui/error-alert";
 import { useProject } from "@/hooks/useProjects";
+import { useUser } from "@/hooks/useUser";
 import { getErrorMessage } from "@/lib/errorMessage";
 import { formatDate } from "@/lib/format";
 
@@ -36,6 +37,7 @@ export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const tab = useSearchParams().get("tab") ?? undefined;
   const projectQuery = useProject(id);
+  const isAdmin = useUser().data?.role === "admin";
 
   const project = projectQuery.data;
   if (!project) {
@@ -55,7 +57,6 @@ export default function ProjectDetailPage() {
 
   const milestones = mockMilestones.filter((m) => m.projectId === id);
   const plan = mockPlanItems.filter((p) => p.projectId === id);
-  const team = mockTeam.filter((t) => t.projectIds.includes(id));
   const photos = mockPhotos.filter((p) => p.projectId === id);
   const inspections = mockInspections.filter((i) => i.projectId === id);
   const issues = mockIssues.filter((i) => i.projectId === id);
@@ -139,25 +140,6 @@ export default function ProjectDetailPage() {
     </div>
   );
 
-  const teamTab = (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {team.map((t) => (
-        <Card key={t.id} className="flex-row items-center gap-3 px-4">
-          <span className="grid size-10 place-items-center rounded-full bg-primary font-semibold text-primary-foreground">
-            {t.name
-              .split(" ")
-              .map((n) => n[0])
-              .join("")}
-          </span>
-          <div className="flex flex-col">
-            <span className="text-sm font-medium">{t.name}</span>
-            <span className="text-xs text-muted-foreground">{t.trade}</span>
-          </div>
-        </Card>
-      ))}
-    </div>
-  );
-
   return (
     <>
       {backLink}
@@ -187,7 +169,15 @@ export default function ProjectDetailPage() {
             label: "Search",
             content: <ProjectSearch projectId={id} />,
           },
-          { value: "team", label: "Team", content: teamTab },
+          ...(isAdmin
+            ? [
+                {
+                  value: "team",
+                  label: "Team",
+                  content: <ProjectTeam projectId={id} />,
+                },
+              ]
+            : []),
         ]}
       />
     </>

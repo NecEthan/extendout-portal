@@ -1,4 +1,4 @@
-import type { ActivityEntry } from "@/interfaces/portal";
+import type { ActivityEntry } from "@/interfaces/portal-interface";
 
 export const mockActivity: ActivityEntry[] = [
   {

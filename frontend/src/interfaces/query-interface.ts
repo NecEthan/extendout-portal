@@ -1,4 +1,4 @@
-import type { DocumentVersionStatus } from "./document";
+import type { DocumentVersionStatus } from "./document-interface";
 
 export interface QueryRequest {
   question: string;

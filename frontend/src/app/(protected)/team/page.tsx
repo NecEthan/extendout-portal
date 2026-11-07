@@ -1,7 +1,9 @@
-import { UserPlus } from "lucide-react";
-import { Button } from "@/components/ui/button";
+"use client";
+
+import { X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import {
   Table,
   TableBody,
@@ -11,80 +13,157 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageHeader } from "@/components/portal/PageHeader";
-import { MockBanner } from "@/components/portal/MockBanner";
-import { mockTeam } from "@/mocks/team";
-import { ProjectName } from "@/components/portal/projects/ProjectName";
+import { Person, RoleBadge, ROLES, roleLabel } from "@/components/team/Person";
+import { useUser } from "@/hooks/useUser";
+import { useProjects } from "@/hooks/useProjects";
+import {
+  useAddProjectMember,
+  useRemoveProjectMember,
+  useTeam,
+  useUpdateRole,
+} from "@/hooks/useTeam";
+import { firstErrorMessage } from "@/lib/errorMessage";
+import type { TeamMember, UserRole } from "@/interfaces";
 
-const ROLE_VARIANT = {
-  Admin: "solid",
-  Manager: "default",
-  Field: "neutral",
-} as const;
+const selectClass =
+  "h-8 rounded-md border bg-background px-2 text-sm disabled:opacity-50";
 
 export default function TeamPage() {
+  const user = useUser();
+  const isAdmin = user.data?.role === "admin";
+  const team = useTeam({ enabled: isAdmin });
+  const projects = useProjects();
+  const updateRole = useUpdateRole();
+  const addMember = useAddProjectMember();
+  const removeMember = useRemoveProjectMember();
+
+  const projectName = (id: string) =>
+    projects.data?.find((p) => p.id === id)?.name ?? id;
+
+  const error = firstErrorMessage([
+    [team, "Failed to load the team"],
+    [projects, "Failed to load projects"],
+    [updateRole, "Couldn't change the role"],
+    [addMember, "Couldn't add them to the project"],
+    [removeMember, "Couldn't remove them from the project"],
+  ]);
+
+  function renderProjects(member: TeamMember) {
+    const available = (projects.data ?? []).filter(
+      (p) => !member.project_ids.includes(p.id)
+    );
+    return (
+      <div className="flex flex-wrap items-center gap-1.5">
+        {member.project_ids.map((projectId) => (
+          <Badge key={projectId} variant="outline" className="gap-1">
+            {projectName(projectId)}
+            <button
+              type="button"
+              aria-label={`Remove from ${projectName(projectId)}`}
+              className="rounded-sm hover:text-destructive disabled:opacity-50"
+              disabled={removeMember.isPending}
+              onClick={() =>
+                removeMember.mutate({ projectId, userId: member.id })
+              }
+            >
+              <X size={12} />
+            </button>
+          </Badge>
+        ))}
+        {available.length > 0 && (
+          <select
+            aria-label={`Add ${member.email} to a project`}
+            className={selectClass}
+            value=""
+            disabled={addMember.isPending}
+            onChange={(e) =>
+              e.target.value &&
+              addMember.mutate({
+                projectId: e.target.value,
+                userId: member.id,
+              })
+            }
+          >
+            <option value="">+ Add to project</option>
+            {available.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+    );
+  }
+
+  function renderRole(member: TeamMember) {
+    const isYou = member.id === user.data?.id;
+    if (isYou) return <RoleBadge role={member.role} />;
+    return (
+      <select
+        aria-label={`Role for ${member.email}`}
+        className={selectClass}
+        value={member.role}
+        disabled={updateRole.isPending}
+        onChange={(e) =>
+          updateRole.mutate({
+            userId: member.id,
+            role: e.target.value as UserRole,
+          })
+        }
+      >
+        {ROLES.map((role) => (
+          <option key={role} value={role}>
+            {roleLabel(role)}
+          </option>
+        ))}
+      </select>
+    );
+  }
+
+  if (!user.data) return null;
+  if (!isAdmin) {
+    return <ErrorAlert message="Only admins can view the team." />;
+  }
+
   return (
     <>
       <PageHeader
         title="Team"
-        description="Company roles, project membership and access."
-        actions={
-          <Button>
-            <UserPlus /> Invite member
-          </Button>
-        }
+        description="Everyone with an account. Change roles and choose which projects each person can access."
       />
-      <MockBanner />
-      <Card>
+      <ErrorAlert message={error} />
+      <Card className="mt-4">
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Trade</TableHead>
-                <TableHead>Projects</TableHead>
-                <TableHead>Phone</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {mockTeam.map((t) => (
-                <TableRow key={t.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <span className="grid size-8 place-items-center rounded-full bg-accent text-xs font-semibold text-accent-foreground">
-                        {t.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")}
-                      </span>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{t.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {t.email}
-                        </span>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={ROLE_VARIANT[t.role]}>{t.role}</Badge>
-                  </TableCell>
-                  <TableCell>{t.trade}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {t.projectIds.map((id) => (
-                        <Badge key={id} variant="outline">
-                          <ProjectName id={id} />
-                        </Badge>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {t.phone}
-                  </TableCell>
+          {team.data && team.data.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              No one to show yet.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Person</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Projects</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {team.data?.map((member) => (
+                  <TableRow key={member.id}>
+                    <TableCell>
+                      <Person
+                        person={member}
+                        isYou={member.id === user.data?.id}
+                      />
+                    </TableCell>
+                    <TableCell>{renderRole(member)}</TableCell>
+                    <TableCell>{renderProjects(member)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </>

@@ -1,4 +1,4 @@
-import type { Inspection, Issue, SitePhoto } from "@/interfaces/portal";
+import type { Inspection, Issue, SitePhoto } from "@/interfaces/portal-interface";
 
 const tones = [
   "from-orange-200 to-amber-100",

@@ -1,4 +1,7 @@
-"""Projects router — lists the projects the current user may access."""
+"""Projects router — the projects the current user may access.
+
+Membership endpoints live in project_members.py.
+"""
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import select

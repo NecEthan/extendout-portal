@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/portal/StatusBadge";
 import { PhotoTile } from "@/components/portal/PhotoTile";
 import { formatDate } from "@/lib/format";
-import type { Inspection, Issue, SitePhoto } from "@/interfaces/portal";
+import type { Inspection, Issue, SitePhoto } from "@/interfaces/portal-interface";
 
 const PRIORITY = {
   High: "destructive",

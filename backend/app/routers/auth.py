@@ -29,6 +29,7 @@ async def register(
         raise HTTPException(status_code=409, detail="Email already registered")
     user = User(
         email=body.email,
+        name=(body.name or "").strip() or None,
         password_hash=await hash_password(body.password),
         role=body.role,
     )

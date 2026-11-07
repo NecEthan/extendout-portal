@@ -5,7 +5,7 @@ import { MilestoneTimeline } from "@/components/portal/projects/MilestoneTimelin
 import { mockMilestones, mockPlanItems } from "@/mocks/planning";
 import { ProjectName } from "@/components/portal/projects/ProjectName";
 import { formatDate } from "@/lib/format";
-import type { PlanBucket } from "@/interfaces/portal";
+import type { PlanBucket } from "@/interfaces/portal-interface";
 
 const BUCKETS: { bucket: PlanBucket; hint: string; accent: string }[] = [
   { bucket: "Now", hint: "On site this week", accent: "bg-primary" },

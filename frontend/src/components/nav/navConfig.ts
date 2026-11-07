@@ -14,6 +14,8 @@ export interface NavItem {
   href: string;
   label: string;
   icon: LucideIcon;
+  /** Only shown to admins. */
+  adminOnly?: boolean;
 }
 
 export interface NavSection {
@@ -46,7 +48,12 @@ export const navSections: NavSection[] = [
         icon: CalendarRange,
       },
       { href: applicationRoutes.materials, label: "Materials", icon: Package },
-      { href: applicationRoutes.team, label: "Team", icon: Users },
+      {
+        href: applicationRoutes.team,
+        label: "Team",
+        icon: Users,
+        adminOnly: true,
+      },
     ],
   },
   {
