@@ -7,7 +7,12 @@ interface PaginationProps {
   onOffsetChange: (offset: number) => void;
 }
 
-export function Pagination({ offset, limit, total, onOffsetChange }: PaginationProps) {
+export function Pagination({
+  offset,
+  limit,
+  total,
+  onOffsetChange,
+}: PaginationProps) {
   if (total <= limit) return null;
 
   const page = Math.floor(offset / limit) + 1;

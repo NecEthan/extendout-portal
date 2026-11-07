@@ -9,33 +9,46 @@ import { Label } from "@/components/ui/label";
 import { ErrorAlert } from "@/components/ui/error-alert";
 import { useSearchQuery } from "@/hooks/useSearchQuery";
 import { getErrorMessage } from "@/lib/errorMessage";
+import { PageHeader } from "@/components/portal/PageHeader";
 
 export default function SearchPage() {
   const [question, setQuestion] = useState("");
   const [mode, setMode] = useState<"current" | "historical">("current");
-  const search = useSearchQuery();
+  const {
+    mutate,
+    data,
+    error: searchError,
+    isError,
+    isPending,
+  } = useSearchQuery();
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!question.trim()) return;
-    search.mutate({ question: question.trim(), mode });
+    mutate({ question: question.trim(), mode });
   }
 
-  const result = search.data ?? null;
-  const unauthorized = search.error instanceof ApiError && search.error.status === 401;
+  const result = data ?? null;
+  const unauthorized =
+    searchError instanceof ApiError && searchError.status === 401;
   const error = unauthorized
     ? null
-    : getErrorMessage(search, "Something went wrong. Please try again.", {
-        503: "The AI service is temporarily unavailable. Please try again later.",
-      });
+    : getErrorMessage(
+        { isError, error: searchError },
+        "Something went wrong. Please try again.",
+        {
+          503: "The AI service is temporarily unavailable. Please try again later.",
+        }
+      );
 
   return (
-    <main className="flex min-h-screen flex-col items-center py-12 px-4 gap-8">
-      <div className="w-full max-w-2xl">
-        <span className="text-2xl font-semibold">Search knowledge base</span>
-      </div>
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+      <PageHeader
+        title="Search knowledge base"
+        description="Ask anything about your project documents. Every reply cites the file and version it came from."
+      />
 
-      <Card className="w-full max-w-2xl">
+      <Card>
         <CardHeader>
           <CardTitle>Ask a question</CardTitle>
         </CardHeader>
@@ -47,7 +60,7 @@ export default function SearchPage() {
                 id="question"
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
-                placeholder="What is the annual leave policy?"
+                placeholder="What U-value is specified for the rooflights?"
               />
             </div>
 
@@ -70,20 +83,18 @@ export default function SearchPage() {
               </Button>
             </div>
 
-            <Button type="submit" disabled={search.isPending || !question.trim()}>
+            <Button type="submit" disabled={isPending || !question.trim()}>
               Search
             </Button>
           </form>
         </CardContent>
       </Card>
 
-      <div className="w-full max-w-2xl">
-        <ErrorAlert message={error} />
-      </div>
+      <ErrorAlert message={error} />
 
       {result && (
         <>
-          <Card className="w-full max-w-2xl">
+          <Card>
             <CardHeader>
               <CardTitle>Answer</CardTitle>
             </CardHeader>
@@ -93,7 +104,7 @@ export default function SearchPage() {
           </Card>
 
           {result.citations.length > 0 ? (
-            <Card className="w-full max-w-2xl">
+            <Card>
               <CardHeader>
                 <CardTitle>Sources</CardTitle>
               </CardHeader>
@@ -103,8 +114,8 @@ export default function SearchPage() {
                     <li key={i} className="border rounded p-3">
                       <p className="font-medium">{citation.document_title}</p>
                       <p className="text-sm text-muted-foreground">
-                        Version {citation.version_number} &middot; {citation.status}{" "}
-                        &middot;{" "}
+                        Version {citation.version_number} &middot;{" "}
+                        {citation.status} &middot;{" "}
                         {new Date(citation.updated_at).toLocaleDateString()}
                       </p>
                     </li>
@@ -113,14 +124,16 @@ export default function SearchPage() {
               </CardContent>
             </Card>
           ) : (
-            <Card className="w-full max-w-2xl">
+            <Card>
               <CardContent className="pt-6">
-                <p className="text-muted-foreground">No relevant information found.</p>
+                <p className="text-muted-foreground">
+                  No relevant information found.
+                </p>
               </CardContent>
             </Card>
           )}
         </>
       )}
-    </main>
+    </div>
   );
 }

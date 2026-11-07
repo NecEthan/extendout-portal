@@ -34,7 +34,7 @@ test.describe("Auth flow", () => {
     const loginPage = new LoginPage(page);
     await loginPage.goto();
     await loginPage.login(EMAIL, PASSWORD);
-    await expect(page).toHaveURL(/\/documents/);
+    await expect(page).toHaveURL(/\/dashboard/);
     await expect(page.getByText(EMAIL)).toBeVisible();
   });
 
@@ -42,7 +42,7 @@ test.describe("Auth flow", () => {
     const loginPage = new LoginPage(page);
     await loginPage.goto();
     await loginPage.login(EMAIL, PASSWORD);
-    await expect(page).toHaveURL(/\/documents/);
+    await expect(page).toHaveURL(/\/dashboard/);
     await loginPage.signOut();
     await expect(page).toHaveURL(/\/login/);
   });

@@ -16,7 +16,9 @@ export function DocumentList({ documents }: DocumentListProps) {
   const deleteDocument = useDeleteDocument();
 
   if (documents.length === 0) {
-    return <span className="text-sm text-muted-foreground">No documents yet.</span>;
+    return (
+      <span className="text-sm text-muted-foreground">No documents yet.</span>
+    );
   }
 
   const error = getErrorMessage(deleteDocument, "Delete failed");
@@ -42,7 +44,8 @@ export function DocumentList({ documents }: DocumentListProps) {
                 <span
                   data-testid="document-status"
                   className={`text-xs font-semibold rounded px-2 py-0.5 ${
-                    STATUS_STYLES[doc.latest_version_status] ?? "bg-gray-100 text-gray-600"
+                    STATUS_STYLES[doc.latest_version_status] ??
+                    "bg-gray-100 text-gray-600"
                   }`}
                 >
                   {doc.latest_version_status}
@@ -62,7 +65,9 @@ export function DocumentList({ documents }: DocumentListProps) {
             <Button
               variant="destructive"
               size="sm"
-              disabled={deleteDocument.isPending && deleteDocument.variables === doc.id}
+              disabled={
+                deleteDocument.isPending && deleteDocument.variables === doc.id
+              }
               onClick={() => deleteDocument.mutate(doc.id)}
             >
               Delete

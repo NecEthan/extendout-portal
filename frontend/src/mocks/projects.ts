@@ -1,0 +1,86 @@
+import type { Project } from "@/interfaces/portal";
+
+export const mockProjects: Project[] = [
+  {
+    id: "p-101",
+    name: "Surrey Rear Extension",
+    client: "Sarah & James Holloway",
+    address: "14 Ashcombe Road, Dorking, RH4 1LX",
+    type: "Extension",
+    stage: "First fix",
+    progress: 58,
+    budget: 128000,
+    spent: 71400,
+    startDate: "2026-07-06",
+    endDate: "2027-01-29",
+    manager: "Tom Reeves",
+    health: "On track",
+  },
+  {
+    id: "p-102",
+    name: "Guildford Loft Conversion",
+    client: "Priya Natarajan",
+    address: "7 Pewley Hill, Guildford, GU1 3SN",
+    type: "Loft conversion",
+    stage: "Structural steel",
+    progress: 34,
+    budget: 64500,
+    spent: 23900,
+    startDate: "2026-09-14",
+    endDate: "2027-02-12",
+    manager: "Lucy Grant",
+    health: "At risk",
+  },
+  {
+    id: "p-103",
+    name: "Epsom Kitchen Remodel",
+    client: "Daniel Okafor",
+    address: "22 Church Street, Epsom, KT17 4PF",
+    type: "Renovation",
+    stage: "Second fix",
+    progress: 82,
+    budget: 41800,
+    spent: 36200,
+    startDate: "2026-08-03",
+    endDate: "2026-11-27",
+    manager: "Tom Reeves",
+    health: "On track",
+  },
+  {
+    id: "p-104",
+    name: "Reigate Wraparound Extension",
+    client: "The Bennett Family",
+    address: "3 Doods Way, Reigate, RH2 0JT",
+    type: "Extension",
+    stage: "Foundations",
+    progress: 16,
+    budget: 186000,
+    spent: 22800,
+    startDate: "2026-10-05",
+    endDate: "2027-05-21",
+    manager: "Lucy Grant",
+    health: "Delayed",
+  },
+  {
+    id: "p-105",
+    name: "Cobham Garden Studio",
+    client: "Emma Lawson",
+    address: "51 Portsmouth Road, Cobham, KT11 1JQ",
+    type: "New build",
+    stage: "Handover",
+    progress: 100,
+    budget: 38500,
+    spent: 37900,
+    startDate: "2026-04-20",
+    endDate: "2026-08-14",
+    manager: "Marcus Hale",
+    health: "Complete",
+  },
+];
+
+export function getMockProject(id: string): Project | undefined {
+  return mockProjects.find((p) => p.id === id);
+}
+
+/** The project shown in the Client view (homeowner perspective). */
+export const clientProjectId = "p-101";

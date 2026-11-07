@@ -52,10 +52,8 @@ export default function VersionHistoryPage() {
 
   if (!versionsQuery.data) {
     return (
-      <div className="flex flex-col items-center py-12 px-4 gap-8">
-        <div className="w-full max-w-2xl">
-          <ErrorAlert message={error} />
-        </div>
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+        <ErrorAlert message={error} />
       </div>
     );
   }
@@ -63,9 +61,11 @@ export default function VersionHistoryPage() {
   const versions = versionsQuery.data.items;
 
   return (
-    <div className="flex flex-col items-center py-12 px-4 gap-8">
-      <div className="w-full max-w-2xl flex items-center justify-between">
-        <span className="text-2xl font-semibold">Version History</span>
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Version History
+        </h1>
         <Button
           variant="outline"
           onClick={() => router.push(applicationRoutes.documents)}
@@ -74,7 +74,7 @@ export default function VersionHistoryPage() {
         </Button>
       </div>
 
-      <Card className="w-full max-w-2xl">
+      <Card>
         <CardHeader>
           <CardTitle>Upload new version</CardTitle>
         </CardHeader>
@@ -93,20 +93,24 @@ export default function VersionHistoryPage() {
               />
             </div>
             <Button type="submit" disabled={uploadVersion.isPending || !file}>
-              {uploadVersion.isPending && <Loader2 className="size-4 animate-spin" />}
+              {uploadVersion.isPending && (
+                <Loader2 className="size-4 animate-spin" />
+              )}
               {uploadVersion.isPending ? "Uploading…" : "Upload new version"}
             </Button>
           </form>
         </CardContent>
       </Card>
 
-      <Card className="w-full max-w-2xl">
+      <Card>
         <CardHeader>
           <CardTitle>Versions</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {versions.length === 0 ? (
-            <span className="text-sm text-muted-foreground">No versions yet.</span>
+            <span className="text-sm text-muted-foreground">
+              No versions yet.
+            </span>
           ) : (
             <div className="flex flex-col gap-3">
               {versions.map((v) => (
@@ -114,7 +118,7 @@ export default function VersionHistoryPage() {
                   key={v.id}
                   data-testid="version-row"
                   className={`flex items-center justify-between rounded-lg border px-4 py-3 ${
-                    v.status === "ACTIVE" ? "border-green-400" : ""
+                    v.status === "ACTIVE" ? "border-success" : ""
                   }`}
                 >
                   <div className="flex flex-col gap-0.5">
@@ -124,11 +128,16 @@ export default function VersionHistoryPage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    {!["ACTIVE", "PROCESSING", "DELETED", "FAILED"].includes(v.status) && (
+                    {!["ACTIVE", "PROCESSING", "DELETED", "FAILED"].includes(
+                      v.status
+                    ) && (
                       <Button
                         variant="outline"
                         size="sm"
-                        disabled={activateVersion.isPending && activateVersion.variables === v.id}
+                        disabled={
+                          activateVersion.isPending &&
+                          activateVersion.variables === v.id
+                        }
                         onClick={() => activateVersion.mutate(v.id)}
                       >
                         Set as active

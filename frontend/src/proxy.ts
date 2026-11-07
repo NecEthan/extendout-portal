@@ -2,9 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { applicationRoutes } from "@/utils/applicationRoutes";
 
-const PUBLIC_PATHS: string[] = [
-  applicationRoutes.login,
-];
+const PUBLIC_PATHS: string[] = [applicationRoutes.login];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -16,7 +14,7 @@ export function proxy(request: NextRequest) {
 
   if (hasSession && pathname === applicationRoutes.login) {
     return NextResponse.redirect(
-      new URL(applicationRoutes.documents, request.url)
+      new URL(applicationRoutes.dashboard, request.url)
     );
   }
 

@@ -18,7 +18,7 @@ export function UploadForm({ userRole }: UploadFormProps) {
   const [title, setTitle] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [sensitivity, setSensitivity] = useState<"STANDARD" | "SENSITIVE">(
-    "STANDARD",
+    "STANDARD"
   );
   const fileRef = useRef<HTMLInputElement>(null);
   const uploadDocument = useUploadDocument();
@@ -35,7 +35,7 @@ export function UploadForm({ userRole }: UploadFormProps) {
           setSensitivity("STANDARD");
           if (fileRef.current) fileRef.current.value = "";
         },
-      },
+      }
     );
   }
 
@@ -93,7 +93,9 @@ export function UploadForm({ userRole }: UploadFormProps) {
       )}
 
       <Button type="submit" disabled={uploadDocument.isPending || !file}>
-        {uploadDocument.isPending && <Loader2 className="size-4 animate-spin" />}
+        {uploadDocument.isPending && (
+          <Loader2 className="size-4 animate-spin" />
+        )}
         {uploadDocument.isPending ? "Uploading…" : "Upload document"}
       </Button>
     </form>

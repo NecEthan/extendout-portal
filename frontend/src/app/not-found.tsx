@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function NotFound() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center px-4">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-muted px-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Page not found</CardTitle>
@@ -14,7 +14,7 @@ export default function NotFound() {
             The page you&apos;re looking for doesn&apos;t exist.
           </p>
           <Button className="w-full" render={<Link href="/" />}>
-            Back to KnowledgeGuard
+            Back to ExtendOut Portal
           </Button>
         </CardContent>
       </Card>

@@ -9,6 +9,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { useUser } from "@/hooks/useUser";
 import { useDocuments } from "@/hooks/useDocuments";
 import { firstErrorMessage } from "@/lib/errorMessage";
+import { PageHeader } from "@/components/portal/PageHeader";
 
 const PAGE_SIZE = 20;
 
@@ -24,47 +25,47 @@ export default function DocumentsPage() {
 
   if (!documents.data || !user.data) {
     return (
-      <div className="flex flex-col items-center py-12 px-4 gap-8">
-        <div className="w-full max-w-2xl">
-          <ErrorAlert message={error} />
-        </div>
+      <div className="flex flex-col gap-6">
+        <PageHeader title="Documents" />
+        <ErrorAlert message={error} />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col items-center py-12 px-4 gap-8">
-      <div className="w-full max-w-2xl">
-        <span className="text-2xl font-semibold">Documents</span>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Documents"
+        description="Drawings, contracts, specifications and site records, versioned and searchable."
+      />
+
+      <ErrorAlert message={error} />
+
+      <div className="grid items-start gap-6 lg:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardTitle>Upload document</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <UploadForm userRole={user.data.role} />
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Your documents</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <DocumentList documents={documents.data.items} />
+            <Pagination
+              offset={offset}
+              limit={PAGE_SIZE}
+              total={documents.data.total}
+              onOffsetChange={setOffset}
+            />
+          </CardContent>
+        </Card>
       </div>
-
-      <div className="w-full max-w-2xl">
-        <ErrorAlert message={error} />
-      </div>
-
-      <Card className="w-full max-w-2xl">
-        <CardHeader>
-          <CardTitle>Upload document</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <UploadForm userRole={user.data.role} />
-        </CardContent>
-      </Card>
-
-      <Card className="w-full max-w-2xl">
-        <CardHeader>
-          <CardTitle>Your documents</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <DocumentList documents={documents.data.items} />
-          <Pagination
-            offset={offset}
-            limit={PAGE_SIZE}
-            total={documents.data.total}
-            onOffsetChange={setOffset}
-          />
-        </CardContent>
-      </Card>
     </div>
   );
 }

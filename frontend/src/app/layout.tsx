@@ -1,9 +1,20 @@
 import "./globals.css";
-import { Inter } from "next/font/google";
+import type { Metadata } from "next";
+import { Inter, Montserrat } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
+const montserrat = Montserrat({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  variable: "--font-montserrat",
+});
+
+export const metadata: Metadata = {
+  title: "ExtendOut Portal",
+  description: "ExtendOut Design & Build project portal",
+};
 
 export default function RootLayout({
   children,
@@ -11,7 +22,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={cn("font-sans", inter.variable)}>
+    <html
+      lang="en"
+      className={cn("font-sans", inter.variable, montserrat.variable)}
+    >
       <body>
         <QueryProvider>{children}</QueryProvider>
       </body>
