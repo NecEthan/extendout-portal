@@ -15,8 +15,6 @@ class Project(Base):
     name: Mapped[str] = mapped_column(Text, nullable=False)
     client: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
     address: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
-    # On track | At risk | Delayed | Complete
-    health: Mapped[str] = mapped_column(Text, nullable=False, server_default="On track")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

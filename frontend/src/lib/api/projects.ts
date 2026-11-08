@@ -1,4 +1,4 @@
-import type { NewProject, Project } from "@/interfaces";
+import type { NewProject, Project, ProjectUpdate } from "@/interfaces";
 import { httpClient } from "./client";
 
 /** Projects the current user may access (admins: all; others: their memberships). */
@@ -16,5 +16,16 @@ export async function createProject(body: NewProject): Promise<Project> {
   return httpClient<Project>("/projects", {
     method: "POST",
     body: JSON.stringify(body),
+  });
+}
+
+/** Admin only. Returns the updated project. */
+export async function updateProject(
+  id: number,
+  changes: ProjectUpdate
+): Promise<Project> {
+  return httpClient<Project>(`/projects/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(changes),
   });
 }

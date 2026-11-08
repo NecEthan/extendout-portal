@@ -3,13 +3,17 @@
 Creating projects is admin only. Membership endpoints live in project_members.py.
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_user, get_db, require_admin
 from app.models.base import Project, User
-from app.schemas.projects import ProjectCreateRequest, ProjectResponse
+from app.schemas.projects import (
+    ProjectCreateRequest,
+    ProjectResponse,
+    ProjectUpdateRequest,
+)
 from app.services.permissions import (
     ensure_project_access,
     is_admin,
@@ -53,4 +57,24 @@ async def create_project(
     db.add(project)
     await db.commit()
     await db.refresh(project)
+    return ProjectResponse.model_validate(project)
+
+
+@router.patch("/{project_id}", response_model=ProjectResponse)
+async def update_project(
+    project_id: int,
+    body: ProjectUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(require_admin),
+) -> ProjectResponse:
+    project = await db.get(Project, project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    # Only fields that were sent are changed. Fields may be omitted, not nulled.
+    changes = body.model_dump(exclude_unset=True)
+    if None in changes.values():
+        raise HTTPException(status_code=422, detail="Fields can't be null")
+    for field, value in changes.items():
+        setattr(project, field, value)
+    await db.commit()
     return ProjectResponse.model_validate(project)

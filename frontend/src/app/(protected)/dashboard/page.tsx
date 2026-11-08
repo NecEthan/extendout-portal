@@ -13,7 +13,6 @@ import { applicationRoutes } from "@/utils/applicationRoutes";
 
 export default function DashboardPage() {
   const projects = useProjects().data ?? [];
-  const active = projects.filter((p) => p.health !== "Complete");
 
   return (
     <>
@@ -25,9 +24,8 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-2 gap-4">
         <StatCard
-          label="Active projects"
-          value={String(active.length)}
-          hint={`${projects.length} total`}
+          label="Projects"
+          value={String(projects.length)}
           icon={FolderKanban}
         />
       </div>
@@ -35,7 +33,7 @@ export default function DashboardPage() {
       <div className="mt-8 grid gap-6 xl:grid-cols-3">
         <section className="flex flex-col gap-4 xl:col-span-2">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Active projects</h2>
+            <h2 className="text-lg font-semibold">Projects</h2>
             <Link
               href={applicationRoutes.projects}
               className="text-sm text-primary hover:underline"
@@ -44,7 +42,7 @@ export default function DashboardPage() {
             </Link>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
-            {active.map((p) => (
+            {projects.map((p) => (
               <ProjectCard key={p.id} project={p} />
             ))}
           </div>

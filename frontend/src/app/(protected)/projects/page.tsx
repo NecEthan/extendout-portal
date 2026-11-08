@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { MockBanner } from "@/components/portal/MockBanner";
 import { ProjectCard } from "@/components/portal/projects/ProjectCard";
-import { NewProjectForm } from "@/components/portal/projects/NewProjectForm";
+import { AddProjectForm } from "./add/AddProjectForm";
 import { ErrorAlert } from "@/components/ui/error-alert";
 import { useProjects } from "@/hooks/useProjects";
 import { useUser } from "@/hooks/useUser";
@@ -31,7 +31,7 @@ export default function ProjectsPage() {
           )
         }
       />
-      {creating && <NewProjectForm onCancel={() => setCreating(false)} />}
+      {creating && <AddProjectForm onCancel={() => setCreating(false)} />}
       <MockBanner />
       <ErrorAlert
         message={getErrorMessage(projects, "Failed to load projects")}

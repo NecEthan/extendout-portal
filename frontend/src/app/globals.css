@@ -144,6 +144,20 @@
   html {
     @apply font-sans;
   }
+  /* Tailwind v4 removed the pointer cursor from buttons; restore it for
+     everything clickable, and show "not allowed" when disabled. */
+  button,
+  [role="button"],
+  [role="tab"],
+  select {
+    cursor: pointer;
+  }
+  button:disabled,
+  [role="button"][aria-disabled="true"],
+  [role="tab"][aria-disabled="true"],
+  select:disabled {
+    cursor: not-allowed;
+  }
   h1,
   h2,
   h3 {

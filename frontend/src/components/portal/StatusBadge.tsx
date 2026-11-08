@@ -2,7 +2,6 @@ import { Badge, type BadgeVariant } from "@/components/ui/badge";
 
 const STATUS_VARIANTS: Record<string, BadgeVariant> = {
   // generic progress
-  "On track": "success",
   Complete: "success",
   Completed: "success",
   Ready: "success",
@@ -18,7 +17,6 @@ const STATUS_VARIANTS: Record<string, BadgeVariant> = {
   Draft: "outline",
   Pending: "warning",
   "Awaiting approval": "warning",
-  "At risk": "warning",
   Due: "warning",
   Open: "warning",
   Ordered: "neutral",

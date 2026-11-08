@@ -49,7 +49,6 @@ async def test_get_project_as_member(auth_client):
     # Detail fields fall back to column defaults for a bare project.
     assert body["client"] == ""
     assert body["address"] == ""
-    assert body["health"] == "On track"
 
 
 async def test_get_project_non_member_forbidden(auth_client, make_project):
@@ -90,7 +89,6 @@ async def test_admin_creates_project(admin_client, created_projects):
     assert body["name"] == "New Build"
     assert body["client"] == "Ada"
     assert body["address"] == "1 High St"
-    assert body["health"] == "On track"
 
     listed = (await admin_client.get("/projects")).json()
     assert body["id"] in [p["id"] for p in listed]
@@ -116,3 +114,43 @@ async def test_non_admin_cannot_create_project(auth_client):
 async def test_create_project_requires_auth(client):
     response = await client.post("/projects", json={"name": "Nope"})
     assert response.status_code == 401
+
+
+# ── PATCH /projects/{id} ──────────────────────────────────────────────────────
+
+
+async def test_admin_updates_project(admin_client, make_project):
+    project = await make_project(member=None)
+    response = await admin_client.patch(
+        f"/projects/{project}",
+        json={"name": " Renamed ", "client": "Ada"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["name"] == "Renamed"
+    assert body["client"] == "Ada"
+    assert body["address"] == ""  # not sent, so unchanged
+
+    fetched = (await admin_client.get(f"/projects/{project}")).json()
+    assert fetched == body
+
+
+async def test_update_project_validation(admin_client, make_project):
+    project = await make_project(member=None)
+    for bad in ({"name": "  "}, {"name": None}):
+        response = await admin_client.patch(f"/projects/{project}", json=bad)
+        assert response.status_code == 422, bad
+
+
+async def test_update_unknown_project(admin_client):
+    response = await admin_client.patch(
+        f"/projects/{UNKNOWN_PROJECT_ID}", json={"name": "X"}
+    )
+    assert response.status_code == 404
+
+
+async def test_non_admin_cannot_update_project(auth_client):
+    response = await auth_client.patch(
+        f"/projects/{TEST_PROJECT_ID}", json={"name": "Hijacked"}
+    )
+    assert response.status_code == 403
