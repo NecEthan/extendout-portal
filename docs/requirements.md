@@ -1,140 +1,141 @@
 # Requirements
 
-**Project:** KnowledgeGuard
-**Source of truth:** `mvp.md`, `technical-design.md`
+**Product:** ExtendOut Portal (repository: `knowledgeguard`)
+**See also:** [overview.md](overview.md), [architecture.md](architecture.md), [technical-design.md](technical-design.md)
 
-This describes what's actually built. The project is complete as delivered — there is no separate "production requirements" phase; the content that used to live here (enterprise connectors, event-driven sync, SSO, reranking, a Knowledge Health dashboard, an audit log, an evaluation framework) was never built and isn't planned.
+What the portal does today. Screens that still show sample data are listed in [overview.md](overview.md#whats-real-vs-sample-data) and are not covered here.
 
 ---
 
 ## Authentication
 
-1. Users can register with an email address and password (minimum 8 characters, one uppercase letter, one digit).
-2. Passwords are stored as bcrypt hashes.
-3. Users can log in and receive a server-side session.
-4. The session ID is sent to the browser as an `HttpOnly`, `Secure`, `SameSite=Strict` cookie.
-5. Sessions expire 24 hours after login (fixed expiry, not a sliding/inactivity window).
-6. Sessions can be invalidated server-side at any time.
-7. Users can log out, invalidating their session immediately.
-8. Users can retrieve their own profile (`GET /auth/user`).
-9. Repeated failed logins for an email lock that email out for 15 minutes (Redis counter), independent of per-IP rate limiting.
+1. Users register with email, password, role (`admin`, `builder` or `client`) and an optional name.
+2. Passwords need at least 8 characters, one uppercase letter and one digit, and are stored as bcrypt hashes.
+3. Logging in creates a server-side session. The session id is sent as an `HttpOnly` cookie (`Secure` + `SameSite=None` in production, `SameSite=Lax` in development).
+4. Sessions expire 24 hours after login (fixed, not sliding) and can be invalidated server-side at any time.
+5. Logging out invalidates the session immediately.
+6. Users can fetch their own profile (`GET /auth/user`).
+7. After 5 failed logins for an email, that email is locked for 15 minutes, independent of per-IP rate limiting.
 
 ---
 
-## Authorisation
+## Roles and access
 
-10. Two roles exist: `admin` and `user`.
-11. Admins have full access to all documents (STANDARD and SENSITIVE).
-12. Users can access STANDARD documents only. SENSITIVE documents are inaccessible to users regardless of who uploaded them.
-13. Documents have a `sensitivity` field: `STANDARD` or `SENSITIVE`. Sensitivity is set at upload time.
-14. Only admins can upload SENSITIVE documents. A non-admin attempting to upload a SENSITIVE document receives `403 Forbidden`.
-15. Authorisation checks are performed on every protected request at the backend. Ownership has no effect on access.
-
----
-
-## Document Management
-
-16. Users can upload documents in the following formats: PDF, DOCX, TXT, Markdown. There is no connector for Google Docs or any other external source — file upload is the only ingestion path.
-17. Users can view a list of their accessible documents.
-18. Users can view document metadata (title, source type, sensitivity, created date).
-19. Users can upload a new version of an existing document.
-20. Users can delete a document.
-21. Users can view the full version history of a document and activate a previous version.
+8. Three roles: `admin`, `builder`, `client`.
+9. Access is decided by role + project membership. Document ownership has no effect.
+10. Admins can see and act on every project and document.
+11. Builders and clients have identical permissions: they can only see projects they're a member of, and only the documents in those projects.
+12. Requesting an unknown project returns `404`; a project the user isn't a member of returns `403`. A document outside the user's projects returns `404`.
+13. Documents with no project (legacy) are visible to admins only.
+14. All checks happen in the backend on every request. The frontend hides admin-only UI but is not relied on for security.
 
 ---
 
-## Document Versioning
+## Projects
 
-22. Every document update creates a new immutable version.
-23. Only one version per document can have status `ACTIVE` at any time. This is enforced at the database level with a partial unique index.
-24. Version statuses are: `PROCESSING`, `ACTIVE`, `SUPERSEDED`, `DELETED`, `REVIEW_REQUIRED`, `FAILED`.
-25. When a new version becomes active, the previous active version transitions to `SUPERSEDED`.
-26. The version transition (supersede old, activate new) is performed atomically in a single database transaction.
-27. If a new version fails processing, the previous active version remains active.
-28. A SHA-256 hash of the file is stored per version — blocks re-uploading an identical file and detects concurrent duplicate version uploads.
+15. A project has an integer id (auto-increment), name, client and address.
+16. Users see a list of the projects they can access (admins: all).
+17. Only admins can create projects (`POST /projects`). The name is required; client and address are optional. Text is trimmed.
+18. Only admins can edit projects (`PATCH /projects/{id}`). Only the fields sent are changed; fields can't be set to `null` and the name can't be blank.
 
 ---
 
-## Document Processing
+## Team and project membership (admin only)
 
-29. Document processing runs asynchronously via an ARQ worker. The API does not block on processing.
-30. On upload, the API validates the file, stores metadata in the database with status `PROCESSING`, stores the raw file in MinIO, and enqueues a processing job in Redis — all in one DB transaction, with the Redis enqueue as a best-effort step afterward.
-31. If Redis is unavailable at enqueue time, the job stays `QUEUED` in the database and a poller (runs every 30s inside the backend process) retries it.
-32. A reaper (same 30s loop) resets jobs stuck in `PROCESSING` for 10+ minutes back to `QUEUED`, recovering from worker crashes.
-33. Processing steps: OCR (if scanned), text extraction, chunking, embedding generation (OpenAI `text-embedding-3-small`), insert into `document_chunks` (pgvector column), full-text search index update.
-34. Failed jobs retry with backoff up to a configured max attempt count; non-retryable errors (bad input, auth/validation failures) fail immediately without retry.
-35. After retries are exhausted, the version is marked `FAILED` and its MinIO object is deleted.
-36. Processing is idempotent — a deterministic job id (`process_document:{version_id}`) means the poller re-enqueuing a job already in flight does not create duplicate work.
-37. The frontend displays the current processing status of each document version.
+19. Admins can list every user with their role and project memberships (`GET /team`).
+20. Admins can change a user's role (`PATCH /team/{user_id}`), except their own.
+21. Admins can list, add and remove the members of a project (`/projects/{id}/members`).
+22. Builders and clients cannot see the Team page or any project's member list (`403`).
 
 ---
 
-## AI Query
+## Documents
 
-38. Users can submit natural language questions via `POST /query`.
-39. Every query goes through this pipeline in order: session authentication → permission filtering (role + sensitivity) → version filtering (`ACTIVE` only) → hybrid retrieval (pgvector cosine search + PostgreSQL `tsvector` full-text search) → Reciprocal Rank Fusion → context assembly → LLM generation (`gpt-4o-mini`) → answer and citations.
-40. Permission filtering happens before any document content enters the retrieval pipeline. SENSITIVE documents are never loaded as context for non-admins.
-41. Queries only ever search `ACTIVE` (current) versions. Previous versions stay available in version history but are never searched.
-42. Every answer includes citations: document title, version number, version status, and last updated date.
-43. The LLM's structured output is validated against a Pydantic schema before being returned to the client.
-44. If the LLM API is unavailable, the query returns `503 Service Unavailable`.
+23. Users can upload PDF, DOCX, TXT or Markdown files (max 50 MB) to a project they can access. The backend checks file type and size independently of the frontend.
+24. Users can list a project's documents (paginated), view a document, rename it, and delete it.
+25. Re-uploading an identical file (same SHA-256 hash) is rejected as a duplicate.
+
+---
+
+## Versions
+
+26. Uploading a new version of a document creates a new immutable version; history is kept.
+27. Exactly one version per document can be `ACTIVE`, enforced by a partial unique index.
+28. Statuses: `PROCESSING`, `ACTIVE`, `SUPERSEDED`, `DELETED`, `REVIEW_REQUIRED`, `FAILED`.
+29. When a new version finishes processing, the previous `ACTIVE` version becomes `SUPERSEDED` and the new one becomes `ACTIVE` in a single transaction.
+30. If a new version fails processing, the previous active version stays active.
+31. Users can view a document's version history and re-activate an older version.
+32. Concurrent version uploads are handled by a unique (document, version number) constraint with retry.
+
+---
+
+## Processing
+
+33. Processing runs asynchronously in an ARQ worker; the upload request returns `202` without waiting.
+34. The upload writes the Document, Version (`PROCESSING`) and ProcessingJob (`QUEUED`) in one transaction, then enqueues to Redis best-effort.
+35. A poller (every 30 s) re-enqueues `QUEUED` jobs, so a Redis outage loses no work. A deterministic job id prevents duplicate processing.
+36. A reaper resets jobs stuck in `PROCESSING` for 10+ minutes (worker crash) back to `QUEUED`.
+37. Pipeline: download from MinIO → extract text (OCR for scanned PDFs) → chunk → embed (OpenAI `text-embedding-3-small`) → store chunks + update the full-text index → activate.
+38. Transient errors retry with backoff (OpenAI rate limits wait 60 s) up to `MAX_TRIES`; bad input and OpenAI auth/validation errors fail immediately.
+39. When retries are exhausted the version is marked `FAILED` and its MinIO file is deleted.
+40. The frontend shows each version's processing status and refreshes it while processing.
+
+---
+
+## AI search
+
+41. Users ask natural-language questions with `POST /query`, scoped to a project they can access (`403` otherwise).
+42. Search only uses **current (`ACTIVE`) versions**. Previous versions remain in version history but are never searched.
+43. Pipeline: authentication → project access → permitted documents → active versions → hybrid retrieval (pgvector cosine + Postgres full-text) → Reciprocal Rank Fusion → context assembly → `gpt-4o-mini` → answer with citations.
+44. Permission and version filtering happen in the database query, before any content reaches the LLM.
+45. Every answer cites document title, version number, status and last-updated date.
+46. The LLM's structured output is validated against a Pydantic schema.
+47. If OpenAI is unavailable the query returns `503`.
 
 ---
 
 ## Deletion
 
-45. Deleting a document hard-deletes its chunks, processing jobs, versions, and the document row itself, in FK-dependency order, in one transaction.
-46. The raw file is not explicitly removed from MinIO on document deletion (only on processing failure after retries are exhausted).
-47. A deleted document cannot appear in any query result, since its rows no longer exist.
-
----
-
-## Permissions
-
-48. Access is governed by user role and document sensitivity. There are no per-document permission grants.
-49. Permission checks (role vs sensitivity) are performed before content is retrieved on every query and on every document list/read/write endpoint.
-50. SENSITIVE documents are excluded from all retrieval and listing for non-admin users.
+48. Deleting a document hard-deletes its chunks, processing jobs, versions and the document itself in one transaction.
+49. A deleted document can't appear in any list or search result.
+50. The original file is not removed from MinIO on deletion (only when processing fails permanently).
 
 ---
 
 ## Security
 
-51. The backend validates all uploaded files independently of frontend validation, including file type and file size.
-52. `/auth/login`, `/auth/register`, and `/query` are rate limited (per-IP, via slowapi + Redis). Document upload/version endpoints are not rate limited.
-53. API keys and credentials are stored as environment variables and are never committed to source control or exposed to the frontend.
-54. Database changes involving multiple related records are performed within transactions.
+51. `/auth/login` and `/auth/register` are limited to 5 requests/minute per IP; `/query` to 20/minute per IP (slowapi + Redis).
+52. API keys and credentials come from environment variables, never the frontend or source control.
+53. Changes that touch several related rows happen in a single transaction.
 
 ---
 
 ## Observability
 
-55. The backend records structured logs (`structlog`) — JSON in production, pretty-printed in dev.
-56. Every request is logged with `request_id`, method, path, status code, and `duration_ms`.
-57. LLM calls are logged with model, token counts, duration, and estimated cost.
-58. Worker jobs log start/complete/failure with duration, chunk count, and attempt number. The poller logs queue depth.
-59. There is no metrics dashboard (Prometheus/Grafana/etc.) — logs only.
+54. Structured logs (`structlog`): JSON in production, readable in development.
+55. Every request logs `request_id`, method, path, status and `duration_ms`.
+56. LLM calls log model, token counts, duration and estimated cost.
+57. Worker jobs log start/complete/failure with duration, chunk count and attempt number; the poller logs queue depth.
+58. There is no metrics dashboard — logs only.
 
 ---
 
 ## Infrastructure
 
-60. All services run via Docker Compose: Next.js frontend, FastAPI backend (2 uvicorn workers), a separate ARQ worker container, PostgreSQL (with pgvector), MinIO, Redis. Single instance of each — no load balancer, no CDN, no replica, no auto-scaling.
-61. A single `docker compose up -d` command brings up the full stack.
+59. Docker Compose runs the frontend, backend (2 uvicorn workers), ARQ worker, Postgres (pgvector), MinIO and Redis — one instance of each.
+60. `docker compose up -d` starts the whole stack.
 
 ---
 
 ## Testing
 
-62. Backend: pytest unit tests (services) and integration tests (routers, processing pipeline) against a real Postgres instance.
-63. Frontend: Jest unit tests for the API client layer.
-64. End-to-end tests (Playwright) cover auth, document upload/versions, and search flows against the full running stack.
-65. There is no evaluation framework and no automated accuracy/stale-retrieval tracking — that was planned but never built.
+61. Backend: pytest unit tests (services) and integration tests (routers, processing) against a real Postgres.
+62. Frontend: Jest unit tests.
+63. End-to-end: Playwright tests for auth, documents, versions and search against the running stack.
 
 ---
 
 ## API
-
-66. The API exposes:
 
 ```
 POST   /auth/register
@@ -142,20 +143,29 @@ POST   /auth/login
 POST   /auth/logout
 GET    /auth/user
 
-POST   /documents
-GET    /documents
-GET    /documents/:id
-PATCH  /documents/:id
-DELETE /documents/:id
+GET    /projects
+POST   /projects                                   admin
+GET    /projects/{id}
+PATCH  /projects/{id}                              admin
+GET    /projects/{id}/members                      admin
+POST   /projects/{id}/members                      admin
+DELETE /projects/{id}/members/{user_id}            admin
 
-POST   /documents/:id/versions
-GET    /documents/:id/versions
-GET    /documents/:id/versions/:version_id
-PATCH  /documents/:id/versions/:version_id/activate
+GET    /team                                       admin
+PATCH  /team/{user_id}                             admin
+
+POST   /documents
+GET    /documents?project_id=…
+GET    /documents/{id}
+PATCH  /documents/{id}
+DELETE /documents/{id}
+
+POST   /documents/{id}/versions
+GET    /documents/{id}/versions
+GET    /documents/{id}/versions/{version_id}
+PATCH  /documents/{id}/versions/{version_id}/activate
 
 POST   /query
 
 GET    /health
 ```
-
-There is no `/audit` endpoint — audit logging was built, then removed from the codebase, and is not exposed anywhere.

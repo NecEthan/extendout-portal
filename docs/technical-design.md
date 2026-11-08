@@ -1,321 +1,234 @@
-# Technical Design Document
+# Technical Design
 
-**Project:** KnowledgeGuard
-**Scope:** MVP
+**Product:** ExtendOut Portal (repository: `knowledgeguard`)
+**See also:** [overview.md](overview.md), [architecture.md](architecture.md), [requirements.md](requirements.md)
 
 ---
 
 ## 1. Overview
 
-KnowledgeGuard is an enterprise knowledge platform that allows employees to ask natural language questions and receive accurate answers from company documents. The system guarantees that answers are sourced from the current, authorised version of each document and that every answer is traceable to its source.
+The ExtendOut Portal is the project workspace for ExtendOut Design | Build. Office staff, the site team and homeowners share each job's documents, and anyone on a project can ask questions answered from that project's current documents, with a citation to the source file and version.
+
+The design guarantees three things: people only see the projects they belong to, answers only come from the current version of each document, and every answer is traceable to its source.
 
 ---
 
-## 2. Frontend Design
+## 2. Frontend design
 
-### Route Protection
+### Route protection
 
-A proxy is used to redirect a user to an appropriate page if they try to access a page that does not exist or that they are not authorised to access. The proxy is not the security boundary because a user can bypass the frontend and directly request data from the backend API. The backend therefore performs the actual authentication and authorisation checks.
+`src/proxy.ts` redirects to `/login` when the `kg_ui_auth` hint cookie is missing, and away from `/login` when it's present. It also lets public image files (logo, favicon) through without a session. This is a convenience only: anyone can call the API directly, so the backend performs the real authentication and authorisation on every request.
+
+Admin-only UI (the Team page and sidebar link, the project Team tab, **New project** and **Edit**) is hidden for builders and clients. The backend rejects those actions with `403` regardless.
 
 ### Authentication
 
-A session cookie is used. The browser stores only the session identifier and automatically includes the cookie with requests to the backend over HTTPS.
+The session lives on the server. The browser holds only the session id in an `HttpOnly` cookie, so JavaScript (and therefore an XSS bug) can't read it. Requests include it automatically via `credentials: "include"`.
 
-The session is managed by the backend, allowing sessions to be invalidated when required. Using an `HttpOnly` cookie prevents client-side JavaScript from directly reading the session cookie, reducing the risk of the authentication credential being exposed through an XSS vulnerability.
+In production the cookie is `Secure` and `SameSite=None` (the frontend and API are on different sites, so the cookie must be sent cross-site); in development it's `SameSite=Lax`.
 
-The cookie is configured with the `Secure` attribute, meaning the browser will only send it over HTTPS. The browser automatically attaches the cookie to requests to the relevant backend when making authenticated requests.
+### File uploads
 
-To help prevent CSRF attacks, the `SameSite=Strict` cookie attribute is set, which prevents the browser from sending the cookie with cross-site requests, reducing the risk of an attacker making authenticated requests on the user's behalf.
+The upload form limits file type and size for quick feedback. The backend re-validates everything, since the form can be bypassed.
 
-### File Uploads
+### Processing state
 
-The frontend restricts the file types and file sizes that can be selected to provide immediate feedback to the user. These restrictions cannot be trusted as a security boundary, so the backend independently validates every uploaded file.
+Processing is asynchronous, so the UI reads each version's status from the backend and polls every 3 seconds while anything is still processing, stopping once all versions settle.
 
-### Processing State
+### Server state and errors
 
-Document processing is asynchronous, so the frontend represents the document's current processing state — uploading, uploaded, processing, completed, or failed. The frontend retrieves the current state from the backend rather than assuming processing has completed.
+TanStack Query owns all server state (`src/hooks/`). Mutations invalidate the queries they affect, so lists refresh after a change without manual refetching.
 
-### Error Handling
+A `401` anywhere redirects to `/login` (handled once in `QueryProvider`). Other errors (`403/404/409/413/415/422/429/503`, network) are shown inline next to the action that failed, via `ErrorAlert`. Queries aren't retried on `401`.
 
-The frontend provides user-friendly error messages without exposing internal backend errors or implementation details.
+### Loading and duplicate actions
 
-### Loading and Duplicate Actions
-
-The frontend provides appropriate loading states and prevents accidental duplicate submissions where possible. The backend remains responsible for preventing duplicate processing because frontend controls can be bypassed.
+Buttons show a pending state and are disabled while a request is in flight. The backend still protects against duplicates (content hash, deterministic job ids), since frontend controls can be bypassed.
 
 ---
 
-## 3. Backend Design
+## 3. Backend design
 
 ### Authentication
 
-The backend validates the user's session on protected requests. The session is stored server-side so it can be invalidated when required.
+Every protected request resolves the session cookie against the `sessions` table (`get_current_user`). Server-side sessions mean a role change or logout takes effect on the next request.
 
 ### Authorisation
 
-Authentication only establishes who the user is. The backend also performs authorisation checks to determine whether the user has permission to access the requested resource. These checks are performed on every protected resource rather than relying on the frontend.
+Authentication says who the user is; authorisation says what they can touch. Every document query applies `document_access_filters(user)`, project routes call `ensure_project_access`, and admin-only routes depend on `require_admin`. See [§5](#5-roles-and-access).
 
-### API Validation
+### API validation
 
-All data received from the frontend is validated by the backend. The backend cannot rely on frontend validation because requests can be made directly to the API.
+Pydantic schemas validate every request body. Text fields on projects are trimmed before validation, so a name of only spaces is rejected.
 
-### File Uploads
+### File uploads
 
-The backend independently validates uploaded files, including file type and size, before accepting them for processing. Files are assigned a unique identifier and stored separately from the application database.
+The backend checks the file is non-empty (`422`), within 50 MB (`413`) and a supported type by content, not just extension (`415`). Files get a unique storage key and are stored in MinIO, separate from the database.
 
-### Orphaned Upload Cleanup
+### Orphaned upload cleanup
 
-File upload and database commit are two separate operations. If the process crashes after uploading to MinIO but before the database transaction commits, the object in MinIO has no corresponding `DocumentVersion` record. These orphaned objects would accumulate indefinitely without a cleanup mechanism.
+Uploading to MinIO and committing the database transaction are two separate steps. If the process dies between them, MinIO holds a file with no database record.
 
-To handle this, every uploaded object is immediately tagged `kg-orphan=true` in MinIO after the upload completes. A MinIO lifecycle rule (configured at application startup) auto-expires any object carrying this tag after 24 hours.
+Every uploaded object is therefore tagged `kg-orphan=true` straight away, and a MinIO lifecycle rule (set at startup) deletes tagged objects after 24 hours. Once the transaction commits, the tag is removed. Both calls are best-effort: failures are logged, not fatal, because the lifecycle rule is a safety net.
 
-Once the database transaction commits successfully, the tag is removed. The window between upload and tag removal is typically milliseconds. If removal fails, the processing job will eventually fail when the worker tries to download a deleted object; the reaper then marks the job `FAILED` and the user can re-upload.
+### Processing uploads
 
-Both the tagging and tag-removal calls are best-effort — failures are logged but do not abort the request. This is intentional: the lifecycle rule is a safety net, not a hard dependency.
+The worker first marks the job `PROCESSING` and commits, so the poller won't pick it up again mid-run. It then downloads, extracts, chunks and embeds outside any transaction, and finally persists everything in one transaction: insert chunks, update the full-text index, supersede the old `ACTIVE` version, activate the new one, mark the job `COMPLETE`. Any error rolls the whole step back.
 
-### Process Uploads
+### Reaper
 
-First we set job status to `processing` commit those changes to db to keep job status up to date. The second transation will persist those results (add documentChunks, update vector search with chunks for keyword search) and activate version which sets active version to superseded, sets document we are processing to active and then sets job status to complete.
-
-We then commit these changes to db or if error occured all changes are automatically rolledback and our poll system will pick up the job because status is set to `QUEUED` if processing job failed.
-
-If we did not immediately commit status to processing at the start then the poller may pick up the QUEUED job again while it is being processed because it looks for QUEUED jobs to be processed every now and then.
-
-### Reaper  
-
-I implented a reaper in case local server or cloud server loses power or stops working, in this event our python except block would not execute however the db changes would be automatically rolledback if not commited yet.
-
-If our server dies just after setting job status to `processing` then our job would not be cleaned up in the except block setting status back to `QUEUED` therefore the job would not be picked up again by our poll system and would be stuck forever as status `processing`.
+If the worker dies hard (power loss, `SIGKILL`), no `except` block runs and the job would sit in `PROCESSING` forever. The reaper runs every 30 seconds and resets any `PROCESSING` job untouched for 10+ minutes back to `QUEUED`. Jobs past the retry limit are marked `FAILED` and their file is deleted.
 
 ### Poller
 
-I chose to use a poller system to ensure that processing jobs stored in PostgreSQL are eventually picked up by ARQ.
+The job row is committed to Postgres before enqueueing to Redis. If the process crashes or Redis is down in between, the job stays `QUEUED`. The poller checks every 30 seconds and enqueues any `QUEUED` jobs, using the same deterministic job id so arq ignores duplicates. arq's own retries handle failures during processing; the poller covers jobs that never reached the queue.
 
-This provides protection against failures occurring between creating the processing job in PostgreSQL and successfully enqueueing the job in Redis/ARQ.
+### Document integrity
 
-For example, if the application creates a job with a QUEUED status but crashes before the job is successfully enqueued, the job would remain in PostgreSQL without ever being processed.
+Each upload's SHA-256 hash is stored. It blocks re-uploading an identical file and detects concurrent duplicate uploads.
 
-The poller periodically checks PostgreSQL for QUEUED jobs and enqueues any jobs that have not yet been picked up by ARQ. This means that if an error or server crash occurs before enqueueing, the job can safely be discovered and processed later.
+### Asynchronous processing and reliability
 
-For errors that occur during processing, ARQ's retry mechanism is responsible for retrying the job. The poller provides an additional recovery mechanism for jobs that are stuck in the database before they reach the worker queue.
+Processing runs in a separate worker so slow OCR and embedding work never holds an HTTP request open. Transient failures retry with backoff (60 s for OpenAI rate limits) up to `MAX_TRIES`; permanent failures (bad input, OpenAI auth/validation errors) fail immediately. Worker concurrency is capped at 5 jobs to stay within OpenAI rate limits.
 
-I would use an transation outbox pattern if we was needing to execute multiple different events in a queue in the background because instead of having multiple different tables tracking events we would have one which allows for one relaible, generic source of truth for events that need to be processed in the background.
+### Database transactions
 
-### Document Integrity
+Changes spanning several rows (upload, version activation, deletion) use one transaction. Slow external calls (OpenAI, MinIO) happen outside transactions.
 
-A SHA-256 hash is generated for each uploaded document. This provides a way to verify the document has not changed and can also be used to identify duplicate documents where appropriate.
+### AI responses
 
-### Asynchronous Processing
-
-Document processing is separated from the API request using a background job queue. The API accepts the document and creates a processing job rather than keeping the HTTP request open while OCR and AI processing takes place.
-
-### Job Reliability
-
-Workers process jobs independently of the API. Failed jobs are retried with exponential backoff, while a maximum retry count prevents permanently failing documents from being retried indefinitely.
-
-### Idempotency
-
-Processing operations are designed to be idempotent so that retrying a job does not incorrectly create duplicate records or repeat completed work.
-
-### Database Transactions
-
-Database changes are performed within transactions where multiple related records need to remain consistent. Long-running operations such as AI API calls are not performed while holding a database transaction open.
-
-### AI Processing
-
-AI processing is treated as an unreliable external dependency. The backend validates AI responses against the expected schema rather than assuming the model will always return valid data.
+The LLM is treated as unreliable: its JSON output is validated against a Pydantic schema, and OpenAI failures return `503`.
 
 ### Secrets
 
-API keys and other credentials are stored as environment or secret configuration rather than being exposed to the frontend or committed to source control.
+API keys and credentials come from environment variables, never the frontend or source control.
 
-### Rate Limiting
+### Rate limiting
 
-`/auth/login`, `/auth/register`, and `/query` are rate limited per-IP (slowapi + Redis) — login/register to prevent credential attacks and bcrypt flooding, `/query` because each call costs two OpenAI API calls. Document upload/version endpoints are not currently rate limited.
+Per-IP limits via slowapi + Redis: `/auth/login` and `/auth/register` at 5/minute (credential attacks, bcrypt cost), `/query` at 20/minute (each query costs two OpenAI calls). Failed logins also lock the email for 15 minutes after 5 attempts.
 
 ### Observability
 
-The backend records structured logs and processing metrics such as job duration, retry count, processing status, and failures so that problems can be diagnosed without relying on the frontend.
-
-**Logs**
-
-The application writes structured logs to stdout/stderr. In local development, these logs can be viewed through Docker Desktop. In production, the cloud environment collects these logs through its logging system, allowing them to be searched and monitored.
-
-**Audits**
-
-An audit event system (`audit_events` table, emitted on upload/query/deletion/etc.) was built and later removed from the codebase. There is no audit log in the current system — activity is only visible through structured request/job logs, not a queryable business-event record.
-
-
-### Resource Limits
-
-Limits are placed on document size, processing attempts, and worker concurrency to prevent a single request or document from consuming an unreasonable amount of system resources.
+Structured logs (`structlog`) to stdout: request logs with `request_id`, status and duration; LLM calls with tokens, duration and cost; worker jobs with duration, chunk count and attempt; poller queue depth. Locally they're visible with `docker compose logs`. There is no metrics dashboard or audit log.
 
 ---
 
-## 4. Retrieval Pipeline
+## 4. Search pipeline
 
-The retrieval pipeline runs on every query. Order of operations is fixed and cannot be bypassed.
+Runs on every `POST /query`, always in this order.
 
 ### Step 1 — Authentication
 
-Request must include a valid session cookie. The backend validates the session ID against the server-side session store. If missing, invalid, or expired, return `401`. Log the attempt.
+A valid session cookie is required, otherwise `401`.
 
-### Step 2 — Permission Filtering
+### Step 2 — Project access
 
-Load the set of document IDs the authenticated user is permitted to access based on their role. Non-admins are restricted to `SENSITIVE != 'SENSITIVE'` documents. All subsequent retrieval is scoped to this set. Sensitive documents never appear in results for non-admin users under any circumstances.
+If `project_id` is given (the project Search tab always sends it), the user must have access: unknown project `404`, not a member `403`.
 
-### Step 3 — Version Filtering
+### Step 3 — Permitted documents
 
-Within the permitted set, filter further to only `ACTIVE` versions. Superseded and deleted versions are never searched.
+`build_permitted_doc_ids(user, project_id)` builds a subquery of the documents the user may search: the given project's documents, further limited to the user's member projects for builders and clients. Everything below is restricted to this set inside the SQL query, so nothing else can reach the LLM.
 
-### Step 4 — Hybrid Retrieval
+### Step 4 — Current versions only
 
-Two retrieval methods run in parallel:
+Only `ACTIVE` versions are searched. Superseded, failed and processing versions are excluded.
 
-**Vector search** — the query is embedded using the same OpenAI model used at index time. pgvector finds the top-K most similar chunks by cosine similarity, restricted to the permitted + active version set.
+### Step 5 — Hybrid retrieval
 
-**Full-text search** — PostgreSQL `tsvector` / `tsquery` keyword search over the same restricted set.
+- **Vector search:** the question is embedded with the same model used at index time (`text-embedding-3-small`), and pgvector finds the nearest chunks by cosine distance.
+- **Full-text search:** Postgres `tsvector`/`plainto_tsquery` keyword matching over the same set.
 
-Results from both are merged.
+### Step 6 — Ranking
 
-### Step 5 — Ranking
+Reciprocal Rank Fusion merges the two ranked lists; the top chunks go forward.
 
-Reciprocal Rank Fusion (RRF) merges the two result lists into a single ranked list. Top chunks are selected for context assembly.
+### Step 7 — Context and generation
 
-### Step 6 — Context Assembly
-
-Selected chunks are formatted into a prompt with the user's question. Source document title, version number, and status are included so the LLM can cite them accurately.
-
-### Step 7 — LLM Generation
-
-Assembled prompt sent to OpenAI. The model is instructed to answer only from the provided context and to include citations. If context does not contain the answer, the model must say so rather than hallucinate.
+The chunks are formatted with their document title, version number and status, and sent to `gpt-4o-mini` with instructions to answer only from that context, cite its sources, and say so if the answer isn't there.
 
 ### Step 8 — Response
 
-Answer and structured citations returned to the client.
+The validated answer and citations (title, version, status, last updated) are returned.
 
 ---
 
-## 8. Version Transition
+## 5. Roles and access
 
-When a new version is uploaded:
+| Role | Projects | Documents and search | Admin actions |
+|---|---|---|---|
+| `admin` | All | All | Create/edit projects, Team page, roles, project members |
+| `builder` | Member projects | Member projects | — |
+| `client` | Member projects | Member projects | — |
 
-1. New `document_version` record created with `status = PROCESSING`
-2. Processing pipeline runs
-3. On success, inside a single database transaction:
-   - Current `ACTIVE` version updated to `SUPERSEDED`
-   - New version updated to `ACTIVE`
-   - Old chunks remain in the database but are no longer reachable via normal queries (version filter excludes them)
-4. On failure, new version moves to `FAILED`. Previous `ACTIVE` version remains active.
-
-Transition is atomic. There is never a moment where zero versions are active (assuming one existed before).
-
----
-
-## 9. Deletion
-
-Deleting a document is a hard delete. All associated rows are removed from the database in FK-dependency order within a single transaction.
-
-1. All `document_chunks` for all versions deleted
-2. All `processing_jobs` for all versions deleted
-3. All `document_versions` for the document deleted
-4. The `document` row deleted
-
-After deletion the document cannot appear in any query result. Access attempts return `404`.
+- Users choose their role at registration.
+- Builders and clients have identical document permissions.
+- Documents with no project are admin-only.
+- Admins can't change their own role, so the last admin can't lock themselves out.
 
 ---
 
-## 10. Authentication and Authorisation
+## 6. Version transition
 
-### Authentication
+1. A new `DocumentVersion` is created as `PROCESSING`.
+2. The worker processes it.
+3. On success, in one transaction: the current `ACTIVE` version becomes `SUPERSEDED` and the new one becomes `ACTIVE`. The old version's chunks stay in the database but are filtered out of search.
+4. On failure the new version becomes `FAILED` and the previous version stays `ACTIVE`.
 
-Session cookie-based. On login, the backend creates a server-side session containing `user_id` and `role`, and sends the session ID to the browser as an `HttpOnly`, `Secure`, `SameSite=Strict` cookie. Sessions are stored server-side and can be invalidated at any time. Sessions expire 24 hours after login — a fixed expiry, not a sliding inactivity window.
-
-Passwords stored as bcrypt hashes. Minimum 8 characters enforced at registration.
-
-### Authorisation
-
-Role and document sensitivity together determine access. Ownership has no effect.
-
-**Roles:**
-
-- `admin` — full access to all documents (STANDARD and SENSITIVE)
-- `user` — access to STANDARD documents only
-
-**Document sensitivity:**
-
-- `STANDARD` — accessible to all authenticated users
-- `SENSITIVE` — accessible to admins only; non-admins cannot upload, list, read, or query sensitive documents
-
-Permission filter applied at the DB query layer in every document route and in the RAG retrieval pipeline. `SENSITIVE` documents never enter the retrieval pipeline for non-admin users.
-
-All new users register as `user`. Role is promoted via direct DB update (`UPDATE users SET role = 'admin'`). There is no self-service role elevation.
-
-### Principle
-
-Deny by default for sensitive content. STANDARD documents are accessible to all authenticated users. SENSITIVE documents are accessible only to admins.
+There is never a moment with zero active versions (if one existed before). An older version can be re-activated from version history, which swaps the statuses the same way.
 
 ---
 
-## 11. Audit Log
+## 7. Deletion
 
-Not present. An `audit_events` table and emission logic were built and later removed from the codebase — there is no audit log in the current system.
-
----
-
-## 12. Error Handling
-
-| Scenario                          | Behaviour                                                |
-| --------------------------------- | -------------------------------------------------------- |
-| Missing or invalid session cookie | `401 Unauthorized`                                       |
-| Permission denied                 | `403 Forbidden`                                          |
-| Document not found                | `404 Not Found`                                          |
-| Unsupported file type             | `422 Unprocessable Entity`                               |
-| Processing failure                | Version marked `FAILED`, visible via status in the UI    |
-| LLM API failure                   | `503 Service Unavailable`, query not answered            |
-| Duplicate processing job          | Idempotency check prevents duplicate chunks              |
-| Version transition failure        | Transaction rolled back, previous version stays `ACTIVE` |
+Deleting a document is a hard delete, in one transaction and in foreign-key order: chunks → processing jobs → versions → document. Afterwards it can't appear anywhere and requests for it return `404`. The original file stays in MinIO.
 
 ---
 
-## 13. Testing Strategy
+## 8. Error handling
 
-### Unit Tests (Pytest)
-
-- Version transition logic — correct status changes, atomic rollback on failure
-- Permission filter — correct documents excluded for each user
-- Version filter — only `ACTIVE` versions returned for normal queries
-- Chunking — correct chunk size and overlap
-- Deletion — all associated data removed
-
-### Integration Tests (Pytest)
-
-- Full upload → process → query flow
-- Version supersede → query returns new version
-- Delete → query returns no results
-- Permission denied → restricted document not in results
-
-### End-to-End Tests (Playwright)
-
-- User signs up, uploads document, asks question, receives cited answer
-- User uploads updated version, same question returns updated answer
-- User deletes document, document no longer appears
-- Unauthorised user cannot access restricted document
-
-There is no evaluation framework or automated accuracy/stale-retrieval tracking — that was planned but never built.
+| Scenario | Behaviour |
+|---|---|
+| Missing or expired session | `401`, frontend redirects to `/login` |
+| Not a member of the project / not an admin | `403` |
+| Unknown project or document (or document outside your projects) | `404` |
+| Duplicate file | `409` |
+| File too large | `413` |
+| Unsupported file type | `415` |
+| Invalid input | `422` |
+| Rate limit hit | `429` |
+| OpenAI unavailable | `503` |
+| Processing failure | Version `FAILED`, shown in the UI |
+| Version transition failure | Rolled back, previous version stays `ACTIVE` |
 
 ---
 
-## 14. Key Technical Decisions
+## 9. Testing
 
-### Why keep superseded chunks in the database?
+- **Backend unit tests (pytest):** auth helpers, chunking, document validation, text extraction, RRF, logging.
+- **Backend integration tests (pytest, real Postgres):** routers (auth, projects, team, documents, versions, query) and the processing pipeline, including access isolation between projects and exclusion of superseded versions from search.
+- **Frontend (Jest):** API client and helpers.
+- **End-to-end (Playwright):** auth, document upload and versions, and search against the running stack.
 
-A superseded version can be re-activated from version history, and it needs its chunks and embeddings to be searchable again without re-processing. Superseded chunks are excluded from queries by the version filter, not by deletion.
+---
 
-### Why store raw files in MinIO rather than PostgreSQL?
+## 10. Key decisions
 
-PostgreSQL is not optimised for large binary storage. Storing raw files in a dedicated object store keeps the database lean and keeps file reads off the database connection pool.
+### Why keep superseded chunks?
 
-### Why pgvector over a dedicated vector database for the MVP?
+An older version can be re-activated, and keeping its chunks means it's searchable again instantly, without re-processing. Search excludes them with a status filter rather than deleting them.
 
-A dedicated vector database (Qdrant, Pinecone) adds operational complexity — a second system to deploy, monitor, and keep in sync with the relational data. For MVP document volumes, pgvector is sufficient. The abstraction boundary means switching to a dedicated vector DB later is an infrastructure change, not an application logic change.
+### Why MinIO for files?
+
+Postgres isn't built for large binary files. Object storage keeps the database small and file reads off the database connection pool.
+
+### Why pgvector rather than a vector database?
+
+A separate vector database is another system to run and keep in sync with the relational data. At the portal's document volumes, pgvector in the same Postgres is enough, and permission and version filters run in the same SQL query as the similarity search.
+
+### Why integer project ids?
+
+A plain auto-increment identity column is the standard approach and needs no id-generation code. Ids are guessable, which is fine because every project endpoint checks membership.
+
+### Why role + membership rather than per-document permissions?
+
+Construction access maps naturally to projects: everyone on a job needs that job's documents, and no one else does. Per-document grants would add admin work without matching how the business operates.

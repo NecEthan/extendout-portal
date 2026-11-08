@@ -1,6 +1,6 @@
-# Architecture
+# Technology Choices
 
-## Technology Choices
+Why each part of the ExtendOut Portal stack was chosen.
 
 ---
 
@@ -22,7 +22,7 @@ Pydantic provides request and response validation out of the box. FastAPI's buil
 
 ### Database — PostgreSQL
 
-PostgreSQL is a relational database that allows us to define clear relationships between data. Documents, versions, chunks, and permissions all reference each other using foreign keys, and this structure needs to be enforced at the database level.
+PostgreSQL is a relational database that allows us to define clear relationships between data. Users, projects, project memberships, documents, versions and chunks all reference each other using foreign keys, and this structure needs to be enforced at the database level.
 
 PostgreSQL also supports vector storage and search through the `pgvector` extension, which means we can store embeddings alongside relational data without running a separate database. MySQL does not have a comparable extension in its ecosystem.
 
@@ -50,7 +50,7 @@ SQLAlchemy is used to interact with PostgreSQL from Python. It provides an ORM l
 
 ### Database Migrations — Alembic
 
-Alembic manages database schema changes over time. Every change to the schema is tracked as a versioned migration file. This means the database can be reliably evolve as the application grows, and any environment can be brought to the correct schema state with a single command.
+Alembic manages database schema changes over time. Every change to the schema is tracked as a versioned migration file. This means the database can reliably evolve as the application grows, and any environment can be brought to the correct schema state with a single command.
 
 ### OCR — Text Extraction from Scanned Documents
 
@@ -60,7 +60,7 @@ Some documents arrive as scanned images rather than machine-readable text. An OC
 
 ### Authentication and Authorisation
 
-Authentication verifies who the user is. Authorisation controls what they are allowed to access. Both are critical in KnowledgeGuard because documents may be restricted to specific users or roles. Permission filtering happens before any content is sent to the LLM, ensuring restricted documents never enter the retrieval context for unauthorised users.
+Authentication verifies who the user is. Authorisation controls what they are allowed to access. Both matter here because each project's documents (drawings, calcs, quotes, the homeowner's details) must only be visible to the people on that project. Permission filtering happens in the database query before any content is sent to the LLM, so documents from other projects never enter the retrieval context.
 
 ---
 

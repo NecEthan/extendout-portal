@@ -1,134 +1,47 @@
-# KnowledgeGuard
+# ExtendOut Portal
 
-AI powered enterprise knowledge platform that helps employees quickly find and understand the information they need.
+The project workspace for **ExtendOut Design | Build** — extensions, loft conversions and renovations across Surrey and London.
 
-KnowledgeGuard turns a company's existing documents and knowledge into an AI searchable system, allowing employees to ask questions in natural language instead of searching through folders, policies, PDFs, internal websites, and multiple document versions.
+Every job is a project. The office team, the site team and the homeowner share the project's documents in one place, and anyone on the project can ask a question in plain English and get an answer from the **current** version of the project's documents, with the source file and version cited.
 
-## Problem We Solve
+## The problem
 
-Businesses have huge amounts of important information stored across policies, procedures, HR documents, contracts, engineering documentation, SOPs, and internal guides.
+A single extension produces a lot of paperwork: architectural drawings, structural calculations, building-control approvals, specifications, quotes, change requests. Most of it gets revised several times during the job.
 
-For a large enterprise, even saving a few minutes per information search can have a significant impact. If thousands of employees regularly use KnowledgeGuard to find policies, procedures, and internal information, the time saved can add up to **thousands of hours of employee productivity over the course of a year**.
+On site, that means:
 
-It is giving employees back time that would otherwise be spent looking for information, allowing them to focus on higher value work.
+1. Digging through emails and shared folders for the right drawing
+2. Not knowing whether you're looking at the latest revision
+3. Homeowners phoning the office for answers that are already written down somewhere
+4. Mistakes when someone builds from a superseded drawing or calc
 
+## What the portal does
 
-The information employees need already exists, but **finding it can take time**.
+- **One place per job.** Each project holds its documents and the people working on it. Builders and homeowners only see the projects they've been added to.
+- **Version control built in.** Uploading a revised drawing or calc keeps the history, but only one version is ever current.
+- **Ask, don't search.** *"What U-value is specified for the rooflights?"*, *"What size is the steel over the bifolds?"* — the answer comes from the project's current documents, with the document and version it came from.
+- **Never out of date.** Search ignores superseded versions entirely, so answers always reflect the latest revision.
 
-An employee looking for a simple answer might have to:
+## Who uses it
 
-1. Search through multiple folders
-2. Open several documents
-3. Check whether the document is still current
-4. Compare different versions
-5. Find the relevant section
-6. Determine whether they are actually allowed to access it
+| Role | Who | Access |
+|---|---|---|
+| Admin | ExtendOut office | All projects; creates and edits projects; manages the team and who's on each project |
+| Builder | Site team and trades | Documents and search for their projects |
+| Client | Homeowners | Documents and search for their own project |
 
-For a single employee this might only take a few minutes.
+## Documentation
 
-Across hundreds or thousands of employees, this becomes a significant productivity cost.
-
-The problem becomes even harder when companies have duplicate documents, outdated policies, multiple versions, or information spread across different systems.
-
-KnowledgeGuard gives employees a single place to ask questions about company knowledge and quickly get an answer from the relevant source.
-
-The system also ensures that the information used by AI is **current, authorised, and traceable**.
-
-## Business Impact
-
-### Save Employee Time
-
-Employees can ask a question directly instead of spending time searching through company systems.
-
-For example:
-
-```text
-"What is our annual leave policy?"
-```
-
-Instead of manually searching through HR folders, the employee receives an answer with the relevant policy as the source.
-
-This can save minutes per search and potentially thousands of hours across a large organisation.
-
-### Faster Access to Company Knowledge
-
-KnowledgeGuard makes existing company information easier to access.
-
-Employees do not need to know where a document is stored or what it is called. They can simply describe what they need.
-
-Examples:
-
-```text
-"What is the process for requesting expenses?"
-
-"How many days of parental leave do we offer?"
-
-"What is the latest security policy?"
-
-"How do I request annual leave?"
-```
-![Illustrative Time Savings Per Search](docs/images/Illustrative%20Time%20Savings%20Per%20Search.png)
-
-
-### Reduce Outdated Information
-
-Companies often have multiple versions of the same document.
-
-An employee might find an old policy and unknowingly use information that is no longer valid.
-
-KnowledgeGuard tracks document versions and ensures normal AI queries use the current version.
-
-### Increase Trust in AI
-
-AI answers are supported by their source document and version.
-
-Employees can see where the answer came from and verify the information when necessary.
-
-### Improve Knowledge Accessibility
-
-The goal is not to create more company documentation.
-
-It is to make the information a company already has **much easier to access and use**.
-
-KnowledgeGuard turns existing enterprise knowledge into an AI accessible knowledge layer.
-
-## Product Vision
-
-KnowledgeGuard is designed to become the knowledge layer between a company's existing information systems and its AI applications.
-
-```text
-Company Knowledge
-       ↓
-SharePoint
-Google Drive
-Google Docs
-OneDrive
-Confluence
-Internal Documents
-       ↓
-   KnowledgeGuard
-       ↓
-Search + Versioning + Permissions + Governance
-       ↓
-AI Applications
-       ↓
-Employees
-```
-
-The long term goal is to make company knowledge as easy to access as asking a colleague, while maintaining the security, version control, and traceability expected in an enterprise environment.
-
-**The core idea: make company knowledge easy to find, reliable to use, and safe to access.**
+- [Overview](docs/overview.md) — what the portal does, roles, features, what's real vs sample data
+- [Architecture](docs/architecture.md) — system diagram, data model, upload and search flows
+- [Requirements](docs/requirements.md) — detailed behaviour and the full API
+- [Technical design](docs/technical-design.md) — how and why it's built this way
+- [Technology choices](docs/technologies.md)
+- [Engineering decisions](docs/engineering-decisions.md)
 
 ---
 
 ## Development
-
-### Test Account
-
-| Field | Value |
-|---|---|
-| Email | test1@gmail.com |
-| Password | password |
 
 ### Prerequisites
 
@@ -142,11 +55,18 @@ The long term goal is to make company knowledge as easy to access as asking a co
 docker compose up -d
 ```
 
-Starts everything — postgres, redis, minio, backend, worker, and frontend. App available at http://localhost:3000.
+Starts Postgres, Redis, MinIO, the backend, the worker and the frontend. The app is at http://localhost:3000.
 
----
+After backend code changes, restart the API and worker (`docker compose restart backend worker`); the frontend reloads on its own.
 
-## Documentation
+### Local accounts
 
-- [MVP](docs/mvp.md) — data sources, architecture, roadmap, success criteria
-- [Final Product](docs/final-product.md) — enterprise connectors, sync, future capabilities
+These exist only in a local development database:
+
+| Email | Password | Role |
+|---|---|---|
+| test@gmail.com | password | Admin |
+| person1@gmail.com – person4@gmail.com | password | Client |
+| person5@gmail.com | password | Builder |
+
+See [CLAUDE.md](CLAUDE.md) for commands (tests, migrations, linting).

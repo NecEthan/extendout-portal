@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Project Is
 
-KnowledgeGuard is an AI-powered enterprise knowledge platform. Employees upload company documents; the system chunks and embeds them, then answers natural-language questions with citations to the source document and version.
+The ExtendOut Portal (repo name `knowledgeguard`) is the project workspace for ExtendOut Design | Build, a construction company doing extensions and loft conversions. Each job is a project; admins, builders and clients share its documents, which the system chunks and embeds to answer natural-language questions with citations to the source document and version. Product docs are in `docs/` (start with `docs/overview.md`).
 
 ## Monorepo Layout
 
@@ -137,7 +137,7 @@ Team management is **admin only** (`app/routers/team.py`, `app/routers/project_m
 3. Detect content type → extract text (`app/services/extractor.py`).
 4. Chunk text (`app/services/chunker.py`).
 5. Generate OpenAI embeddings (`app/services/embedder.py`).
-6. `persist_results` (`app/workers/persistence.py`) — insert `DocumentChunk` rows, update search vector, supersede old ACTIVE version, activate new version, emit `INDEX_UPDATED` audit event — all in one transaction.
+6. `persist_results` (`app/workers/persistence.py`) — insert `DocumentChunk` rows, update search vector, supersede old ACTIVE version, activate new version — all in one transaction.
 
 On error: `app/utils/worker_errors.py` classifies retryable vs non-retryable. Non-retryable (`ValueError`, `openai.AuthenticationError`, `openai.BadRequestError`) → immediate FAILED. Retryable → `raise Retry(defer=N)` up to `MAX_TRIES`. Permanent failure calls `persist_failure` (`app/workers/failure.py`) which also deletes the MinIO object.
 
@@ -150,10 +150,10 @@ Run worker: `uv run arq app.workers.main.WorkerSettings` (or via Docker: `worker
 `POST /query` in `app/routers/query.py` — full RAG pipeline:
 1. Embed question via `app/services/embedder.py`.
 2. Parallel vector search (`app/services/vector_search.py`) + FTS (`app/services/fts_search.py`).
-3. Fuse results via RRF (`app/services/rrf.py`), filter by role via `build_permitted_doc_ids` (`app/services/permissions.py`) — SENSITIVE docs excluded for non-admins.
+3. Fuse results via RRF (`app/services/rrf.py`), filtered to permitted documents via `build_permitted_doc_ids` (`app/services/permissions.py`). Both searches only include `ACTIVE` versions — there is no historical mode.
 4. Build context string (`app/services/context_builder.py`).
 5. Call LLM (`app/services/llm.py`) — `gpt-4o-mini` by default (`config.chat_model`).
-6. Return `QueryResponse` with citations. Emit `QUERY_EXECUTED` audit event.
+6. Return `QueryResponse` with citations.
 
 ## Frontend Architecture
 
