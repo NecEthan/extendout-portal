@@ -2,7 +2,6 @@ import { Plus, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/portal/PageHeader";
-import { MockBanner } from "@/components/portal/MockBanner";
 import { materialColumns, mockMaterials } from "@/mocks/materials";
 import { ProjectName } from "@/components/portal/projects/ProjectName";
 import { formatDate, formatGBP } from "@/lib/format";
@@ -19,7 +18,6 @@ export default function MaterialsPage() {
           </Button>
         }
       />
-      <MockBanner />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {materialColumns.map((col) => {
           const items = mockMaterials.filter((m) => m.status === col);

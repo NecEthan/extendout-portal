@@ -5,7 +5,6 @@ import { FolderKanban } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { StatCard } from "@/components/portal/StatCard";
-import { MockBanner } from "@/components/portal/MockBanner";
 import { ProjectCard } from "@/components/portal/projects/ProjectCard";
 import { useProjects } from "@/hooks/useProjects";
 import { mockActivity } from "@/mocks/dashboard";
@@ -20,7 +19,6 @@ export default function DashboardPage() {
         title="Good morning"
         description="Here's what's happening across your ExtendOut projects today."
       />
-      <MockBanner />
 
       <div className="grid grid-cols-2 gap-4">
         <StatCard

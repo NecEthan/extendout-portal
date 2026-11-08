@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/portal/PageHeader";
-import { MockBanner } from "@/components/portal/MockBanner";
 import { ProjectCard } from "@/components/portal/projects/ProjectCard";
 import { AddProjectForm } from "./add/AddProjectForm";
 import { ErrorAlert } from "@/components/ui/error-alert";
@@ -32,7 +31,6 @@ export default function ProjectsPage() {
         }
       />
       {creating && <AddProjectForm onCancel={() => setCreating(false)} />}
-      <MockBanner />
       <ErrorAlert
         message={getErrorMessage(projects, "Failed to load projects")}
       />

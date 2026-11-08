@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import { LogOut } from "lucide-react";
 import { applicationRoutes } from "@/utils/applicationRoutes";
@@ -30,18 +31,15 @@ export function Sidebar() {
 
   return (
     <aside className="flex w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground">
-      <div className="flex items-center gap-2.5 px-5 py-5">
-        <span className="grid size-8 place-items-center rounded-md bg-sidebar-primary font-heading text-sm font-bold text-sidebar-primary-foreground">
-          EO
-        </span>
-        <div className="flex flex-col leading-tight">
-          <span className="font-heading text-sm font-semibold tracking-wide text-white">
-            ExtendOut
-          </span>
-          <span className="text-[11px] uppercase tracking-[0.18em] text-white/50">
-            Portal
-          </span>
-        </div>
+      <div className="px-5 py-5">
+        <Image
+          src="/extendout-logo.png"
+          alt="ExtendOut Design | Build"
+          width={621}
+          height={182}
+          priority
+          className="h-auto w-40"
+        />
       </div>
 
       <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 pb-4">

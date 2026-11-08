@@ -3,7 +3,6 @@
 import { useParams, useSearchParams } from "next/navigation";
 import { Tabs } from "@/components/ui/tabs";
 import { ErrorAlert } from "@/components/ui/error-alert";
-import { MockBanner } from "@/components/portal/MockBanner";
 import { ProjectDocuments } from "@/components/documents/ProjectDocuments";
 import { ProjectSearch } from "@/components/search/ProjectSearch";
 import { ProjectTeam } from "@/components/team/ProjectTeam";
@@ -78,7 +77,6 @@ export default function ProjectDetailPage() {
     <>
       <BackLink />
       <ProjectHeader project={project} isAdmin={isAdmin} />
-      <MockBanner />
       <Tabs defaultValue={tab} tabs={tabs} />
     </>
   );

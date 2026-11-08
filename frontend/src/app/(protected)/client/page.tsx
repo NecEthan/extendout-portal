@@ -3,7 +3,6 @@
 import { CalendarCheck, Mail, Phone } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/portal/PageHeader";
-import { MockBanner } from "@/components/portal/MockBanner";
 import { MilestoneTimeline } from "@/components/portal/projects/MilestoneTimeline";
 import { ErrorAlert } from "@/components/ui/error-alert";
 import { useProject } from "@/hooks/useProjects";
@@ -37,7 +36,6 @@ export default function ClientOverviewPage() {
         title={`Welcome back, ${clientWelcome.clientName}`}
         description={`${project.name} · ${project.address}`}
       />
-      <MockBanner />
 
       <Card className="mb-6 overflow-hidden bg-sidebar text-white ring-0">
         <CardContent className="flex flex-col gap-4 py-2 md:flex-row md:items-center md:justify-between">

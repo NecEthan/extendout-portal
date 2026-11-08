@@ -1,6 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/portal/PageHeader";
-import { MockBanner } from "@/components/portal/MockBanner";
 import { MilestoneTimeline } from "@/components/portal/projects/MilestoneTimeline";
 import { mockMilestones, mockPlanItems } from "@/mocks/planning";
 import { ProjectName } from "@/components/portal/projects/ProjectName";
@@ -28,7 +27,6 @@ export default function PlanningPage() {
         title="Planning"
         description="Now / Next / Then across every live job, so trades and materials line up."
       />
-      <MockBanner />
 
       <div className="grid gap-4 lg:grid-cols-3">
         {BUCKETS.map(({ bucket, hint, accent }) => {

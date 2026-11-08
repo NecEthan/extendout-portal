@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { applicationRoutes } from "@/utils/applicationRoutes";
 import { Button } from "@/components/ui/button";
@@ -40,12 +41,17 @@ export function AuthForm() {
           aria-hidden
           className="absolute -right-32 -bottom-32 size-[28rem] rounded-full bg-primary/25 blur-3xl"
         />
-        <div className="flex items-center gap-2.5">
-          <span className="grid size-9 place-items-center rounded-md bg-primary font-heading text-sm font-bold">
-            EO
-          </span>
-          <span className="font-heading text-lg font-semibold tracking-wide">
-            ExtendOut <span className="font-normal text-white/60">Portal</span>
+        <div className="relative flex flex-col gap-1.5">
+          <Image
+            src="/extendout-logo.png"
+            alt="ExtendOut Design | Build"
+            width={621}
+            height={182}
+            priority
+            className="h-auto w-56"
+          />
+          <span className="pl-1 text-xs uppercase tracking-[0.18em] text-white/50">
+            Portal
           </span>
         </div>
         <div className="relative flex max-w-md flex-col gap-4">
@@ -62,7 +68,16 @@ export function AuthForm() {
         </span>
       </section>
 
-      <div className="flex items-center justify-center bg-muted px-4">
+      <div className="flex flex-col items-center justify-center gap-6 bg-muted px-4">
+        {/* The dark panel with the full logo is hidden on small screens. */}
+        <Image
+          src="/extendout-mark.png"
+          alt="ExtendOut"
+          width={130}
+          height={132}
+          priority
+          className="size-14 rounded-xl lg:hidden"
+        />
         <Card className="w-full max-w-sm">
           <CardHeader>
             <CardTitle className="font-heading text-xl">Sign in</CardTitle>

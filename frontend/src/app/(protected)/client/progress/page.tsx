@@ -1,5 +1,4 @@
 import { PageHeader } from "@/components/portal/PageHeader";
-import { MockBanner } from "@/components/portal/MockBanner";
 import { PhotoTile } from "@/components/portal/PhotoTile";
 import { mockProgressUpdates } from "@/mocks/client";
 import { formatDate } from "@/lib/format";
@@ -11,7 +10,6 @@ export default function ProgressPhotosPage() {
         title="Progress Photos"
         description="Weekly updates and photos from site, straight from your site manager."
       />
-      <MockBanner />
       <ol className="flex flex-col gap-8 border-l-2 border-primary/30 pl-6">
         {mockProgressUpdates.map((u) => (
           <li key={u.id} className="relative flex flex-col gap-3">

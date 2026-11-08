@@ -25,6 +25,9 @@ export default function RootLayout({
     <html
       lang="en"
       className={cn("font-sans", inter.variable, montserrat.variable)}
+      // Browser extensions (e.g. Cap) add attributes to <html> before React
+      // loads; ignore those mismatches on this element only.
+      suppressHydrationWarning
     >
       <body>
         <QueryProvider>{children}</QueryProvider>
