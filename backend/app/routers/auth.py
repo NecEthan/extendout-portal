@@ -6,38 +6,14 @@ from app.config import settings
 from app.dependencies import get_arq_pool, get_current_user, get_db
 from app.limiter import limiter
 from app.models.base import User
-from app.schemas.auth import LoginRequest, RegisterRequest, UserResponse
+from app.schemas.auth import LoginRequest, UserResponse
 from app.services.auth import (
     create_session,
-    hash_password,
     invalidate_session,
     verify_password,
 )
 
 router = APIRouter(tags=["auth"])
-
-
-@router.post("/register", status_code=201, response_model=UserResponse)
-@limiter.limit(settings.register_rate_limit)
-async def register(
-    request: Request,
-    body: RegisterRequest,
-    db: AsyncSession = Depends(get_db),
-) -> UserResponse:
-    result = await db.execute(select(User).where(User.email == body.email))
-    if result.scalar_one_or_none() is not None:
-        raise HTTPException(status_code=409, detail="Email already registered")
-    user = User(
-        email=body.email,
-        name=(body.name or "").strip() or None,
-        password_hash=await hash_password(body.password),
-        role=body.role,
-    )
-    db.add(user)
-    await db.flush()
-    await db.commit()
-    await db.refresh(user)
-    return UserResponse.model_validate(user)
 
 
 @router.post("/login", response_model=UserResponse)

@@ -12,3 +12,11 @@ export interface Member {
 export interface TeamMember extends Member {
   project_ids: number[];
 }
+
+/** Body for POST /team (admin only): create an account for someone. */
+export interface NewUser {
+  email: string;
+  password: string;
+  role: UserRole;
+  name?: string;
+}

@@ -6,11 +6,15 @@ IP rate limiting alone doesn't stop an attacker with rotating proxies targeting 
 
 ## Password Strength
 
-Minimum 8 characters enforced at the Pydantic schema level. Register also requires at least one uppercase letter and one digit. Validation happens before the bcrypt hash is computed — no wasted CPU on weak passwords.
+Minimum 8 characters enforced at the Pydantic schema level, plus at least one uppercase letter and one digit, when an admin creates an account (`POST /team`). Validation happens before the bcrypt hash is computed — no wasted CPU on weak passwords.
 
 ## Auth Rate Limiting
 
-`POST /login` and `POST /register` are both capped at 5 requests/minute per IP. Prevents brute-force credential attacks and bcrypt flooding (register triggers an expensive hash on every call). 6th request gets 429 — window resets after 60 seconds, no permanent lockout. Separate config keys (`login_rate_limit`, `register_rate_limit`) so they can be tuned independently.
+`POST /auth/login` is capped at 5 requests/minute per IP to slow brute-force credential attacks. 6th request gets 429 — window resets after 60 seconds, no permanent lockout. Configured by `login_rate_limit`.
+
+## No Public Sign-Up
+
+Accounts are only created by admins on the Team page (`POST /team`). Public registration (`/auth/register`) was removed: it let anyone choose their own role, including `admin`, which would have given a stranger access to every project. It also duplicated the admin create-user flow. Clients and trades are always invited by the office, so self sign-up isn't needed.
 
 ## Auth
 

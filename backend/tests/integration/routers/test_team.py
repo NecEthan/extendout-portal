@@ -165,22 +165,80 @@ async def test_non_admin_cannot_manage_members(auth_client, make_user):
     assert remove.status_code == 403
 
 
-# ── Registration with a name ──────────────────────────────────────────────────
+# ── No public sign-up ─────────────────────────────────────────────────────────
 
 
-async def test_register_stores_name(client, db):
-    email = f"named+{uuid.uuid4().hex[:8]}@example.com"
+async def test_public_registration_removed(client):
     response = await client.post(
         "/auth/register",
+        json={"email": "x@example.com", "password": "Password1", "role": "admin"},
+    )
+    assert response.status_code == 404
+
+
+# ── POST /team (admin creates a user) ─────────────────────────────────────────
+
+
+@pytest.fixture
+async def created_emails(db):
+    """Emails of users created via POST /team; deleted after the test."""
+    emails: list[str] = []
+    yield emails
+    if emails:
+        await db.execute(delete(User).where(User.email.in_(emails)))
+        await db.commit()
+
+
+async def test_admin_creates_user_who_can_log_in(admin_client, client, created_emails):
+    email = f"new+{uuid.uuid4().hex[:8]}@example.com"
+    created_emails.append(email)
+    response = await admin_client.post(
+        "/team",
         json={
             "email": email,
-            "password": "Password123",
-            "role": "client",
-            "name": " Ada ",
+            "password": "Password1",
+            "role": "builder",
+            "name": " Bob ",
         },
     )
     assert response.status_code == 201
-    assert response.json()["name"] == "Ada"
+    body = response.json()
+    assert body["email"] == email
+    assert body["name"] == "Bob"
+    assert body["role"] == "builder"
+    assert body["project_ids"] == []
 
-    await db.execute(delete(User).where(User.email == email))
-    await db.commit()
+    listed = [m["email"] for m in (await admin_client.get("/team")).json()]
+    assert email in listed
+
+    login = await client.post(
+        "/auth/login", json={"email": email, "password": "Password1"}
+    )
+    assert login.status_code == 200
+
+
+async def test_create_user_duplicate_email(admin_client, test_user):
+    response = await admin_client.post(
+        "/team",
+        json={"email": test_user.email, "password": "Password1", "role": "client"},
+    )
+    assert response.status_code == 409
+
+
+async def test_create_user_validation(admin_client):
+    email = f"bad+{uuid.uuid4().hex[:8]}@example.com"
+    for bad in (
+        {"email": email, "password": "short", "role": "client"},
+        {"email": email, "password": "nouppercase1", "role": "client"},
+        {"email": email, "password": "Password1", "role": "owner"},
+    ):
+        response = await admin_client.post("/team", json=bad)
+        assert response.status_code == 422, bad
+
+
+async def test_non_admin_cannot_create_user(auth_client):
+    response = await auth_client.post(
+        "/team",
+        json={"email": "x@example.com", "password": "Password1", "role": "admin"},
+    )
+    assert response.status_code == 403

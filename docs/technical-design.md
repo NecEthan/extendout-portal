@@ -105,7 +105,7 @@ API keys and credentials come from environment variables, never the frontend or 
 
 ### Rate limiting
 
-Per-IP limits via slowapi + Redis: `/auth/login` and `/auth/register` at 5/minute (credential attacks, bcrypt cost), `/query` at 20/minute (each query costs two OpenAI calls). Failed logins also lock the email for 15 minutes after 5 attempts.
+Per-IP limits via slowapi + Redis: `/auth/login` at 5/minute (credential attacks), `/query` at 20/minute (each query costs two OpenAI calls). Failed logins also lock the email for 15 minutes after 5 attempts.
 
 ### Observability
 
@@ -160,7 +160,7 @@ The validated answer and citations (title, version, status, last updated) are re
 | `builder` | Member projects | Member projects | — |
 | `client` | Member projects | Member projects | — |
 
-- Users choose their role at registration.
+- There's no public sign-up: admins create accounts (and set the role) on the Team page.
 - Builders and clients have identical document permissions.
 - Documents with no project are admin-only.
 - Admins can't change their own role, so the last admin can't lock themselves out.

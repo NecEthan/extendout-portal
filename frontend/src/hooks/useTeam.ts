@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { UserRole } from "@/interfaces";
+import type { NewUser, UserRole } from "@/interfaces";
 import {
   addProjectMember,
+  createUser,
   listProjectMembers,
   listTeam,
   removeProjectMember,
@@ -63,6 +64,14 @@ export function useRemoveProjectMember() {
       projectId: number;
       userId: string;
     }) => removeProjectMember(projectId, userId),
+    onSuccess: invalidate,
+  });
+}
+
+export function useCreateUser() {
+  const invalidate = useInvalidateTeam();
+  return useMutation({
+    mutationFn: (body: NewUser) => createUser(body),
     onSuccess: invalidate,
   });
 }

@@ -1,17 +1,5 @@
-import type { User, UserRole } from "@/interfaces";
+import type { User } from "@/interfaces";
 import { httpClient } from "./client";
-
-export async function register(
-  email: string,
-  password: string,
-  role: UserRole,
-  name?: string
-): Promise<User> {
-  return httpClient<User>("/auth/register", {
-    method: "POST",
-    body: JSON.stringify({ email, password, role, name }),
-  });
-}
 
 export async function login(email: string, password: string): Promise<User> {
   const user = await httpClient<User>("/auth/login", {

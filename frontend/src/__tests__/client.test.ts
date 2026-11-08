@@ -21,10 +21,12 @@ describe("httpClient", () => {
       status: 409,
       json: () => Promise.resolve({ detail: "Email already registered" }),
     });
-    await expect(httpClient("/auth/register", { method: "POST" })).rejects.toMatchObject({
-      status: 409,
-      message: "Email already registered",
-    });
+    await expect(httpClient("/team", { method: "POST" })).rejects.toMatchObject(
+      {
+        status: 409,
+        message: "Email already registered",
+      }
+    );
   });
 
   it("throws ApiError with fallback message when response has no detail", async () => {
@@ -47,14 +49,20 @@ describe("httpClient", () => {
         Promise.resolve({
           detail: [
             { loc: ["body", "email"], msg: "field required", type: "missing" },
-            { loc: ["body", "password"], msg: "string too short", type: "value_error" },
+            {
+              loc: ["body", "password"],
+              msg: "string too short",
+              type: "value_error",
+            },
           ],
         }),
     });
-    await expect(httpClient("/auth/register", { method: "POST" })).rejects.toMatchObject({
-      status: 422,
-      message: "field required, string too short",
-    });
+    await expect(httpClient("/team", { method: "POST" })).rejects.toMatchObject(
+      {
+        status: 422,
+        message: "field required, string too short",
+      }
+    );
   });
 
   it("throws ApiError instance", async () => {
@@ -74,7 +82,7 @@ describe("httpClient", () => {
     await httpClient("/auth/me");
     expect(mockFetch).toHaveBeenCalledWith(
       expect.any(String),
-      expect.objectContaining({ credentials: "include" }),
+      expect.objectContaining({ credentials: "include" })
     );
   });
 });

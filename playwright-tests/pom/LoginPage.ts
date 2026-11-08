@@ -9,7 +9,7 @@ export class LoginPage {
 
   async login(email: string, password: string) {
     await this.page.getByLabel("Email").fill(email);
-    await this.page.getByLabel("Password").fill(password);
+    await this.page.getByLabel("Password", { exact: true }).fill(password);
     await this.page.getByRole("button", { name: /sign in/i }).click();
   }
 
@@ -22,7 +22,7 @@ export class LoginPage {
   }
 
   passwordInput() {
-    return this.page.getByLabel("Password");
+    return this.page.getByLabel("Password", { exact: true });
   }
 
   signInButton() {

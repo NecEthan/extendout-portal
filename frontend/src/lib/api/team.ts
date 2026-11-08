@@ -1,4 +1,4 @@
-import type { Member, TeamMember, UserRole } from "@/interfaces";
+import type { Member, NewUser, TeamMember, UserRole } from "@/interfaces";
 import { httpClient, throwIfError } from "./client";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -6,6 +6,13 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 /** All team endpoints are admin only. */
 export async function listTeam(): Promise<TeamMember[]> {
   return httpClient<TeamMember[]>("/team");
+}
+
+export async function createUser(body: NewUser): Promise<TeamMember> {
+  return httpClient<TeamMember>("/team", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
 }
 
 export async function updateRole(

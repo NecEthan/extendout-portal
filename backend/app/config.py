@@ -39,7 +39,6 @@ class Settings(BaseSettings):
 
     bcrypt_executor_workers: int = 50
     login_rate_limit: str = "5/minute"
-    register_rate_limit: str = "5/minute"
     login_max_attempts: int = 5
     login_lockout_seconds: int = 900
     query_rate_limit: str = "20/minute"

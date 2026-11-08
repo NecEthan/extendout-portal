@@ -1,6 +1,8 @@
 "use client";
 
-import { X } from "lucide-react";
+import { useState } from "react";
+import { UserPlus, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ErrorAlert } from "@/components/ui/error-alert";
@@ -24,12 +26,14 @@ import {
 } from "@/hooks/useTeam";
 import { firstErrorMessage } from "@/lib/errorMessage";
 import type { TeamMember, UserRole } from "@/interfaces";
+import { AddUserForm } from "./add/AddUserForm";
 
 const selectClass =
   "h-8 rounded-md border bg-background px-2 text-sm disabled:opacity-50";
 
 export default function TeamPage() {
   const user = useUser();
+  const [adding, setAdding] = useState(false);
   const isAdmin = user.data?.role === "admin";
   const team = useTeam({ enabled: isAdmin });
   const projects = useProjects();
@@ -135,7 +139,15 @@ export default function TeamPage() {
       <PageHeader
         title="Team"
         description="Everyone with an account. Change roles and choose which projects each person can access."
+        actions={
+          !adding && (
+            <Button onClick={() => setAdding(true)}>
+              <UserPlus /> Add user
+            </Button>
+          )
+        }
       />
+      {adding && <AddUserForm onDone={() => setAdding(false)} />}
       <ErrorAlert message={error} />
       <Card className="mt-4">
         <CardContent>

@@ -38,6 +38,7 @@ On site, that means:
 - [Technical design](docs/technical-design.md) — how and why it's built this way
 - [Technology choices](docs/technologies.md)
 - [Engineering decisions](docs/engineering-decisions.md)
+- [To do](docs/todo.md) — planned work
 
 ---
 

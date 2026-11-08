@@ -9,7 +9,7 @@ What the portal does today. Screens that still show sample data are listed in [o
 
 ## Authentication
 
-1. Users register with email, password, role (`admin`, `builder` or `client`) and an optional name.
+1. There is no public sign-up. Admins create accounts on the Team page (`POST /team`) with email, starting password, role (`admin`, `builder` or `client`) and an optional name.
 2. Passwords need at least 8 characters, one uppercase letter and one digit, and are stored as bcrypt hashes.
 3. Logging in creates a server-side session. The session id is sent as an `HttpOnly` cookie (`Secure` + `SameSite=None` in production, `SameSite=Lax` in development).
 4. Sessions expire 24 hours after login (fixed, not sliding) and can be invalidated server-side at any time.
@@ -42,7 +42,7 @@ What the portal does today. Screens that still show sample data are listed in [o
 
 ## Team and project membership (admin only)
 
-19. Admins can list every user with their role and project memberships (`GET /team`).
+19. Admins can list every user with their role and project memberships (`GET /team`) and create accounts (`POST /team`). A duplicate email returns `409`.
 20. Admins can change a user's role (`PATCH /team/{user_id}`), except their own.
 21. Admins can list, add and remove the members of a project (`/projects/{id}/members`).
 22. Builders and clients cannot see the Team page or any project's member list (`403`).
@@ -104,7 +104,7 @@ What the portal does today. Screens that still show sample data are listed in [o
 
 ## Security
 
-51. `/auth/login` and `/auth/register` are limited to 5 requests/minute per IP; `/query` to 20/minute per IP (slowapi + Redis).
+51. `/auth/login` is limited to 5 requests/minute per IP; `/query` to 20/minute per IP (slowapi + Redis).
 52. API keys and credentials come from environment variables, never the frontend or source control.
 53. Changes that touch several related rows happen in a single transaction.
 
@@ -138,7 +138,6 @@ What the portal does today. Screens that still show sample data are listed in [o
 ## API
 
 ```
-POST   /auth/register
 POST   /auth/login
 POST   /auth/logout
 GET    /auth/user
@@ -152,6 +151,7 @@ POST   /projects/{id}/members                      admin
 DELETE /projects/{id}/members/{user_id}            admin
 
 GET    /team                                       admin
+POST   /team                                       admin
 PATCH  /team/{user_id}                             admin
 
 POST   /documents

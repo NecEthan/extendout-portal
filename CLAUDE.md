@@ -122,10 +122,11 @@ Access is decided by **role + project membership** — document ownership has no
 
 Builders and clients have identical document permissions. Rules live in `app/services/permissions.py`: `document_access_filters(user)` (WHERE clauses for all document routes), `ensure_project_access(db, user, project_id)` (404 unknown project / 403 non-member), `build_permitted_doc_ids(user, project_id)` (RAG). Documents with `project_id IS NULL` (legacy, pre-projects) are admin-only.
 
-Users pick their role at registration (`POST /auth/register` requires `role`: `admin|builder|client`, optional `name`; enforced by `ck_users_role`).
+There is no public sign-up. Admins create accounts with `POST /team` (`email`, `password`, `role`: `admin|builder|client`, optional `name`; role enforced by `ck_users_role`).
 
 Team management is **admin only** (`app/routers/team.py`, `app/routers/project_members.py`, all guarded by `require_admin` in `app/dependencies.py`). The frontend hides the Team sidebar link (`adminOnly` in `navConfig.ts`) and each project's Team tab from builders/clients.
 - `GET /team` — every user with their `project_ids`.
+- `POST /team` `{email, password, role, name?}` — create an account (the only way accounts are made).
 - `PATCH /team/{user_id}` `{role}` — admins can't change their own role.
 - `GET /projects/{id}/members`, `POST /projects/{id}/members` `{user_id}`, `DELETE /projects/{id}/members/{user_id}`.
 
@@ -159,7 +160,7 @@ Run worker: `uv run arq app.workers.main.WorkerSettings` (or via Docker: `worker
 
 Next.js 14 App Router. All pages under `src/app/`. API calls go through `src/lib/api/client.ts` using `credentials: "include"` for session cookie passthrough. Types in `src/types/index.ts` mirror the backend data model.
 
-Protected pages live under `src/app/(protected)/` (documents, search) with a shared layout. Public pages (`/login`, `/register`) are at the top level. Middleware in `src/proxy.ts` handles auth redirects. Post-login redirect lands on `/documents`.
+Protected pages live under `src/app/(protected)/` with a shared layout. `/login` is the only public page. Middleware in `src/proxy.ts` handles auth redirects. Post-login redirect lands on `/dashboard`.
 
 UI components are shadcn/ui (in `src/components/ui/`). Navigation is `src/components/nav/Sidebar.tsx`.
 
