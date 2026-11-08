@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.dependencies import get_current_user, get_db
-from app.limiter import limiter
+from app.limiter import limiter, user_key
 from app.models.base import User
 from app.schemas.query import QueryRequest, QueryResponse
 from app.services.context_builder import (
@@ -44,7 +44,7 @@ _CONTEXT_CHUNKS = 10
 
 
 @router.post("/query", response_model=QueryResponse)
-@limiter.limit(settings.query_rate_limit)
+@limiter.limit(lambda: settings.query_rate_limit, key_func=user_key)
 async def run_query(
     request: Request,
     body: QueryRequest,

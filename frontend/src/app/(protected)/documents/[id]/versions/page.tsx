@@ -14,7 +14,7 @@ import {
   useDocumentVersions,
   useUploadDocumentVersion,
 } from "@/hooks/useDocumentVersions";
-import { firstErrorMessage } from "@/lib/errorMessage";
+import { firstErrorMessage, UPLOAD_RATE_LIMITED } from "@/lib/errorMessage";
 import { STATUS_STYLES } from "@/utils/documentStatus";
 
 const PAGE_SIZE = 20;
@@ -54,7 +54,7 @@ export default function VersionHistoryPage() {
 
   const error = firstErrorMessage([
     [versionsQuery, "Failed to load versions"],
-    [uploadVersion, "Upload failed"],
+    [uploadVersion, "Upload failed", { 429: UPLOAD_RATE_LIMITED }],
     [activateVersion, "Activation failed"],
   ]);
 

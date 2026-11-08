@@ -2,11 +2,12 @@ import asyncio
 
 import structlog
 from arq.connections import ArqRedis
-from fastapi import APIRouter, Depends, Form, Query, UploadFile
+from fastapi import APIRouter, Depends, Form, Query, Request, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_arq_pool, get_current_user, get_db
+from app.limiter import upload_limit
 from app.models.base import Document, DocumentVersion, User
 from app.schemas.documents import (
     DocumentResponse,
@@ -28,7 +29,9 @@ router = APIRouter(tags=["documents"])
 logger = structlog.get_logger(__name__)
 
 @router.post("", status_code=202, response_model=DocumentUploadedResponse)
+@upload_limit
 async def upload_document(
+    request: Request,
     file: UploadFile,
     title: str = Form(),
     project_id: int = Form(),

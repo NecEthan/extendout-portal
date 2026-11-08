@@ -80,7 +80,7 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       MOCK_LLM: ${MOCK_LLM:-false}
-      LOGIN_RATE_LIMIT: ${LOGIN_RATE_LIMIT:-5/minute}
+      LOGIN_RATE_LIMIT: ${LOGIN_RATE_LIMIT:-20/minute}
     depends_on:
       postgres:
         condition: service_healthy

@@ -13,10 +13,16 @@ export function getErrorMessage(
   return fallback;
 }
 
-export function firstErrorMessage(sources: [ErrorSource, string][]): string | null {
-  for (const [source, fallback] of sources) {
-    const message = getErrorMessage(source, fallback);
+export function firstErrorMessage(
+  sources: [ErrorSource, string, Record<number, string>?][]
+): string | null {
+  for (const [source, fallback, statusOverrides] of sources) {
+    const message = getErrorMessage(source, fallback, statusOverrides);
     if (message) return message;
   }
   return null;
 }
+
+/** Shown when the backend rate-limits an upload (HTTP 429). */
+export const UPLOAD_RATE_LIMITED =
+  "You're uploading too quickly. Wait a minute and try again.";

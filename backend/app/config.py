@@ -38,10 +38,14 @@ class Settings(BaseSettings):
     llm_output_cost_per_1m_tokens: float = 0.600
 
     bcrypt_executor_workers: int = 50
-    login_rate_limit: str = "5/minute"
+    # Per IP, across all emails. Kept above login_max_attempts so the per-email
+    # lock (and its message) is reached before this limit.
+    login_rate_limit: str = "20/minute"
     login_max_attempts: int = 5
     login_lockout_seconds: int = 900
-    query_rate_limit: str = "20/minute"
+    query_rate_limit: str = "20/minute"  # per user
+    upload_rate_limit: str = "30/minute"  # per user, documents + versions combined
+    global_rate_limit: str = "300/minute"  # per session, backstop for all other routes
     worker_max_jobs: int = 5
     worker_rate_limit_retry_delay: int = 60
     openai_worker_max_retries: int = 4

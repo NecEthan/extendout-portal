@@ -104,7 +104,7 @@ What the portal does today. Screens that still show sample data are listed in [o
 
 ## Security
 
-51. `/auth/login` is limited to 5 requests/minute per IP; `/query` to 20/minute per IP (slowapi + Redis).
+51. Rate limits (slowapi + Redis): `/auth/login` 20/minute **per IP** (plus the per-email lock after 5 wrong passwords); `/query` 20/minute **per user**; uploads (new documents and new versions combined) 30/minute **per user**; every other route a 300/minute **per session** backstop. `/health` is never limited. Over the limit returns `429`.
 52. API keys and credentials come from environment variables, never the frontend or source control.
 53. Changes that touch several related rows happen in a single transaction.
 

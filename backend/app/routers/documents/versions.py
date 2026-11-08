@@ -2,11 +2,12 @@ import asyncio
 import uuid
 
 from arq.connections import ArqRedis
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_arq_pool, get_current_user, get_db
+from app.limiter import upload_limit
 from app.models.base import Document, DocumentVersion, ProcessingJob, User
 from app.schemas.documents import (
     DocumentVersionResponse,
@@ -27,7 +28,9 @@ router = APIRouter(tags=["documents"])
     status_code=202,
     response_model=VersionUploadedResponse,
 )
+@upload_limit
 async def upload_document_version(
+    request: Request,
     document_id: uuid.UUID,
     file: UploadFile,
     db: AsyncSession = Depends(get_db),

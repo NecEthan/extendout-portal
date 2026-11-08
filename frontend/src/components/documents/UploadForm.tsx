@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ErrorAlert } from "@/components/ui/error-alert";
 import { useUploadDocument } from "@/hooks/useDocuments";
-import { getErrorMessage } from "@/lib/errorMessage";
+import { getErrorMessage, UPLOAD_RATE_LIMITED } from "@/lib/errorMessage";
 
 interface UploadFormProps {
   projectId: number;
@@ -34,7 +34,9 @@ export function UploadForm({ projectId }: UploadFormProps) {
     );
   }
 
-  const error = getErrorMessage(uploadDocument, "Upload failed");
+  const error = getErrorMessage(uploadDocument, "Upload failed", {
+    429: UPLOAD_RATE_LIMITED,
+  });
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">

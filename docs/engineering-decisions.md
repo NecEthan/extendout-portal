@@ -2,7 +2,7 @@
 
 ## Per-Email Brute Force Protection
 
-IP rate limiting alone doesn't stop an attacker with rotating proxies targeting a specific account. After 5 failed login attempts for an email address, that email is locked for 15 minutes via a Redis counter (`login_fail:{email}`). Successful login clears the counter. Window and attempt count are config-driven (`login_max_attempts`, `login_lockout_seconds`).
+IP rate limiting alone doesn't stop an attacker with rotating proxies targeting a specific account. After 5 failed login attempts for an email address, that email is locked for 15 minutes via a Redis counter (`login_fail:{email}`). Successful login clears the counter. Window and attempt count are config-driven (`login_max_attempts`, `login_lockout_seconds`). This can be abused to lock someone out on purpose; see *Login uses two counters* under Rate Limiting: How It Works.
 
 ## Password Strength
 
@@ -10,7 +10,7 @@ Minimum 8 characters enforced at the Pydantic schema level, plus at least one up
 
 ## Auth Rate Limiting
 
-`POST /auth/login` is capped at 5 requests/minute per IP to slow brute-force credential attacks. 6th request gets 429 — window resets after 60 seconds, no permanent lockout. Configured by `login_rate_limit`.
+`POST /auth/login` is capped at 20 requests/minute per IP, across all emails, to stop one machine trying many accounts. Window resets after 60 seconds, no permanent lockout. Configured by `login_rate_limit`. It was 5/minute at first, the same as the per-email lock threshold; because the IP check runs first, the 6th wrong password was answered by the IP limit instead of the lock. Keeping it above `login_max_attempts` means a user guessing one account gets the lock.
 
 ## No Public Sign-Up
 
@@ -57,11 +57,67 @@ A unique database constraint on the hash provides an additional safeguard agains
 
 Single API key means all users share one OpenAI RPM/TPM quota. Three controls protect it:
 
-**Query rate limit** — `POST /query` is capped at 20 requests/minute per IP via slowapi/Redis (same pattern as login). Each query costs 2 OpenAI calls (embed + chat). 20/min allows ~1 query every 3 seconds — fine for interactive use, stops scripted abuse. Limit is per-IP so each user gets an independent budget. Corporate NAT is the edge case — many users behind one IP share the budget. Fix if needed: switch key function in `app/limiter.py` to user ID. To handle more users, upgrade OpenAI tier or add a second API key to multiply quota.
+**Query rate limit** — `POST /query` is capped at 20 requests/minute **per user** via slowapi/Redis. Each query costs 2 OpenAI calls (embed + chat). 20/min allows ~1 query every 3 seconds — fine for interactive use, stops scripted abuse. It was per-IP at first, but a site office or household shares one IP, so one busy person blocked everyone there; keying by user fixes that. To handle more users, upgrade OpenAI tier or add a second API key to multiply quota.
+
+**Upload rate limit** — new documents and new versions share one 30/minute per-user bucket. Each upload can store 50 MB and trigger OCR plus hundreds of embedding calls, so a runaway script or bulk upload could otherwise run up the OpenAI bill and fill the 5-slot worker queue for everyone. See `docs/technical-design.md` → Rate limiting for the full table.
 
 **Worker concurrency cap** — ARQ limited to 5 concurrent jobs (`max_jobs=5`). One document can produce 100+ embedding batches; 10 simultaneous uploads without a cap would blast the embeddings RPM limit. The 6th job waits in Redis — no work lost. 5 jobs × 100 chunks ≈ 500 embedding calls/min, within tier 1 limits. Raise in `config.py` as tier increases.
 
 **Worker 429 retry** — Generic transient retry delay is 10s, too short for OpenAI's 60s rate limit window. Explicit `openai.RateLimitError` branch defers retry by 60s. `MAX_TRIES` raised 3→4 to allow three retries (up to 3 min total) before permanent failure. Worker SDK `max_retries` also raised 2→4 — these are silent client-level retries before ARQ sees the error, safe to increase since worker jobs are not user-facing.
+
+# Rate Limiting: How It Works
+
+What's limited and why is in `docs/technical-design.md` → Rate limiting. This section explains the mechanics and the trade-offs.
+
+## Keys and counters
+
+Each limit is a counter in Redis. The **key** is the counter's name, and it decides whose budget a request uses:
+
+- `ip:203.0.113.7`: login, where nobody is signed in yet
+- `user:805b9b6a-…`: search and uploads
+- `session:ba7816bf…`: the backstop (a hash of the session cookie, so raw tokens never become Redis keys)
+
+Every request adds 1 to its counter **before** the endpoint runs, so rejected requests (wrong file type, duplicate file, wrong password) still count. Over the limit returns `429`. Each counter expires at the end of its window, so Redis deletes it automatically and nothing needs cleaning up.
+
+Counters live in Redis rather than in the API's memory because the API runs 2 uvicorn processes. With in-memory counts, each process would count separately and every user would effectively get double their limit.
+
+## How the user reaches the key function
+
+slowapi calls the key function with only the request, not the current user. So `get_current_user` (`app/dependencies.py`) stores the id on the request (`request.state.user_id`), and `user_key` (`app/limiter.py`) reads it. This works because slowapi's route decorator runs after FastAPI has resolved dependencies. `request.state` is scratch space for a single request and is discarded when the request ends.
+
+## Per user, not app-wide
+
+One shared counter for the whole app would let a single misbehaving client use up everyone's budget, and the rate limiter itself would become the outage. With a counter per user (or per session), a client can only ever block itself; everyone else is unaffected.
+
+## Login uses two counters
+
+| Counter | Goes up on | Limit | Resets |
+|---|---|---|---|
+| Rate limit, per IP | Every attempt, any email | 20/min → `429` | After 1 minute |
+| Failure count, per email (`login_fail:{email}`) | Wrong password only | 5 → locked (`429`) | 15 minutes after the last failure, or on a successful login |
+
+Trade-offs, accepted while accounts are invited by an admin:
+
+- **Shared IP.** People on the same office Wi-Fi share the 20/min login budget, so one person repeatedly mistyping briefly slows the others.
+- **Lockout abuse.** Anyone who knows an email can type 5 wrong passwords and lock that account for 15 minutes. If this becomes a problem: shorten the lockout, add a CAPTCHA after a few failures, or don't count failures from IPs that have logged into that account before.
+
+## The backstop isn't DDoS protection
+
+The 300/min backstop catches a signed-in client stuck in a loop (e.g. a page refetching endlessly). It can't stop a traffic flood: a DDoS comes from thousands of IPs, each under any per-key limit, and even requests answered with `429` still use the server's network, CPU and connections. Flood protection has to sit in front of the app (Cloudflare, or a reverse proxy with connection limits).
+
+## Redis is in-memory and disposable
+
+Redis keeps its data in RAM, which is why a counter update takes microseconds, fast enough to do on every request. The compose setup uses Redis defaults: periodic snapshots, no append-only log, and no Docker volume. So data survives `docker compose restart` but not `docker compose down`.
+
+That's intended. Redis only holds data that's safe to lose; anything that matters is in Postgres:
+
+| In Redis | If lost |
+|---|---|
+| Rate-limit counters | Everyone's count resets (they expire within a minute anyway) |
+| Login lockouts | A locked email is unlocked early |
+| Queued jobs | The poller re-enqueues jobs still `QUEUED` in Postgres within 30 s |
+
+For production, set a memory cap (e.g. `maxmemory 256mb` with `maxmemory-policy volatile-lru`). It's currently uncapped, so Redis could in theory grow until the machine runs out of memory.
 
 # Concurrency & Infrastructure Sizing
 

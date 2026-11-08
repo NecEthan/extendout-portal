@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.dependencies import get_arq_pool, get_current_user, get_db
-from app.limiter import limiter
+from app.limiter import ip_key, limiter
 from app.models.base import User
 from app.schemas.auth import LoginRequest, UserResponse
 from app.services.auth import (
@@ -17,7 +17,7 @@ router = APIRouter(tags=["auth"])
 
 
 @router.post("/login", response_model=UserResponse)
-@limiter.limit(settings.login_rate_limit)
+@limiter.limit(lambda: settings.login_rate_limit, key_func=ip_key)
 async def login(
     request: Request,
     body: LoginRequest,

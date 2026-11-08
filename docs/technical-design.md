@@ -105,7 +105,20 @@ API keys and credentials come from environment variables, never the frontend or 
 
 ### Rate limiting
 
-Per-IP limits via slowapi + Redis: `/auth/login` at 5/minute (credential attacks), `/query` at 20/minute (each query costs two OpenAI calls). Failed logins also lock the email for 15 minutes after 5 attempts.
+Limits live in `app/limiter.py` (slowapi + Redis), each keyed to fit the route:
+
+| Route | Limit | Key | Why |
+|---|---|---|---|
+| `POST /auth/login` | 20/min | IP | Credential attacks. Nobody is signed in yet, so IP is the only key. Failed logins also lock the email for 15 minutes after 5 attempts. |
+| `POST /query` | 20/min | User | Each query costs two OpenAI calls. |
+| `POST /documents` + `POST /documents/{id}/versions` | 30/min combined | User | The most expensive action: up to 50 MB stored, then OCR and hundreds of embedding calls in the worker. |
+| Everything else | 300/min | Session | Backstop for a client stuck in a loop. Well above normal use (the documents tab polls ~20/min). `/health` is exempt. |
+
+Logged-in limits are per user, not per IP, because a site office or household shares one IP. The user is known because the route decorators run after `get_current_user`, which sets `request.state.user_id`. The backstop runs as an app-wide dependency before that, so it keys by a hash of the session cookie (raw tokens never become Redis keys). It's a dependency rather than slowapi's `SlowAPIMiddleware` because that middleware can't find routes in FastAPI 0.141+ (included routers are nested) and silently limits nothing.
+
+Known limitation: the upload limit is checked after FastAPI has read the request body, so a rejected upload has still been received. What it prevents is the expensive part: no MinIO write, no job, no OCR or OpenAI calls.
+
+Limits stop cost and abuse from signed-in clients; they don't stop a traffic flood (DDoS), which has to be handled in front of the app (reverse proxy / Cloudflare).
 
 ### Observability
 

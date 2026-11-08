@@ -3,13 +3,13 @@ from contextlib import asynccontextmanager
 
 from arq import create_pool
 from arq.connections import RedisSettings
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
-from app.limiter import limiter
+from app.limiter import global_rate_limit, limiter
 from app.logging_config import configure_logging
 from app.middleware import RequestLoggingMiddleware
 from app.poller import run_poller
@@ -42,6 +42,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
+    # Global rate-limit backstop for every route (see app/limiter.py).
+    dependencies=[Depends(global_rate_limit)],
     title="KnowledgeGuard API",
     version="0.1.0",
     lifespan=lifespan,

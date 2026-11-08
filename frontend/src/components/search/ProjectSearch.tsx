@@ -36,6 +36,7 @@ export function ProjectSearch({ projectId }: { projectId: number }) {
         { isError, error: searchError },
         "Something went wrong. Please try again.",
         {
+          429: "Too many questions in a short time. Wait a minute and try again.",
           503: "The AI service is temporarily unavailable. Please try again later.",
         }
       );

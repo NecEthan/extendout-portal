@@ -34,6 +34,8 @@ async def get_current_user(
     # Bind user_id to the structlog context so it appears in all subsequent
     # log entries for this request.
     structlog.contextvars.bind_contextvars(user_id=str(user.id))
+    # Lets the rate limiter key per-user limits (see app/limiter.py).
+    request.state.user_id = str(user.id)
     return user
 
 
