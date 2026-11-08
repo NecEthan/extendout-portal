@@ -280,7 +280,7 @@ async def test_deleted_document_excluded(auth_client, db, test_user):
 # ── Version filtering ─────────────────────────────────────────────────────────
 
 
-async def test_current_mode_excludes_superseded(auth_client, db, test_user):
+async def test_search_excludes_superseded_versions(auth_client, db, test_user):
     doc = Document(
         title="Policy v1",
         owner_id=test_user.id,
@@ -325,65 +325,12 @@ async def test_current_mode_excludes_superseded(auth_client, db, test_user):
     with _openai_ctx(mock_emb, mock_chat):
         response = await auth_client.post(
             "/query",
-            json={"question": "unique_superseded_text_xyz", "mode": "current"},
+            json={"question": "unique_superseded_text_xyz"},
         )
 
     assert response.status_code == 200
     for citation in response.json()["citations"]:
         assert citation["document_title"] != "Policy v1"
-
-
-async def test_historical_mode_includes_superseded(auth_client, db, test_user):
-    doc = Document(
-        title="Historical Policy",
-        owner_id=test_user.id,
-        source_type="upload",
-        project_id=TEST_PROJECT_ID,
-    )
-    db.add(doc)
-    await db.flush()
-
-    version = DocumentVersion(
-        document_id=doc.id,
-        version_number=1,
-        status="SUPERSEDED",
-        content_hash=secrets.token_hex(16),
-        storage_key=f"uploads/{doc.id}/v1.txt",
-    )
-    db.add(version)
-    await db.flush()
-
-    content = "Historical leave entitlement was 20 days per year."
-    await db.execute(
-        update(DocumentVersion)
-        .where(DocumentVersion.id == version.id)
-        .values(search_vector=func.to_tsvector("english", content))
-    )
-    chunk = DocumentChunk(
-        document_version_id=version.id,
-        chunk_index=0,
-        content=content,
-        embedding=_fake_embedding(),
-        token_count=10,
-    )
-    db.add(chunk)
-    await db.commit()
-
-    mock_emb = _mock_embedding_call()
-    mock_chat = _mock_chat_call(
-        answer="Historical: 20 days.",
-        citations=[{"document_title": "Historical Policy", "version_number": 1}],
-    )
-
-    with _openai_ctx(mock_emb, mock_chat):
-        response = await auth_client.post(
-            "/query",
-            json={"question": "historical leave entitlement", "mode": "historical"},
-        )
-
-    assert response.status_code == 200
-    titles = [c["document_title"] for c in response.json()["citations"]]
-    assert "Historical Policy" in titles
 
 
 # ── Permission isolation ──────────────────────────────────────────────────────
@@ -458,76 +405,6 @@ async def test_restricted_document_not_visible_to_other_user(auth_client, db, te
     await db.execute(delete(DocumentVersion).where(DocumentVersion.id == version_b.id))
     await db.execute(delete(Document).where(Document.id == doc_b.id))
     await db.execute(delete(User).where(User.id == user_b.id))
-    await db.commit()
-
-
-async def test_restricted_document_not_visible_historical_mode(auth_client, db, test_user):
-    """Permission isolation must hold for mode=historical too."""
-    user_c = User(
-        email=f"userc+{uuid.uuid4().hex[:8]}@example.com",
-        password_hash=await hash_password("password"),
-        role="builder",
-    )
-    db.add(user_c)
-    await db.flush()
-
-    doc_c = Document(
-        title="User C Old Document",
-        owner_id=user_c.id,
-        source_type="upload",
-    )
-    db.add(doc_c)
-    await db.flush()
-
-    version_c = DocumentVersion(
-        document_id=doc_c.id,
-        version_number=1,
-        status="SUPERSEDED",
-        content_hash=secrets.token_hex(16),
-        storage_key=f"uploads/{doc_c.id}/v1.txt",
-    )
-    db.add(version_c)
-    await db.flush()
-
-    content_c = "User C private superseded content."
-    await db.execute(
-        update(DocumentVersion)
-        .where(DocumentVersion.id == version_c.id)
-        .values(search_vector=func.to_tsvector("english", content_c))
-    )
-    chunk_c = DocumentChunk(
-        document_version_id=version_c.id,
-        chunk_index=0,
-        content=content_c,
-        embedding=_fake_embedding(),
-        token_count=10,
-    )
-    db.add(chunk_c)
-    await db.commit()
-
-    mock_emb = _mock_embedding_call()
-    mock_chat = _mock_chat_call(
-        answer="I don't have enough information to answer that question.",
-        citations=[],
-    )
-
-    with _openai_ctx(mock_emb, mock_chat):
-        response = await auth_client.post(
-            "/query",
-            json={"question": "User C private content", "mode": "historical"},
-        )
-
-    assert response.status_code == 200
-    for citation in response.json()["citations"]:
-        assert citation["document_title"] != "User C Old Document"
-
-    # Cleanup.
-    await db.execute(
-        delete(DocumentChunk).where(DocumentChunk.document_version_id == version_c.id)
-    )
-    await db.execute(delete(DocumentVersion).where(DocumentVersion.id == version_c.id))
-    await db.execute(delete(Document).where(Document.id == doc_c.id))
-    await db.execute(delete(User).where(User.id == user_c.id))
     await db.commit()
 
 

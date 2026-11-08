@@ -60,9 +60,7 @@ v1  SUPERSEDED
 
 Only one version can be active at any time.
 
-Normal AI queries retrieve the active version.
-
-Historical queries can explicitly retrieve previous versions.
+AI queries only ever retrieve the active version. Previous versions are kept for version history (and can be re-activated), but are never searched.
 
 ## AI Search
 
@@ -168,15 +166,11 @@ v2  ACTIVE
 
 The same question now retrieves v2.
 
-### 6. Historical Query
-
-The user asks the system to retrieve a previous version explicitly. It intentionally returns v1.
-
-### 7. Delete
+### 6. Delete
 
 The policy is deleted. The document and its stored chunks/embeddings are removed.
 
-### 8. Permission Test
+### 7. Permission Test
 
 An unauthorised user (non-admin, document marked `SENSITIVE`) attempts to ask about the document. It is excluded from their retrieval context.
 
@@ -411,9 +405,7 @@ The MVP demonstrates:
 ```text
 Active version retrieval works correctly
 
-Superseded versions are excluded from normal queries
-
-Historical versions can be intentionally retrieved
+Superseded versions are excluded from queries
 
 Deleted documents cannot be retrieved
 

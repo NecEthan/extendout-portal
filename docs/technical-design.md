@@ -166,9 +166,7 @@ Load the set of document IDs the authenticated user is permitted to access based
 
 ### Step 3 — Version Filtering
 
-Within the permitted set, filter further to only `ACTIVE` versions. Superseded and deleted versions are excluded from normal queries.
-
-For `mode = historical`, the filter relaxes to include `SUPERSEDED` versions where the query indicates historical intent.
+Within the permitted set, filter further to only `ACTIVE` versions. Superseded and deleted versions are never searched.
 
 ### Step 4 — Hybrid Retrieval
 
@@ -296,7 +294,6 @@ Not present. An `audit_events` table and emission logic were built and later rem
 - Version supersede → query returns new version
 - Delete → query returns no results
 - Permission denied → restricted document not in results
-- Historical query → superseded version retrieved correctly
 
 ### End-to-End Tests (Playwright)
 
@@ -313,7 +310,7 @@ There is no evaluation framework or automated accuracy/stale-retrieval tracking 
 
 ### Why keep superseded chunks in the database?
 
-Historical queries need access to superseded content. Deleting chunks on supersede would prevent legitimate historical retrieval. Chunks are excluded from normal queries by the version filter, not by deletion.
+A superseded version can be re-activated from version history, and it needs its chunks and embeddings to be searchable again without re-processing. Superseded chunks are excluded from queries by the version filter, not by deletion.
 
 ### Why store raw files in MinIO rather than PostgreSQL?
 

@@ -3,7 +3,7 @@
 Pipeline:
   1. Authentication (get_current_user dependency)
   2. Permission filtering  — admins: all documents; others: their projects only
-  3. Version filtering     — ACTIVE only (current) or ACTIVE+SUPERSEDED (historical)
+  3. Version filtering     — current (ACTIVE) versions only
   4. Hybrid retrieval      — pgvector cosine similarity + PostgreSQL FTS
   5. Reciprocal Rank Fusion
   6. Context assembly
@@ -52,8 +52,6 @@ async def run_query(
     db: AsyncSession = Depends(get_db),
 ) -> QueryResponse:
     question = body.question.strip()
-    mode = body.mode
-    allowed_statuses = ["ACTIVE"] if mode == "current" else ["ACTIVE", "SUPERSEDED"]
 
     if body.project_id is not None:
         await ensure_project_access(db, current_user, body.project_id)
@@ -73,13 +71,12 @@ async def run_query(
     # 3 + 4. Vector search + full-text search (timed together as hybrid retrieval)
     search_start = time.monotonic()
     vector_chunk_ranks = await vector_search(
-        db, query_embedding, permitted_doc_ids, allowed_statuses, limit=_VECTOR_LIMIT
+        db, query_embedding, permitted_doc_ids, limit=_VECTOR_LIMIT
     )
     fts_chunk_ranks = await fts_search(
         db,
         question,
         permitted_doc_ids,
-        allowed_statuses,
         version_limit=_FTS_VERSION_LIMIT,
     )
     search_ms = round((time.monotonic() - search_start) * 1000, 1)

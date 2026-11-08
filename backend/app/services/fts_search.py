@@ -12,7 +12,6 @@ async def fts_search(
     db: AsyncSession,
     question: str,
     permitted_doc_ids,
-    allowed_statuses: list[str],
     version_limit: int = 10,
 ) -> list[tuple[uuid.UUID, int]]:
     """Return (chunk_id, rank) pairs from full-text search.
@@ -23,7 +22,6 @@ async def fts_search(
 
     Args:
         permitted_doc_ids: Scalar subquery of document IDs the user may access.
-        allowed_statuses:  Version statuses to include (e.g. ['ACTIVE']).
         version_limit:     Maximum versions to consider.
 
     Returns:
@@ -38,7 +36,7 @@ async def fts_search(
         )
         .join(Document, DocumentVersion.document_id == Document.id)
         .where(Document.id.in_(permitted_doc_ids))
-        .where(DocumentVersion.status.in_(allowed_statuses))
+        .where(DocumentVersion.status == "ACTIVE")  # current versions only
         .where(DocumentVersion.search_vector.op("@@")(tsquery))
         .order_by(func.ts_rank(DocumentVersion.search_vector, tsquery).desc())
         .limit(version_limit)

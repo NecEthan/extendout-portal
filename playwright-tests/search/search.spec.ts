@@ -8,8 +8,6 @@ test.describe("Search page", () => {
     await searchPage.goto();
     await expect(page.getByText("Search knowledge base")).toBeVisible();
     await expect(searchPage.questionInput()).toBeVisible();
-    await expect(searchPage.currentModeButton()).toBeVisible();
-    await expect(searchPage.historicalModeButton()).toBeVisible();
     await expect(searchPage.searchButton()).toBeVisible();
   });
 
@@ -20,32 +18,6 @@ test.describe("Search page", () => {
 
     await searchPage.questionInput().fill("a question");
     await expect(searchPage.searchButton()).toBeEnabled();
-  });
-
-  test("mode toggle switches between Current and Historical", async ({
-    page,
-  }) => {
-    const searchPage = new SearchPage(page);
-    await searchPage.goto();
-
-    await expect(searchPage.currentModeButton()).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-    await expect(searchPage.historicalModeButton()).toHaveAttribute(
-      "aria-pressed",
-      "false",
-    );
-
-    await searchPage.historicalModeButton().click();
-    await expect(searchPage.historicalModeButton()).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-    await expect(searchPage.currentModeButton()).toHaveAttribute(
-      "aria-pressed",
-      "false",
-    );
   });
 
   test("submits question and shows answer", async ({ page }) => {

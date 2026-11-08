@@ -2,7 +2,6 @@ import type { DocumentVersionStatus } from "./document-interface";
 
 export interface QueryRequest {
   question: string;
-  mode: "current" | "historical";
   project_id?: number;
 }
 

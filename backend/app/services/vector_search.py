@@ -12,14 +12,12 @@ async def vector_search(
     db: AsyncSession,
     query_embedding: list[float],
     permitted_doc_ids,
-    allowed_statuses: list[str],
     limit: int = 20,
 ) -> list[tuple[uuid.UUID, int]]:
     """Return (chunk_id, rank) pairs ordered by cosine similarity.
 
     Args:
         permitted_doc_ids: Scalar subquery of document IDs the user may access.
-        allowed_statuses:  Version statuses to include (e.g. ['ACTIVE']).
         limit:             Maximum chunks to return.
 
     Returns:
@@ -30,7 +28,7 @@ async def vector_search(
         .join(DocumentVersion, DocumentChunk.document_version_id == DocumentVersion.id)
         .join(Document, DocumentVersion.document_id == Document.id)
         .where(Document.id.in_(permitted_doc_ids))
-        .where(DocumentVersion.status.in_(allowed_statuses))
+        .where(DocumentVersion.status == "ACTIVE")  # current versions only
         .where(DocumentChunk.embedding.is_not(None))
         .order_by(DocumentChunk.embedding.op("<=>")(query_embedding))
         .limit(limit)

@@ -13,7 +13,6 @@ import { getErrorMessage } from "@/lib/errorMessage";
 /** Ask questions answered only from this project's documents. */
 export function ProjectSearch({ projectId }: { projectId: number }) {
   const [question, setQuestion] = useState("");
-  const [mode, setMode] = useState<"current" | "historical">("current");
   const {
     mutate,
     data,
@@ -25,7 +24,7 @@ export function ProjectSearch({ projectId }: { projectId: number }) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!question.trim()) return;
-    mutate({ question: question.trim(), mode, project_id: projectId });
+    mutate({ question: question.trim(), project_id: projectId });
   }
 
   const result = data ?? null;
@@ -61,25 +60,6 @@ export function ProjectSearch({ projectId }: { projectId: number }) {
                 onChange={(e) => setQuestion(e.target.value)}
                 placeholder="What U-value is specified for the rooflights?"
               />
-            </div>
-
-            <div className="flex gap-2" role="group" aria-label="Version mode">
-              <Button
-                type="button"
-                variant={mode === "current" ? "default" : "outline"}
-                onClick={() => setMode("current")}
-                aria-pressed={mode === "current"}
-              >
-                Current
-              </Button>
-              <Button
-                type="button"
-                variant={mode === "historical" ? "default" : "outline"}
-                onClick={() => setMode("historical")}
-                aria-pressed={mode === "historical"}
-              >
-                Historical
-              </Button>
             </div>
 
             <Button type="submit" disabled={isPending || !question.trim()}>

@@ -72,9 +72,9 @@ This describes what's actually built. The project is complete as delivered — t
 ## AI Query
 
 38. Users can submit natural language questions via `POST /query`.
-39. Every query goes through this pipeline in order: session authentication → permission filtering (role + sensitivity) → version filtering (`ACTIVE` by default) → hybrid retrieval (pgvector cosine search + PostgreSQL `tsvector` full-text search) → Reciprocal Rank Fusion → context assembly → LLM generation (`gpt-4o-mini`) → answer and citations.
+39. Every query goes through this pipeline in order: session authentication → permission filtering (role + sensitivity) → version filtering (`ACTIVE` only) → hybrid retrieval (pgvector cosine search + PostgreSQL `tsvector` full-text search) → Reciprocal Rank Fusion → context assembly → LLM generation (`gpt-4o-mini`) → answer and citations.
 40. Permission filtering happens before any document content enters the retrieval pipeline. SENSITIVE documents are never loaded as context for non-admins.
-41. A `historical` query mode relaxes the version filter to include `SUPERSEDED` versions.
+41. Queries only ever search `ACTIVE` (current) versions. Previous versions stay available in version history but are never searched.
 42. Every answer includes citations: document title, version number, version status, and last updated date.
 43. The LLM's structured output is validated against a Pydantic schema before being returned to the client.
 44. If the LLM API is unavailable, the query returns `503 Service Unavailable`.

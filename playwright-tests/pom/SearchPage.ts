@@ -25,14 +25,6 @@ export class SearchPage {
     return this.page.getByRole("button", { name: "Searching..." });
   }
 
-  currentModeButton(): Locator {
-    return this.page.getByRole("button", { name: "Current" });
-  }
-
-  historicalModeButton(): Locator {
-    return this.page.getByRole("button", { name: "Historical" });
-  }
-
   async search(question: string) {
     await this.questionInput().fill(question);
     await this.searchButton().click();
