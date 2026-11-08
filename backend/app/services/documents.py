@@ -85,7 +85,7 @@ def generate_storage_key() -> str:
 
 
 async def assert_no_duplicate(
-    db: AsyncSession, content_hash: str, project_id: str | None = None
+    db: AsyncSession, content_hash: str, project_id: int | None = None
 ) -> None:
     """Reject identical content within the same project (the same file may exist in
     different projects)."""
@@ -107,7 +107,7 @@ async def create_document_records(
     content_hash: str,
     storage_key: str,
     current_user,
-    project_id: str,
+    project_id: int,
 ):
     from app.models.base import Document, DocumentVersion, ProcessingJob
 

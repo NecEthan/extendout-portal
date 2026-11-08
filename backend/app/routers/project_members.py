@@ -22,7 +22,7 @@ router = APIRouter(tags=["project members"])
 
 @router.get("/{project_id}/members", response_model=list[MemberResponse])
 async def list_project_members(
-    project_id: str,
+    project_id: int,
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ) -> list[MemberResponse]:
@@ -38,7 +38,7 @@ async def list_project_members(
 
 @router.post("/{project_id}/members", status_code=201, response_model=MemberResponse)
 async def add_project_member(
-    project_id: str,
+    project_id: int,
     body: AddMemberRequest,
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
@@ -56,7 +56,7 @@ async def add_project_member(
 
 @router.delete("/{project_id}/members/{user_id}", status_code=204)
 async def remove_project_member(
-    project_id: str,
+    project_id: int,
     user_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),

@@ -18,7 +18,7 @@ class MemberResponse(BaseModel):
 class TeamMemberResponse(MemberResponse):
     """A user on the admin Team page, with the projects they belong to."""
 
-    project_ids: list[str]
+    project_ids: list[int]
 
 
 class RoleUpdateRequest(BaseModel):

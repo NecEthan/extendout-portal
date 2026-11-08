@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Text, func
+from sqlalchemy import DateTime, ForeignKey, Identity, Integer, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -11,8 +11,7 @@ from app.database import Base
 class Project(Base):
     __tablename__ = "projects"
 
-    # Human-readable ids (e.g. "p-101") so they match the portal's project URLs.
-    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, Identity(), primary_key=True)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     client: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
     address: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
@@ -28,8 +27,8 @@ class ProjectMember(Base):
 
     __tablename__ = "project_members"
 
-    project_id: Mapped[str] = mapped_column(
-        Text, ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True
+    project_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),

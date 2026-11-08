@@ -1,6 +1,20 @@
 """Integration tests for the projects router."""
 
-from tests.fixtures.auth import TEST_PROJECT_ID
+import pytest
+from sqlalchemy import delete
+
+from app.models.base import Project
+from tests.fixtures.auth import TEST_PROJECT_ID, UNKNOWN_PROJECT_ID
+
+
+@pytest.fixture
+async def created_projects(db):
+    """Collects ids of projects made via POST /projects and deletes them after."""
+    ids: list[int] = []
+    yield ids
+    if ids:
+        await db.execute(delete(Project).where(Project.id.in_(ids)))
+        await db.commit()
 
 
 async def test_list_projects_requires_auth(client):
@@ -52,10 +66,53 @@ async def test_get_project_admin_any_project(admin_client, make_project):
 
 
 async def test_get_project_not_found(auth_client):
-    response = await auth_client.get("/projects/does-not-exist")
+    response = await auth_client.get(f"/projects/{UNKNOWN_PROJECT_ID}")
     assert response.status_code == 404
 
 
 async def test_get_project_requires_auth(client):
     response = await client.get(f"/projects/{TEST_PROJECT_ID}")
+    assert response.status_code == 401
+
+
+# ── POST /projects ────────────────────────────────────────────────────────────
+
+
+async def test_admin_creates_project(admin_client, created_projects):
+    response = await admin_client.post(
+        "/projects",
+        json={"name": "  New Build  ", "client": "Ada", "address": "1 High St"},
+    )
+    assert response.status_code == 201
+    body = response.json()
+    created_projects.append(body["id"])
+    assert isinstance(body["id"], int)
+    assert body["name"] == "New Build"
+    assert body["client"] == "Ada"
+    assert body["address"] == "1 High St"
+    assert body["health"] == "On track"
+
+    listed = (await admin_client.get("/projects")).json()
+    assert body["id"] in [p["id"] for p in listed]
+
+
+async def test_created_project_ids_increment(admin_client, created_projects):
+    first = (await admin_client.post("/projects", json={"name": "A"})).json()["id"]
+    second = (await admin_client.post("/projects", json={"name": "B"})).json()["id"]
+    created_projects.extend([first, second])
+    assert second == first + 1
+
+
+async def test_create_project_requires_name(admin_client):
+    response = await admin_client.post("/projects", json={"name": "   "})
+    assert response.status_code == 422
+
+
+async def test_non_admin_cannot_create_project(auth_client):
+    response = await auth_client.post("/projects", json={"name": "Nope"})
+    assert response.status_code == 403
+
+
+async def test_create_project_requires_auth(client):
+    response = await client.post("/projects", json={"name": "Nope"})
     assert response.status_code == 401

@@ -18,14 +18,14 @@ export async function updateRole(
   });
 }
 
-export async function listProjectMembers(projectId: string): Promise<Member[]> {
+export async function listProjectMembers(projectId: number): Promise<Member[]> {
   return httpClient<Member[]>(
     `/projects/${encodeURIComponent(projectId)}/members`
   );
 }
 
 export async function addProjectMember(
-  projectId: string,
+  projectId: number,
   userId: string
 ): Promise<Member> {
   return httpClient<Member>(
@@ -35,7 +35,7 @@ export async function addProjectMember(
 }
 
 export async function removeProjectMember(
-  projectId: string,
+  projectId: number,
   userId: string
 ): Promise<void> {
   const res = await fetch(

@@ -3,7 +3,7 @@ import type { MaterialItem } from "@/interfaces/portal-interface";
 export const mockMaterials: MaterialItem[] = [
   {
     id: "mt-1",
-    projectId: "p-101",
+    projectId: 101,
     item: "Celotex 100mm PIR boards",
     quantity: "48 sheets",
     needBy: "2026-11-14",
@@ -11,7 +11,7 @@ export const mockMaterials: MaterialItem[] = [
   },
   {
     id: "mt-2",
-    projectId: "p-101",
+    projectId: 101,
     item: "Lime plaster (breathable)",
     quantity: "60 bags",
     needBy: "2026-11-27",
@@ -19,7 +19,7 @@ export const mockMaterials: MaterialItem[] = [
   },
   {
     id: "mt-3",
-    projectId: "p-102",
+    projectId: 102,
     item: "Velux GGL rooflights ×3",
     quantity: "3 units",
     supplier: "Travis Perkins",
@@ -28,7 +28,7 @@ export const mockMaterials: MaterialItem[] = [
   },
   {
     id: "mt-4",
-    projectId: "p-104",
+    projectId: 104,
     item: "C35 ready-mix concrete",
     quantity: "14 m³",
     supplier: "Hanson",
@@ -37,7 +37,7 @@ export const mockMaterials: MaterialItem[] = [
   },
   {
     id: "mt-5",
-    projectId: "p-101",
+    projectId: 101,
     item: "Mitsubishi Ecodan 8.5kW ASHP",
     quantity: "1 unit",
     supplier: "City Plumbing",
@@ -47,7 +47,7 @@ export const mockMaterials: MaterialItem[] = [
   },
   {
     id: "mt-6",
-    projectId: "p-102",
+    projectId: 102,
     item: "UB 203×133 steel beams",
     quantity: "4 lengths",
     supplier: "Surrey Steel Fab",
@@ -57,7 +57,7 @@ export const mockMaterials: MaterialItem[] = [
   },
   {
     id: "mt-7",
-    projectId: "p-101",
+    projectId: 101,
     item: "Plasterboard 12.5mm",
     quantity: "90 sheets",
     supplier: "Jewson",
@@ -67,7 +67,7 @@ export const mockMaterials: MaterialItem[] = [
   },
   {
     id: "mt-8",
-    projectId: "p-101",
+    projectId: 101,
     item: "Cat6 & 2.5mm T&E cable",
     quantity: "Assorted",
     supplier: "CEF",
@@ -77,7 +77,7 @@ export const mockMaterials: MaterialItem[] = [
   },
   {
     id: "mt-9",
-    projectId: "p-103",
+    projectId: 103,
     item: "Shaker kitchen units",
     quantity: "14 units",
     supplier: "Howdens",
@@ -87,7 +87,7 @@ export const mockMaterials: MaterialItem[] = [
   },
   {
     id: "mt-10",
-    projectId: "p-101",
+    projectId: 101,
     item: "Aluminium bifold doors",
     quantity: "1 set (4.2m)",
     supplier: "Origin",

@@ -70,7 +70,7 @@ export default function PlanningPage() {
         </CardHeader>
         <CardContent>
           <MilestoneTimeline
-            milestones={mockMilestones.filter((m) => m.projectId === "p-101")}
+            milestones={mockMilestones.filter((m) => m.projectId === 101)}
           />
         </CardContent>
       </Card>

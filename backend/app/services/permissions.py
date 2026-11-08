@@ -29,7 +29,7 @@ def document_access_filters(user: User) -> list[ColumnElement[bool]]:
     return [Document.project_id.in_(member_project_ids(user))]
 
 
-async def ensure_project_access(db: AsyncSession, user: User, project_id: str) -> None:
+async def ensure_project_access(db: AsyncSession, user: User, project_id: int) -> None:
     """404 if the project doesn't exist; 403 if the user isn't allowed in it."""
     if await db.get(Project, project_id) is None:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -42,7 +42,7 @@ async def ensure_project_access(db: AsyncSession, user: User, project_id: str) -
         )
 
 
-def build_permitted_doc_ids(user: User, project_id: str | None = None):
+def build_permitted_doc_ids(user: User, project_id: int | None = None):
     """Scalar subquery of document ids the user may search.
 
     When project_id is given, only that project's documents are included.

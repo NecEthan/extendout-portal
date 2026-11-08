@@ -14,7 +14,7 @@ import {
 import { firstErrorMessage } from "@/lib/errorMessage";
 
 /** Admin only: the people who can access one project, with add and remove. */
-export function ProjectTeam({ projectId }: { projectId: string }) {
+export function ProjectTeam({ projectId }: { projectId: number }) {
   const user = useUser();
   const members = useProjectMembers(projectId);
   const team = useTeam();
@@ -28,7 +28,10 @@ export function ProjectTeam({ projectId }: { projectId: string }) {
   ]);
 
   const memberIds = new Set(members.data?.map((m) => m.id));
-  const addable = (team.data ?? []).filter((t) => !memberIds.has(t.id));
+  // Admins already see every project, so there's no point adding them.
+  const addable = (team.data ?? []).filter(
+    (t) => t.role !== "admin" && !memberIds.has(t.id)
+  );
 
   return (
     <div className="flex flex-col gap-4">

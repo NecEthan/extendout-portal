@@ -3,7 +3,7 @@ import type { Milestone, PlanItem } from "@/interfaces/portal-interface";
 export const mockPlanItems: PlanItem[] = [
   {
     id: "pl-1",
-    projectId: "p-101",
+    projectId: 101,
     title: "Electrical first fix",
     bucket: "Now",
     trade: "Electrician",
@@ -12,7 +12,7 @@ export const mockPlanItems: PlanItem[] = [
   },
   {
     id: "pl-2",
-    projectId: "p-101",
+    projectId: 101,
     title: "Plumbing first fix",
     bucket: "Now",
     trade: "Plumber",
@@ -21,7 +21,7 @@ export const mockPlanItems: PlanItem[] = [
   },
   {
     id: "pl-3",
-    projectId: "p-102",
+    projectId: 102,
     title: "Install steel beams",
     bucket: "Now",
     trade: "Groundworks / steel",
@@ -30,7 +30,7 @@ export const mockPlanItems: PlanItem[] = [
   },
   {
     id: "pl-4",
-    projectId: "p-103",
+    projectId: 103,
     title: "Kitchen fit & worktops",
     bucket: "Now",
     trade: "Joiner",
@@ -39,7 +39,7 @@ export const mockPlanItems: PlanItem[] = [
   },
   {
     id: "pl-5",
-    projectId: "p-101",
+    projectId: 101,
     title: "Insulation & plasterboard",
     bucket: "Next",
     trade: "Dryliner",
@@ -48,7 +48,7 @@ export const mockPlanItems: PlanItem[] = [
   },
   {
     id: "pl-6",
-    projectId: "p-102",
+    projectId: 102,
     title: "Dormer framing",
     bucket: "Next",
     trade: "Carpenter",
@@ -57,7 +57,7 @@ export const mockPlanItems: PlanItem[] = [
   },
   {
     id: "pl-7",
-    projectId: "p-104",
+    projectId: 104,
     title: "Building control foundation inspection",
     bucket: "Next",
     trade: "Inspector",
@@ -66,7 +66,7 @@ export const mockPlanItems: PlanItem[] = [
   },
   {
     id: "pl-8",
-    projectId: "p-101",
+    projectId: 101,
     title: "Skim & breathable lime plaster",
     bucket: "Then",
     trade: "Plasterer",
@@ -75,7 +75,7 @@ export const mockPlanItems: PlanItem[] = [
   },
   {
     id: "pl-9",
-    projectId: "p-101",
+    projectId: 101,
     title: "Air source heat pump install",
     bucket: "Then",
     trade: "Heating engineer",
@@ -84,7 +84,7 @@ export const mockPlanItems: PlanItem[] = [
   },
   {
     id: "pl-10",
-    projectId: "p-103",
+    projectId: 103,
     title: "Snagging & handover",
     bucket: "Then",
     trade: "Site manager",
@@ -96,56 +96,56 @@ export const mockPlanItems: PlanItem[] = [
 export const mockMilestones: Milestone[] = [
   {
     id: "m-1",
-    projectId: "p-101",
+    projectId: 101,
     title: "Planning approved",
     date: "2026-05-18",
     status: "Complete",
   },
   {
     id: "m-2",
-    projectId: "p-101",
+    projectId: 101,
     title: "Foundations signed off",
     date: "2026-07-31",
     status: "Complete",
   },
   {
     id: "m-3",
-    projectId: "p-101",
+    projectId: 101,
     title: "Roof watertight",
     date: "2026-10-09",
     status: "Complete",
   },
   {
     id: "m-4",
-    projectId: "p-101",
+    projectId: 101,
     title: "First fix complete",
     date: "2026-11-13",
     status: "In progress",
   },
   {
     id: "m-5",
-    projectId: "p-101",
+    projectId: 101,
     title: "Plastering complete",
     date: "2026-12-11",
     status: "Upcoming",
   },
   {
     id: "m-6",
-    projectId: "p-101",
+    projectId: 101,
     title: "Kitchen & bifolds installed",
     date: "2027-01-15",
     status: "Upcoming",
   },
   {
     id: "m-7",
-    projectId: "p-101",
+    projectId: 101,
     title: "Handover",
     date: "2027-01-29",
     status: "Upcoming",
   },
   {
     id: "m-8",
-    projectId: "p-104",
+    projectId: 104,
     title: "Foundations poured",
     date: "2026-11-06",
     status: "Delayed",

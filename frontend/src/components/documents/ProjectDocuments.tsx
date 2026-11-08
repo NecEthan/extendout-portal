@@ -12,7 +12,7 @@ import { firstErrorMessage } from "@/lib/errorMessage";
 const PAGE_SIZE = 20;
 
 /** Upload, list and track processing of one project's documents. */
-export function ProjectDocuments({ projectId }: { projectId: string }) {
+export function ProjectDocuments({ projectId }: { projectId: number }) {
   const [offset, setOffset] = useState(0);
   const documents = useDocuments(projectId, PAGE_SIZE, offset);
 

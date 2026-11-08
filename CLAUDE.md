@@ -101,7 +101,7 @@ Requires all services running. Auth state is persisted to `.auth/user.json` by `
 
 ```
 User (role: admin|builder|client)
- └── ProjectMember (user_id, project_id)  ── Project (id e.g. "p-101", name)
+ └── ProjectMember (user_id, project_id)  ── Project (id: auto-increment integer, name)
 Document (owner_id, project_id → Project)
       └── DocumentVersion (version_number, status: PROCESSING|ACTIVE|SUPERSEDED|DELETED|REVIEW_REQUIRED|FAILED)
            ├── DocumentChunk (content + Vector(1536) embedding)

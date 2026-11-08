@@ -10,5 +10,5 @@ export interface Member {
 
 /** A person on the Team page (GET /team), with the projects they belong to. */
 export interface TeamMember extends Member {
-  project_ids: string[];
+  project_ids: number[];
 }

@@ -10,7 +10,7 @@ from unittest.mock import patch
 from sqlalchemy import select
 
 from app.models.base import Document, DocumentVersion, ProcessingJob
-from tests.fixtures.auth import TEST_PROJECT_ID
+from tests.fixtures.auth import TEST_PROJECT_ID, UNKNOWN_PROJECT_ID
 
 
 def _txt_file(name: str = "test.txt") -> dict:
@@ -136,7 +136,7 @@ async def test_upload_unknown_project_404(auth_client):
         response = await auth_client.post(
             "/documents",
             files=_txt_file(),
-            data={"title": "Ghost", "project_id": "does-not-exist"},
+            data={"title": "Ghost", "project_id": str(UNKNOWN_PROJECT_ID)},
         )
     assert response.status_code == 404
 

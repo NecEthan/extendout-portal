@@ -13,7 +13,7 @@ export interface Document {
   title: string;
   owner_id: string;
   source_type: DocumentSourceType;
-  project_id: string | null;
+  project_id: number | null;
   created_at: string;
   latest_version_status: DocumentVersionStatus | null;
 }

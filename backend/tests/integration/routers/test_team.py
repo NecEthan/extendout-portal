@@ -7,7 +7,7 @@ from sqlalchemy import delete
 
 from app.models.base import ProjectMember, User
 from app.services.auth import hash_password
-from tests.fixtures.auth import TEST_PROJECT_ID
+from tests.fixtures.auth import TEST_PROJECT_ID, UNKNOWN_PROJECT_ID
 
 
 @pytest.fixture
@@ -15,7 +15,7 @@ async def make_user(db):
     """Factory: make_user(role, projects=[...]) -> User. Cleaned up afterwards."""
     created: list[uuid.UUID] = []
 
-    async def _make(role: str = "client", projects: tuple[str, ...] = ()) -> User:
+    async def _make(role: str = "client", projects: tuple[int, ...] = ()) -> User:
         user = User(
             email=f"team+{uuid.uuid4().hex[:8]}@example.com",
             name=f"Team {role}",
@@ -112,7 +112,7 @@ async def test_admin_lists_project_members(admin_client, test_user):
 
 
 async def test_list_members_unknown_project(admin_client):
-    response = await admin_client.get("/projects/does-not-exist/members")
+    response = await admin_client.get(f"/projects/{UNKNOWN_PROJECT_ID}/members")
     assert response.status_code == 404
 
 
@@ -150,7 +150,7 @@ async def test_add_member_unknown_user_or_project(admin_client, make_project):
     assert unknown_user.status_code == 404
 
     unknown_project = await admin_client.post(
-        "/projects/does-not-exist/members", json={"user_id": str(uuid.uuid4())}
+        f"/projects/{UNKNOWN_PROJECT_ID}/members", json={"user_id": str(uuid.uuid4())}
     )
     assert unknown_project.status_code == 404
 

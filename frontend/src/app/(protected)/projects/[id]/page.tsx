@@ -34,7 +34,7 @@ const backLink = (
 );
 
 export default function ProjectDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const id = Number(useParams<{ id: string }>().id);
   const tab = useSearchParams().get("tab") ?? undefined;
   const projectQuery = useProject(id);
   const isAdmin = useUser().data?.role === "admin";
@@ -49,6 +49,7 @@ export default function ProjectDetailPage() {
           message={getErrorMessage(projectQuery, "Failed to load project", {
             403: "You don't have access to this project. Ask an admin to add you as a member.",
             404: "Project not found.",
+            422: "Project not found.", // non-numeric id in the URL
           })}
         />
       </>

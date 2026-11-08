@@ -11,7 +11,7 @@ import { useSearchQuery } from "@/hooks/useSearchQuery";
 import { getErrorMessage } from "@/lib/errorMessage";
 
 /** Ask questions answered only from this project's documents. */
-export function ProjectSearch({ projectId }: { projectId: string }) {
+export function ProjectSearch({ projectId }: { projectId: number }) {
   const [question, setQuestion] = useState("");
   const [mode, setMode] = useState<"current" | "historical">("current");
   const {

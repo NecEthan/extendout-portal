@@ -12,7 +12,7 @@ export function useTeam({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({ queryKey: ["team"], queryFn: listTeam, enabled });
 }
 
-export function useProjectMembers(projectId: string) {
+export function useProjectMembers(projectId: number) {
   return useQuery({
     queryKey: ["project-members", projectId],
     queryFn: () => listProjectMembers(projectId),
@@ -46,7 +46,7 @@ export function useAddProjectMember() {
       projectId,
       userId,
     }: {
-      projectId: string;
+      projectId: number;
       userId: string;
     }) => addProjectMember(projectId, userId),
     onSuccess: invalidate,
@@ -60,7 +60,7 @@ export function useRemoveProjectMember() {
       projectId,
       userId,
     }: {
-      projectId: string;
+      projectId: number;
       userId: string;
     }) => removeProjectMember(projectId, userId),
     onSuccess: invalidate,

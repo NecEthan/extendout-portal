@@ -12,12 +12,12 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 export async function uploadDocument(
   file: File,
   title: string,
-  projectId: string
+  projectId: number
 ): Promise<DocumentUploadedResponse> {
   const form = new FormData();
   form.append("file", file);
   form.append("title", title);
-  form.append("project_id", projectId);
+  form.append("project_id", String(projectId));
 
   const res = await fetch(`${API_BASE_URL}/documents`, {
     method: "POST",
@@ -33,7 +33,7 @@ export async function uploadDocument(
 export async function listDocuments(
   limit: number,
   offset: number,
-  projectId?: string
+  projectId?: number
 ): Promise<PaginatedDocuments> {
   const project = projectId
     ? `&project_id=${encodeURIComponent(projectId)}`

@@ -37,7 +37,7 @@ export default function TeamPage() {
   const addMember = useAddProjectMember();
   const removeMember = useRemoveProjectMember();
 
-  const projectName = (id: string) =>
+  const projectName = (id: number) =>
     projects.data?.find((p) => p.id === id)?.name ?? id;
 
   const error = firstErrorMessage([
@@ -49,6 +49,10 @@ export default function TeamPage() {
   ]);
 
   function renderProjects(member: TeamMember) {
+    // Admins can access every project, so memberships don't apply to them.
+    if (member.role === "admin") {
+      return <Badge variant="neutral">All projects</Badge>;
+    }
     const available = (projects.data ?? []).filter(
       (p) => !member.project_ids.includes(p.id)
     );
@@ -79,7 +83,7 @@ export default function TeamPage() {
             onChange={(e) =>
               e.target.value &&
               addMember.mutate({
-                projectId: e.target.value,
+                projectId: Number(e.target.value),
                 userId: member.id,
               })
             }

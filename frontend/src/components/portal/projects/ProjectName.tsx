@@ -3,7 +3,7 @@
 import { useProjects } from "@/hooks/useProjects";
 
 /** A project's name from the API (falls back to the id until loaded). */
-export function ProjectName({ id }: { id: string }) {
+export function ProjectName({ id }: { id: number }) {
   const { data } = useProjects();
   return <>{data?.find((p) => p.id === id)?.name ?? id}</>;
 }

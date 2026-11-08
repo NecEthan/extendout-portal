@@ -23,7 +23,10 @@ from app.models.base import (
 from app.services.auth import hash_password
 
 # Shared project that test_user is a member of. Upload test documents here.
-TEST_PROJECT_ID = "test-project"
+# A fixed id far above real ones (inserted explicitly; the identity is BY DEFAULT).
+TEST_PROJECT_ID = 999_999
+# An id no project has, for 404 tests.
+UNKNOWN_PROJECT_ID = 2_000_000_000
 
 
 async def _ensure_test_project(db) -> None:
@@ -117,12 +120,13 @@ async def make_project(db):
 
     Pass member=None for a project the user is NOT a member of.
     """
-    created: list[str] = []
+    created: list[int] = []
 
-    async def _make(member: User | None = None) -> str:
-        project_id = f"test-{uuid.uuid4().hex[:8]}"
-        db.add(Project(id=project_id, name=f"Project {project_id}"))
+    async def _make(member: User | None = None) -> int:
+        project = Project(name=f"Test project {uuid.uuid4().hex[:8]}")
+        db.add(project)
         await db.flush()
+        project_id = project.id
         if member is not None:
             db.add(ProjectMember(project_id=project_id, user_id=member.id))
         await db.commit()

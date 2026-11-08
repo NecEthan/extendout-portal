@@ -2,7 +2,7 @@ import type { ProgressUpdate } from "@/interfaces/portal-interface";
 import { mockPhotos } from "./evidence";
 
 /** The project shown in the Client view (homeowner perspective). */
-export const clientProjectId = "p-101";
+export const clientProjectId = 101;
 
 export const clientWelcome = {
   clientName: "Sarah",

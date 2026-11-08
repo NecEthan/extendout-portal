@@ -1,11 +1,11 @@
 // Types for mock-backed portal features (no backend yet).
-// Projects themselves come from the API: see ./project.ts.
+// Projects themselves come from the API: see ./project-interface.ts.
 
 export type PlanBucket = "Now" | "Next" | "Then";
 
 export interface PlanItem {
   id: string;
-  projectId: string;
+  projectId: number;
   title: string;
   bucket: PlanBucket;
   trade: string;
@@ -15,7 +15,7 @@ export interface PlanItem {
 
 export interface Milestone {
   id: string;
-  projectId: string;
+  projectId: number;
   title: string;
   date: string;
   status: "Complete" | "In progress" | "Upcoming" | "Delayed";
@@ -25,7 +25,7 @@ export type MaterialStatus = "Required" | "RFQ sent" | "Ordered" | "Delivered";
 
 export interface MaterialItem {
   id: string;
-  projectId: string;
+  projectId: number;
   item: string;
   quantity: string;
   supplier?: string;
@@ -36,7 +36,7 @@ export interface MaterialItem {
 
 export interface SitePhoto {
   id: string;
-  projectId: string;
+  projectId: number;
   caption: string;
   takenBy: string;
   takenAt: string;
@@ -45,7 +45,7 @@ export interface SitePhoto {
 
 export interface Inspection {
   id: string;
-  projectId: string;
+  projectId: number;
   title: string;
   inspector: string;
   date: string;
@@ -54,7 +54,7 @@ export interface Inspection {
 
 export interface Issue {
   id: string;
-  projectId: string;
+  projectId: number;
   title: string;
   raisedBy: string;
   raisedAt: string;

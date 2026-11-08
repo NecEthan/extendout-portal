@@ -1,4 +1,8 @@
-import type { Inspection, Issue, SitePhoto } from "@/interfaces/portal-interface";
+import type {
+  Inspection,
+  Issue,
+  SitePhoto,
+} from "@/interfaces/portal-interface";
 
 const tones = [
   "from-orange-200 to-amber-100",
@@ -12,7 +16,7 @@ const tones = [
 export const mockPhotos: SitePhoto[] = [
   {
     id: "ph-1",
-    projectId: "p-101",
+    projectId: 101,
     caption: "First fix electrics: kitchen wall",
     takenBy: "Dan Price",
     takenAt: "2026-11-05",
@@ -20,7 +24,7 @@ export const mockPhotos: SitePhoto[] = [
   },
   {
     id: "ph-2",
-    projectId: "p-101",
+    projectId: 101,
     caption: "Steel goalpost installed",
     takenBy: "Tom Reeves",
     takenAt: "2026-10-02",
@@ -28,7 +32,7 @@ export const mockPhotos: SitePhoto[] = [
   },
   {
     id: "ph-3",
-    projectId: "p-101",
+    projectId: 101,
     caption: "Roof membrane & battens",
     takenBy: "Tom Reeves",
     takenAt: "2026-10-08",
@@ -36,7 +40,7 @@ export const mockPhotos: SitePhoto[] = [
   },
   {
     id: "ph-4",
-    projectId: "p-102",
+    projectId: 102,
     caption: "Loft floor joists strengthened",
     takenBy: "Lucy Grant",
     takenAt: "2026-10-29",
@@ -44,7 +48,7 @@ export const mockPhotos: SitePhoto[] = [
   },
   {
     id: "ph-5",
-    projectId: "p-103",
+    projectId: 103,
     caption: "Kitchen units fitted",
     takenBy: "Marcus Hale",
     takenAt: "2026-11-04",
@@ -52,7 +56,7 @@ export const mockPhotos: SitePhoto[] = [
   },
   {
     id: "ph-6",
-    projectId: "p-104",
+    projectId: 104,
     caption: "Foundation trench excavated",
     takenBy: "Lucy Grant",
     takenAt: "2026-11-03",
@@ -60,7 +64,7 @@ export const mockPhotos: SitePhoto[] = [
   },
   {
     id: "ph-7",
-    projectId: "p-101",
+    projectId: 101,
     caption: "Underfloor insulation laid",
     takenBy: "Dan Price",
     takenAt: "2026-09-15",
@@ -68,7 +72,7 @@ export const mockPhotos: SitePhoto[] = [
   },
   {
     id: "ph-8",
-    projectId: "p-101",
+    projectId: 101,
     caption: "Plumbing manifold",
     takenBy: "Dan Price",
     takenAt: "2026-11-06",
@@ -79,7 +83,7 @@ export const mockPhotos: SitePhoto[] = [
 export const mockInspections: Inspection[] = [
   {
     id: "in-1",
-    projectId: "p-101",
+    projectId: 101,
     title: "Building control: foundations",
     inspector: "Mole Valley BC",
     date: "2026-07-30",
@@ -87,7 +91,7 @@ export const mockInspections: Inspection[] = [
   },
   {
     id: "in-2",
-    projectId: "p-101",
+    projectId: 101,
     title: "Building control: drainage",
     inspector: "Mole Valley BC",
     date: "2026-08-12",
@@ -95,7 +99,7 @@ export const mockInspections: Inspection[] = [
   },
   {
     id: "in-3",
-    projectId: "p-101",
+    projectId: 101,
     title: "Pre-plaster first fix check",
     inspector: "Tom Reeves",
     date: "2026-11-13",
@@ -103,7 +107,7 @@ export const mockInspections: Inspection[] = [
   },
   {
     id: "in-4",
-    projectId: "p-104",
+    projectId: 104,
     title: "Building control: foundation trench",
     inspector: "Reigate & Banstead BC",
     date: "2026-11-04",
@@ -111,7 +115,7 @@ export const mockInspections: Inspection[] = [
   },
   {
     id: "in-5",
-    projectId: "p-102",
+    projectId: 102,
     title: "Structural engineer: steel",
     inspector: "Hart Structures",
     date: "2026-11-11",
@@ -122,7 +126,7 @@ export const mockInspections: Inspection[] = [
 export const mockIssues: Issue[] = [
   {
     id: "is-1",
-    projectId: "p-104",
+    projectId: 104,
     title: "Trench depth insufficient: clay heave risk",
     raisedBy: "Building control",
     raisedAt: "2026-11-04",
@@ -131,7 +135,7 @@ export const mockIssues: Issue[] = [
   },
   {
     id: "is-2",
-    projectId: "p-101",
+    projectId: 101,
     title: "Rooflight upstand 20mm out of level",
     raisedBy: "Tom Reeves",
     raisedAt: "2026-10-27",
@@ -140,7 +144,7 @@ export const mockIssues: Issue[] = [
   },
   {
     id: "is-3",
-    projectId: "p-102",
+    projectId: 102,
     title: "Neighbour access for scaffold not confirmed",
     raisedBy: "Lucy Grant",
     raisedAt: "2026-10-31",
@@ -149,7 +153,7 @@ export const mockIssues: Issue[] = [
   },
   {
     id: "is-4",
-    projectId: "p-103",
+    projectId: 103,
     title: "Damaged cabinet door on delivery",
     raisedBy: "Marcus Hale",
     raisedAt: "2026-11-02",

@@ -18,7 +18,7 @@ describe("uploadDocument", () => {
     });
 
     const file = new File(["hello"], "test.txt", { type: "text/plain" });
-    const result = await uploadDocument(file, "My Doc", "p-101");
+    const result = await uploadDocument(file, "My Doc", 101);
 
     expect(result).toEqual({ id: "uuid-1", status: "accepted" });
     const [url, opts] = mockFetch.mock.calls[0] as [string, RequestInit];
@@ -36,7 +36,7 @@ describe("uploadDocument", () => {
     });
 
     const file = new File(["x"], "big.txt");
-    await expect(uploadDocument(file, "title", "p-101")).rejects.toMatchObject({
+    await expect(uploadDocument(file, "title", 101)).rejects.toMatchObject({
       status: 413,
       message: "File exceeds 50 MB limit",
     });
@@ -50,7 +50,7 @@ describe("uploadDocument", () => {
     });
 
     await expect(
-      uploadDocument(new File([""], "f.exe"), "t", "p-101")
+      uploadDocument(new File([""], "f.exe"), "t", 101)
     ).rejects.toBeInstanceOf(ApiError);
   });
 });

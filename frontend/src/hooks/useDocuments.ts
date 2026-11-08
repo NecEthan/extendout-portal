@@ -6,7 +6,7 @@ import {
 } from "@/lib/api/documents";
 import { isProcessing } from "@/utils/documentStatus";
 
-export function useDocuments(projectId: string, limit: number, offset: number) {
+export function useDocuments(projectId: number, limit: number, offset: number) {
   return useQuery({
     queryKey: ["documents", projectId, limit, offset],
     queryFn: () => listDocuments(limit, offset, projectId),
@@ -19,7 +19,7 @@ export function useDocuments(projectId: string, limit: number, offset: number) {
   });
 }
 
-export function useUploadDocument(projectId: string) {
+export function useUploadDocument(projectId: number) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ file, title }: { file: File; title: string }) =>

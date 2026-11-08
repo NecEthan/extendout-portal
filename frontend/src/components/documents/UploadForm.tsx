@@ -10,7 +10,7 @@ import { useUploadDocument } from "@/hooks/useDocuments";
 import { getErrorMessage } from "@/lib/errorMessage";
 
 interface UploadFormProps {
-  projectId: string;
+  projectId: number;
 }
 
 export function UploadForm({ projectId }: UploadFormProps) {
