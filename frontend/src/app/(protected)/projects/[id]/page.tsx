@@ -3,9 +3,6 @@
 import { useParams, useSearchParams } from "next/navigation";
 import { Tabs } from "@/components/ui/tabs";
 import { ErrorAlert } from "@/components/ui/error-alert";
-import { ProjectDocuments } from "@/components/documents/ProjectDocuments";
-import { ProjectSearch } from "@/components/search/ProjectSearch";
-import { ProjectTeam } from "@/components/team/ProjectTeam";
 import { useProject } from "@/hooks/useProjects";
 import { useUser } from "@/hooks/useUser";
 import { getErrorMessage } from "@/lib/errorMessage";
@@ -14,6 +11,9 @@ import { ProjectHeader } from "./components/ProjectHeader";
 import { OverviewTab } from "./components/OverviewTab";
 import { PlanningTab } from "./components/PlanningTab";
 import { SiteEvidenceTab } from "./components/SiteEvidenceTab";
+import { DocumentsTab } from "./components/DocumentsTab";
+import { SearchTab } from "./components/SearchTab";
+import { TeamTab } from "./components/TeamTab";
 
 export default function ProjectDetailPage() {
   const id = Number(useParams<{ id: string }>().id);
@@ -57,19 +57,19 @@ export default function ProjectDetailPage() {
     {
       value: "documents",
       label: "Documents",
-      content: <ProjectDocuments projectId={id} />,
+      content: <DocumentsTab projectId={id} />,
     },
     {
       value: "search",
       label: "Search",
-      content: <ProjectSearch projectId={id} />,
+      content: <SearchTab projectId={id} />,
     },
   ];
   if (isAdmin) {
     tabs.push({
       value: "team",
       label: "Team",
-      content: <ProjectTeam projectId={id} />,
+      content: <TeamTab projectId={id} />,
     });
   }
 

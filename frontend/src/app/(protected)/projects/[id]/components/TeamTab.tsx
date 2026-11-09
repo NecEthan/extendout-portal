@@ -14,7 +14,7 @@ import {
 import { firstErrorMessage } from "@/lib/errorMessage";
 
 /** Admin only: the people who can access one project, with add and remove. */
-export function ProjectTeam({ projectId }: { projectId: number }) {
+export function TeamTab({ projectId }: { projectId: number }) {
   const user = useUser();
   const members = useProjectMembers(projectId);
   const team = useTeam();

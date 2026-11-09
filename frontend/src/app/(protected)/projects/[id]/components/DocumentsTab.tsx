@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { UploadForm } from "@/components/documents/UploadForm";
-import { DocumentList } from "@/components/documents/DocumentList";
+import { UploadForm } from "./UploadForm";
+import { DocumentList } from "./DocumentList";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorAlert } from "@/components/ui/error-alert";
 import { Pagination } from "@/components/ui/pagination";
@@ -12,7 +12,7 @@ import { firstErrorMessage } from "@/lib/errorMessage";
 const PAGE_SIZE = 20;
 
 /** Upload, list and track processing of one project's documents. */
-export function ProjectDocuments({ projectId }: { projectId: number }) {
+export function DocumentsTab({ projectId }: { projectId: number }) {
   const [offset, setOffset] = useState(0);
   const documents = useDocuments(projectId, PAGE_SIZE, offset);
 
