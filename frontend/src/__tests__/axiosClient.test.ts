@@ -1,11 +1,14 @@
-import { ApiError } from "@/lib/api/client";
-import { getUser } from "@/lib/api/auth";
+import { ApiError } from "@/lib/api/apiError";
+import { getUser, login } from "@/lib/api/auth";
+import { navigateTo } from "@/lib/navigation";
 import { createUser } from "@/lib/api/team";
 import { lastRequest, networkError, respond } from "@/test-utils/mockApi";
 
+jest.mock("@/lib/navigation", () => ({ navigateTo: jest.fn() }));
+
 const newUser = { email: "a@b.com", password: "pw", role: "builder" as const };
 
-describe("api client", () => {
+describe("axios client", () => {
   it("returns parsed JSON on success", async () => {
     respond(200, { id: "1", email: "test@example.com" });
     await expect(getUser()).resolves.toEqual({
@@ -48,7 +51,7 @@ describe("api client", () => {
   });
 
   it("throws ApiError instance", async () => {
-    respond(401, { detail: "Unauthorized" });
+    respond(403, { detail: "Admins only" });
     await expect(getUser()).rejects.toBeInstanceOf(ApiError);
   });
 
@@ -74,5 +77,42 @@ describe("api client", () => {
     const req = lastRequest();
     expect(req.method).toBe("post");
     expect(JSON.parse(req.data)).toEqual(newUser);
+  });
+});
+
+describe("expired session (401)", () => {
+  beforeEach(() => {
+    jest.mocked(navigateTo).mockReset();
+    window.history.pushState({}, "", "/projects/1");
+    document.cookie = "kg_ui_auth=1; path=/";
+  });
+
+  it("clears the UI auth cookie and redirects to /login", async () => {
+    respond(401, { detail: "Session invalid or expired" });
+    let settled = false;
+    getUser().finally(() => (settled = true));
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(navigateTo).toHaveBeenCalledWith("/login");
+    expect(document.cookie).not.toContain("kg_ui_auth=1");
+    // Never settles, so screens don't flash an error while navigating away.
+    expect(settled).toBe(false);
+  });
+
+  it("does not redirect on a failed login (wrong password)", async () => {
+    window.history.pushState({}, "", "/login");
+    respond(401, { detail: "Invalid credentials" });
+    await expect(login("a@b.com", "wrong")).rejects.toMatchObject({
+      status: 401,
+      message: "Invalid credentials",
+    });
+    expect(navigateTo).not.toHaveBeenCalled();
+  });
+
+  it("rejects instead of redirecting when already on /login", async () => {
+    window.history.pushState({}, "", "/login");
+    respond(401, { detail: "Not authenticated" });
+    await expect(getUser()).rejects.toBeInstanceOf(ApiError);
+    expect(navigateTo).not.toHaveBeenCalled();
   });
 });

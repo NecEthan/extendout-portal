@@ -3,7 +3,7 @@ import {
   type AxiosResponse,
   type InternalAxiosRequestConfig,
 } from "axios";
-import { api } from "@/lib/api/client";
+import { api } from "@/lib/api/axiosClient";
 
 /**
  * Replaces the axios transport on the shared `api` instance, so requests go

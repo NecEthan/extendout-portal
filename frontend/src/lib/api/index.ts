@@ -1,1 +1,2 @@
-export { api, ApiError } from "./client";
+export { api } from "./axiosClient";
+export { ApiError } from "./apiError";

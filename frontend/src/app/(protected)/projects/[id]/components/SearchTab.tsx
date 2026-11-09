@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { ApiError } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,18 +27,14 @@ export function SearchTab({ projectId }: { projectId: number }) {
   }
 
   const result = data ?? null;
-  const unauthorized =
-    searchError instanceof ApiError && searchError.status === 401;
-  const error = unauthorized
-    ? null
-    : getErrorMessage(
-        { isError, error: searchError },
-        "Something went wrong. Please try again.",
-        {
-          429: "Too many questions in a short time. Wait a minute and try again.",
-          503: "The AI service is temporarily unavailable. Please try again later.",
-        }
-      );
+  const error = getErrorMessage(
+    { isError, error: searchError },
+    "Something went wrong. Please try again.",
+    {
+      429: "Too many questions in a short time. Wait a minute and try again.",
+      503: "The AI service is temporarily unavailable. Please try again later.",
+    }
+  );
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">

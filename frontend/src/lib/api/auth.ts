@@ -1,5 +1,6 @@
 import type { User } from "@/interfaces";
-import { api, ApiError } from "./client";
+import { ApiError } from "./apiError";
+import { api } from "./axiosClient";
 
 export async function login(email: string, password: string): Promise<User> {
   const { data: user } = await api.post<User>("/auth/login", {

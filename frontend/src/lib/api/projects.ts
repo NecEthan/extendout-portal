@@ -1,5 +1,5 @@
 import type { NewProject, Project, ProjectUpdate } from "@/interfaces";
-import { api } from "./client";
+import { api } from "./axiosClient";
 
 /** Projects the current user may access (admins: all; others: their memberships). */
 export async function listProjects(): Promise<Project[]> {

@@ -5,7 +5,7 @@ import type {
   PaginatedDocuments,
   VersionUploadedResponse,
 } from "@/interfaces";
-import { api } from "./client";
+import { api } from "./axiosClient";
 
 export async function uploadDocument(
   file: File,

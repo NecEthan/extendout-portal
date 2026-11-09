@@ -1,10 +1,10 @@
-import { ApiError } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/apiError";
 import type { ErrorSource } from "@/interfaces";
 
 export function getErrorMessage(
   source: ErrorSource,
   fallback: string,
-  statusOverrides?: Record<number, string>,
+  statusOverrides?: Record<number, string>
 ): string | null {
   if (!source.isError) return null;
   if (source.error instanceof ApiError) {

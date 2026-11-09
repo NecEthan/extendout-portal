@@ -1,5 +1,5 @@
 import type { Member, NewUser, TeamMember, UserRole } from "@/interfaces";
-import { api } from "./client";
+import { api } from "./axiosClient";
 
 /** All team endpoints are admin only. */
 export async function listTeam(): Promise<TeamMember[]> {

@@ -158,7 +158,7 @@ Run worker: `uv run arq app.workers.main.WorkerSettings` (or via Docker: `worker
 
 ## Frontend Architecture
 
-Next.js 14 App Router. All pages under `src/app/`. API calls go through `src/lib/api/client.ts` using `credentials: "include"` for session cookie passthrough. Types in `src/types/index.ts` mirror the backend data model.
+Next.js 14 App Router. All pages under `src/app/`. API calls go through the shared axios instance `api` in `src/lib/api/axiosClient.ts` (`withCredentials: true` for session cookie passthrough). Its response interceptor turns non-2xx responses into `ApiError` (`src/lib/api/apiError.ts`) and redirects to `/login` on a 401 (except from `/auth/login` / `/auth/logout`). Jest tests stub the transport with `src/test-utils/mockApi.ts`. Types in `src/types/index.ts` mirror the backend data model.
 
 Protected pages live under `src/app/(protected)/` with a shared layout. `/login` is the only public page. Middleware in `src/proxy.ts` handles auth redirects. Post-login redirect lands on `/dashboard`.
 
