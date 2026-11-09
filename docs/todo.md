@@ -15,3 +15,14 @@ Leave everything else alone: authenticated reads are cheap and scoped to your ow
 ## Login error messages
 
 - [ ] Fix the login error messages for the account lock and "try again in 1 minute".
+
+## Replace MinIO in production
+
+MinIO currently runs locally in Docker (`minio` service, `minio_data` volume). For production, move file storage to a hosted S3-compatible service (AWS S3, Cloudflare R2 or Backblaze B2) so we don't have to run, back up and secure our own storage server.
+
+- [ ] Pick a provider and create the bucket (private, no public access).
+- [ ] Point the backend and worker at it: `STORAGE_ENDPOINT`, `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`, `STORAGE_BUCKET`. The code uses the S3 API through the `minio` Python client, which works with any S3-compatible endpoint.
+- [ ] Check orphan cleanup works on the new provider. It relies on object tags (`kg-orphan`) and a bucket lifecycle rule set at startup (`configure_bucket_lifecycle` in `app/services/storage.py`). AWS S3 supports both; other providers may need the rule set up differently.
+- [ ] Turn on server-side encryption at rest for the bucket (see *Storage is not encrypted at rest* in `docs/engineering-decisions.md`).
+- [ ] Use credentials scoped to this one bucket, not account-wide keys.
+- [ ] Copy existing files across from MinIO, keeping the same object keys (`documents/<uuid>`), since `storage_key` in the database points at them.
