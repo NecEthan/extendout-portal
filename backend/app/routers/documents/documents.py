@@ -2,7 +2,7 @@ import asyncio
 
 import structlog
 from arq.connections import ArqRedis
-from fastapi import APIRouter, Depends, Form, Query, Request, UploadFile
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,10 +16,12 @@ from app.schemas.documents import (
 )
 from app.services import storage
 from app.services.documents import (
+    DUPLICATE_CONTENT_DETAIL,
     assert_no_duplicate,
     compute_hash,
     create_document_records,
     generate_storage_key,
+    is_duplicate_content_error,
     read_and_validate,
 )
 from app.services.permissions import document_access_filters, ensure_project_access
@@ -60,9 +62,14 @@ async def upload_document(
         doc, version, job = await create_document_records(
             db, title, content_hash, storage_key, current_user, project_id
         )
-    except Exception:
+    except Exception as exc:
         await db.rollback()
         await loop.run_in_executor(None, storage.delete_object, storage_key)
+        if is_duplicate_content_error(exc):
+            # Another upload of the same file committed first.
+            raise HTTPException(
+                status_code=409, detail=DUPLICATE_CONTENT_DETAIL
+            ) from exc
         raise
 
     await loop.run_in_executor(None, storage.confirm_object, storage_key)

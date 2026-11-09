@@ -16,7 +16,14 @@ from app.schemas.documents import (
 )
 from app.services import storage
 from app.services.activation import activate_version
-from app.services.documents import compute_hash, generate_storage_key, read_and_validate
+from app.services.documents import (
+    DUPLICATE_CONTENT_DETAIL,
+    assert_no_duplicate,
+    compute_hash,
+    generate_storage_key,
+    is_duplicate_content_error,
+    read_and_validate,
+)
 from app.services.permissions import document_access_filters
 from app.utils.enqueue import enqueue_processing_job
 
@@ -42,11 +49,15 @@ async def upload_document_version(
         .where(Document.id == document_id)
         .where(*document_access_filters(current_user))
     )
-    if result.scalar_one_or_none() is None:
+    document = result.scalar_one_or_none()
+    if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
 
     content, content_type = await read_and_validate(file)
     content_hash = compute_hash(content)
+    # Includes this document's own versions: re-uploading an old version is
+    # rejected; "Set as active" restores it instead.
+    await assert_no_duplicate(db, content_hash, document.project_id)
     storage_key = generate_storage_key()
 
     # upload file in separate thread to avoid blocking the asynchronous event loop
@@ -74,6 +85,7 @@ async def upload_document_version(
             content_hash=content_hash,
             storage_key=storage_key,
             created_by=current_user.id,
+            project_id=document.project_id,
         )
         db.add(version)
         await db.flush()
@@ -82,9 +94,14 @@ async def upload_document_version(
         db.add(job)
 
         await db.commit()
-    except Exception:
+    except Exception as exc:
         await db.rollback()
         await loop.run_in_executor(None, storage.delete_object, storage_key)
+        if is_duplicate_content_error(exc):
+            # Another upload of the same file committed first.
+            raise HTTPException(
+                status_code=409, detail=DUPLICATE_CONTENT_DETAIL
+            ) from exc
         raise
 
     await loop.run_in_executor(None, storage.confirm_object, storage_key)

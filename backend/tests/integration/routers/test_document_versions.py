@@ -15,7 +15,8 @@ from tests.helpers.files import docx_upload
 
 
 def _docx_file(name: str = "v2.docx") -> dict:
-    return docx_upload(name, "Version two content")
+    # Unique content per call: identical content in one project is rejected (409).
+    return docx_upload(name, f"Version two content {uuid.uuid4()}")
 
 
 async def _upload_doc(auth_client) -> str:
@@ -372,3 +373,52 @@ async def test_activate_422_deleted_status(auth_client, db, test_user):
         f"/documents/{doc_id}/versions/{ver_id}/activate"
     )
     assert response.status_code == 422
+
+
+async def test_new_version_with_identical_content_rejected(auth_client):
+    """Re-uploading an existing version's file is a 409; "Set as active" restores it."""
+    doc_id = await _upload_doc(auth_client)
+
+    with (
+        patch("app.services.storage.upload_bytes") as upload,
+        patch("app.services.storage.delete_object"),
+    ):
+        response = await auth_client.post(
+            f"/documents/{doc_id}/versions",
+            files=docx_upload("v1-again.docx", "Version one content"),
+        )
+
+    assert response.status_code == 409
+    upload.assert_not_called()  # rejected before anything is stored
+
+
+async def test_new_version_sets_project_id(auth_client, db):
+    doc_id = await _upload_doc(auth_client)
+    with patch("app.services.storage.upload_bytes"):
+        response = await auth_client.post(
+            f"/documents/{doc_id}/versions", files=_docx_file()
+        )
+    assert response.status_code == 202
+
+    version = await db.get(DocumentVersion, uuid.UUID(response.json()["id"]))
+    assert version.project_id == TEST_PROJECT_ID
+
+
+async def test_concurrent_identical_version_rejected_by_unique_index(auth_client):
+    """If two identical versions race past the code check, the DB index rejects one."""
+    doc_id = await _upload_doc(auth_client)
+
+    with (
+        patch("app.services.storage.upload_bytes"),
+        patch("app.services.storage.delete_object") as delete_object,
+        # Simulate the race: the check ran before the other upload committed.
+        patch("app.routers.documents.versions.assert_no_duplicate"),
+    ):
+        response = await auth_client.post(
+            f"/documents/{doc_id}/versions",
+            files=docx_upload("v1-again.docx", "Version one content"),
+        )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Document with identical content already exists"
+    delete_object.assert_called_once()  # the losing upload's file is cleaned up

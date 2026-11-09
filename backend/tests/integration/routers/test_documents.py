@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import pytest
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from app.models.base import Document, DocumentVersion, ProcessingJob
 from tests.fixtures.auth import TEST_PROJECT_ID, UNKNOWN_PROJECT_ID
@@ -261,6 +261,78 @@ async def test_upload_duplicate_content_rejected(auth_client):
             data={"title": "Duplicate", "project_id": TEST_PROJECT_ID},
         )
     assert second.status_code == 409
+
+
+async def test_upload_sets_project_id_on_version(auth_client, db):
+    with patch("app.services.storage.upload_bytes"):
+        response = await auth_client.post(
+            "/documents",
+            files=docx_upload("p.docx", f"Project id check {uuid.uuid4()}"),
+            data={"title": "P", "project_id": TEST_PROJECT_ID},
+        )
+    assert response.status_code == 202
+
+    result = await db.execute(
+        select(DocumentVersion).where(
+            DocumentVersion.document_id == uuid.UUID(response.json()["id"])
+        )
+    )
+    assert result.scalar_one().project_id == TEST_PROJECT_ID
+
+
+async def test_same_file_can_be_reuploaded_after_failed_processing(auth_client, db):
+    """A FAILED version doesn't count as a duplicate, so the user can retry."""
+    files = docx_upload("retry.docx", f"Retry after failure {uuid.uuid4()}")
+    with (
+        patch("app.services.storage.upload_bytes"),
+        patch("app.services.storage.delete_object"),
+    ):
+        first = await auth_client.post(
+            "/documents",
+            files=files,
+            data={"title": "Retry", "project_id": TEST_PROJECT_ID},
+        )
+        assert first.status_code == 202
+        await db.execute(
+            update(DocumentVersion)
+            .where(DocumentVersion.document_id == uuid.UUID(first.json()["id"]))
+            .values(status="FAILED")
+        )
+        await db.commit()
+
+        retry = await auth_client.post(
+            "/documents",
+            files=files,
+            data={"title": "Retry", "project_id": TEST_PROJECT_ID},
+        )
+
+    assert retry.status_code == 202
+
+
+async def test_concurrent_duplicate_upload_rejected_by_unique_index(auth_client):
+    """Two identical uploads that both pass the code check: the DB index rejects one."""
+    files = docx_upload("race.docx", f"Race {uuid.uuid4()}")
+    with (
+        patch("app.services.storage.upload_bytes"),
+        patch("app.services.storage.delete_object") as delete_object,
+        # Simulate the race: neither upload sees the other in the code check.
+        patch("app.routers.documents.documents.assert_no_duplicate"),
+    ):
+        first = await auth_client.post(
+            "/documents",
+            files=files,
+            data={"title": "Race", "project_id": TEST_PROJECT_ID},
+        )
+        second = await auth_client.post(
+            "/documents",
+            files=files,
+            data={"title": "Race", "project_id": TEST_PROJECT_ID},
+        )
+
+    assert first.status_code == 202
+    assert second.status_code == 409
+    assert second.json()["detail"] == "Document with identical content already exists"
+    delete_object.assert_called_once()  # the losing upload's file is cleaned up
 
 
 async def test_list_documents_filtered_by_project(auth_client, make_project, test_user):

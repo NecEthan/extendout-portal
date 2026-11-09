@@ -15,6 +15,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 
+DUPLICATE_CONTENT_INDEX = "uq_document_versions_project_content_hash"
+
 
 class DocumentVersion(Base):
     __tablename__ = "document_versions"
@@ -30,6 +32,9 @@ class DocumentVersion(Base):
         Text, nullable=False
     )  # PROCESSING | ACTIVE | SUPERSEDED | DELETED | REVIEW_REQUIRED | FAILED
     content_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    project_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("projects.id"), nullable=True
+    )
     storage_key: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -53,5 +58,16 @@ class DocumentVersion(Base):
             "document_id",
             unique=True,
             postgresql_where=text("status = 'ACTIVE'"),
+        ),
+        # The same file can't be uploaded twice to one project, even by two
+        # simultaneous requests (the code check in assert_no_duplicate can't
+        # catch that race). FAILED versions are excluded so a failed upload can
+        # be retried with the same file.
+        Index(
+            DUPLICATE_CONTENT_INDEX,
+            "project_id",
+            "content_hash",
+            unique=True,
+            postgresql_where=text("status <> 'FAILED'"),
         ),
     )

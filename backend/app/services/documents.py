@@ -5,9 +5,13 @@ import zipfile
 
 from fastapi import HTTPException, UploadFile
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.models.document_version import DUPLICATE_CONTENT_INDEX
+
+DUPLICATE_CONTENT_DETAIL = "Document with identical content already exists"
 
 _PDF = "application/pdf"
 _DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -90,17 +94,29 @@ async def assert_no_duplicate(
     db: AsyncSession, content_hash: str, project_id: int | None = None
 ) -> None:
     """Reject identical content within the same project (the same file may exist in
-    different projects)."""
+    different projects). FAILED versions don't count, so a failed upload can be
+    retried with the same file.
+
+    This gives a clean 409 before the file is stored. It can't stop two
+    simultaneous uploads (both checks pass before either commits); the
+    DUPLICATE_CONTENT_INDEX unique index catches that case at commit time.
+    """
     from app.models.base import Document, DocumentVersion
 
     result = await db.execute(
         select(DocumentVersion)
         .join(Document, Document.id == DocumentVersion.document_id)
         .where(DocumentVersion.content_hash == content_hash)
+        .where(DocumentVersion.status != "FAILED")
         .where(Document.project_id.is_not_distinct_from(project_id))
     )
     if result.scalars().first() is not None:
-        raise HTTPException(status_code=409, detail="Document with identical content already exists")
+        raise HTTPException(status_code=409, detail=DUPLICATE_CONTENT_DETAIL)
+
+
+def is_duplicate_content_error(exc: BaseException) -> bool:
+    """True if ``exc`` is the unique-index violation for duplicate content."""
+    return isinstance(exc, IntegrityError) and DUPLICATE_CONTENT_INDEX in str(exc.orig)
 
 
 async def create_document_records(
@@ -129,6 +145,7 @@ async def create_document_records(
         content_hash=content_hash,
         storage_key=storage_key,
         created_by=current_user.id,
+        project_id=project_id,
     )
     db.add(version)
     await db.flush()

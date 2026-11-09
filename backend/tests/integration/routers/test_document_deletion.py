@@ -241,7 +241,7 @@ async def test_delete_removes_all_versions_and_chunks(auth_client, db):
         # Upload a second version.
         r2 = await auth_client.post(
             f"/documents/{doc_id}/versions",
-            files=_docx_file("v2.docx"),
+            files=docx_upload("v2.docx", "Hello KnowledgeGuard, version two"),
         )
     assert r2.status_code == 202
 
