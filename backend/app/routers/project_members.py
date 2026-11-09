@@ -47,7 +47,8 @@ async def add_project_member(
     user = await db.get(User, body.user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
-    if await db.get(ProjectMember, (project_id, user.id)) is not None:
+    existing = await db.get(ProjectMember, (project_id, user.id))
+    if existing is not None:
         raise HTTPException(status_code=409, detail="Already a member of this project")
     db.add(ProjectMember(project_id=project_id, user_id=user.id))
     await db.commit()

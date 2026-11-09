@@ -31,7 +31,8 @@ def document_access_filters(user: User) -> list[ColumnElement[bool]]:
 
 async def ensure_project_access(db: AsyncSession, user: User, project_id: int) -> None:
     """404 if the project doesn't exist; 403 if the user isn't allowed in it."""
-    if await db.get(Project, project_id) is None:
+    project = await db.get(Project, project_id)
+    if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
     if is_admin(user):
         return
