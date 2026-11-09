@@ -6,13 +6,13 @@ Covers: full pipeline, empty-file edge case.
 from sqlalchemy import select
 
 from app.models.base import DocumentChunk, DocumentVersion, ProcessingJob
-from tests.helpers.processing import TXT_CONTENT, get_version, run_worker, upload_doc
+from tests.helpers.processing import DOC_TEXT, get_version, run_worker, upload_doc
 
 
 async def test_process_document_pipeline(auth_client, db):
     """Upload → worker processes → ACTIVE version, chunks, embeddings, FTS."""
 
-    doc_id = await upload_doc(auth_client, "Company Policies", TXT_CONTENT, "policy.txt")
+    doc_id = await upload_doc(auth_client, "Company Policies", DOC_TEXT, "policy.docx")
     version = await get_version(db, doc_id)
     assert version.status == "PROCESSING"
     version_id = version.id
@@ -23,7 +23,7 @@ async def test_process_document_pipeline(auth_client, db):
     job = result.scalar_one()
     assert job.status in ("QUEUED", "DISPATCHED")
 
-    await run_worker(version_id, TXT_CONTENT)
+    await run_worker(version_id, DOC_TEXT)
 
     db.expire_all()
     result = await db.execute(
@@ -58,11 +58,11 @@ async def test_process_document_pipeline(auth_client, db):
 
 async def test_process_document_empty_file(auth_client, db):
     """Extractable but empty text still activates the version with zero chunks."""
-    doc_id = await upload_doc(auth_client, "Blank Doc", b"x", "blank.txt")
+    doc_id = await upload_doc(auth_client, "Blank Doc", "x", "blank.docx")
     version = await get_version(db, doc_id)
     version_id = version.id
 
-    await run_worker(version_id, b"   ")
+    await run_worker(version_id, "   ")
 
     db.expire_all()
     result = await db.execute(

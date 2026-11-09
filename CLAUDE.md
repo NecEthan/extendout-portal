@@ -86,7 +86,7 @@ Requires all services running. Auth state is persisted to `.auth/user.json` by `
 `POST /documents` in `app/routers/documents/documents.py`. The `documents/` router is a package split into `documents.py` (list/upload), `document.py` (get/patch/delete by id), `versions.py` (version endpoints), combined in `__init__.py` via `router.routes.extend()`.
 
 1. Check project access (`ensure_project_access`) — `project_id` is required; 404 unknown project, 403 if a non-admin isn't a member.
-2. Validate file type (allowed: pdf, txt, docx, md).
+2. Validate file type by content (allowed: pdf, docx, xlsx — docx/xlsx told apart by their zip contents).
 3. Upload bytes to MinIO.
 4. Insert `Document`, `DocumentVersion` (status=PROCESSING), `ProcessingJob` (status=QUEUED) — all in one DB transaction.
 5. Best-effort enqueue to Redis via arq with deterministic `_job_id = f"process_document:{version.id}"`.

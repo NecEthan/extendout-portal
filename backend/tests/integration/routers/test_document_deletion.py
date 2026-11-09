@@ -19,10 +19,11 @@ from app.models.base import (
     ProcessingJob,
 )
 from tests.fixtures.auth import TEST_PROJECT_ID
+from tests.helpers.files import docx_upload
 
 
-def _txt_file(name: str = "test.txt") -> dict:
-    return {"file": (name, b"Hello KnowledgeGuard", "text/plain")}
+def _docx_file(name: str = "test.docx") -> dict:
+    return docx_upload(name, "Hello KnowledgeGuard")
 
 
 async def _upload(client, title: str = "Doc", project_id: str = TEST_PROJECT_ID) -> str:
@@ -33,7 +34,7 @@ async def _upload(client, title: str = "Doc", project_id: str = TEST_PROJECT_ID)
     ):
         r = await client.post(
             "/documents",
-            files=_txt_file(),
+            files=_docx_file(),
             data={"title": title, "project_id": project_id},
         )
     assert r.status_code == 202
@@ -232,7 +233,7 @@ async def test_delete_removes_all_versions_and_chunks(auth_client, db):
     ):
         r = await auth_client.post(
             "/documents",
-            files=_txt_file(),
+            files=_docx_file(),
             data={"title": "MultiVer", "project_id": TEST_PROJECT_ID},
         )
         doc_id = r.json()["id"]
@@ -240,7 +241,7 @@ async def test_delete_removes_all_versions_and_chunks(auth_client, db):
         # Upload a second version.
         r2 = await auth_client.post(
             f"/documents/{doc_id}/versions",
-            files=_txt_file("v2.txt"),
+            files=_docx_file("v2.docx"),
         )
     assert r2.status_code == 202
 

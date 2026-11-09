@@ -22,10 +22,10 @@ from tests.helpers.processing import (
 async def test_process_document_previous_active_superseded(auth_client, db, test_user):
     """When a second version is processed, the first ACTIVE version is superseded."""
     user_id = test_user.id  # capture before expire_all
-    doc_id = await upload_doc(auth_client, "Doc", b"Version one content.", "v1.txt")
+    doc_id = await upload_doc(auth_client, "Doc", "Version one content.", "v1.docx")
     v1_id = (await get_version(db, doc_id)).id
 
-    await run_worker(v1_id, b"Version one content.")
+    await run_worker(v1_id, "Version one content.")
 
     db.expire_all()
     result = await db.execute(
@@ -33,9 +33,9 @@ async def test_process_document_previous_active_superseded(auth_client, db, test
     )
     assert result.scalar_one().status == "ACTIVE"
 
-    v2 = await insert_version(db, doc_id, 2, b"Version two content.", user_id)
+    v2 = await insert_version(db, doc_id, 2, "Version two content.", user_id)
     v2_id = v2.id  # capture before expire_all
-    await run_worker(v2_id, b"Version two content.")
+    await run_worker(v2_id, "Version two content.")
 
     db.expire_all()
     result = await db.execute(
@@ -53,11 +53,11 @@ async def test_previous_version_protected_on_failure(auth_client, db, test_user)
     """Failing v2 leaves v1 ACTIVE; successfully processing v3 supersedes v1."""
     user_id = test_user.id  # capture before expire_all
     doc_id = await upload_doc(
-        auth_client, "Protected Doc", b"Version one content.", "v1.txt"
+        auth_client, "Protected Doc", "Version one content.", "v1.docx"
     )
     v1_id = (await get_version(db, doc_id)).id
 
-    await run_worker(v1_id, b"Version one content.")
+    await run_worker(v1_id, "Version one content.")
 
     db.expire_all()
     result = await db.execute(
@@ -65,7 +65,7 @@ async def test_previous_version_protected_on_failure(auth_client, db, test_user)
     )
     assert result.scalar_one().status == "ACTIVE"
 
-    v2 = await insert_version(db, doc_id, 2, b"Version two content.", user_id)
+    v2 = await insert_version(db, doc_id, 2, "Version two content.", user_id)
     v2_id = v2.id  # capture before expire_all
     error = RuntimeError("extraction failed")
     for attempt in (1, 2):
@@ -86,9 +86,9 @@ async def test_previous_version_protected_on_failure(auth_client, db, test_user)
     )
     assert result.scalar_one().status == "FAILED"
 
-    v3 = await insert_version(db, doc_id, 3, b"Version three content.", user_id)
+    v3 = await insert_version(db, doc_id, 3, "Version three content.", user_id)
     v3_id = v3.id  # capture before expire_all
-    await run_worker(v3_id, b"Version three content.")
+    await run_worker(v3_id, "Version three content.")
 
     db.expire_all()
     result = await db.execute(

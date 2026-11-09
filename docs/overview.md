@@ -26,7 +26,7 @@ Access is decided by **role + project membership**. Builders and clients only ev
 
 ### Documents and versions
 
-- Upload PDF, DOCX, TXT or Markdown files (up to 50 MB) to a project.
+- Upload PDF, Word (.docx) or Excel (.xlsx) files (up to 50 MB) to a project.
 - Uploading a new version of a document keeps the history:
 
 ```text

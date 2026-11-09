@@ -51,7 +51,7 @@ What the portal does today. Screens that still show sample data are listed in [o
 
 ## Documents
 
-23. Users can upload PDF, DOCX, TXT or Markdown files (max 50 MB) to a project they can access. The backend checks file type and size independently of the frontend.
+23. Users can upload PDF, Word (.docx) or Excel (.xlsx) files (max 50 MB) to a project they can access. The backend checks file type and size independently of the frontend.
 24. Users can list a project's documents (paginated), view a document, rename it, and delete it.
 25. Re-uploading an identical file (same SHA-256 hash) is rejected as a duplicate.
 

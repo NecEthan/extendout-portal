@@ -6,9 +6,10 @@ from sqlalchemy import select
 
 from app.models.base import DocumentChunk, DocumentVersion
 from app.workers.main import process_document
+from tests.helpers.files import make_docx
 from tests.helpers.processing import (
+    DOC_TEXT,
     FAKE_EMBEDDING,
-    TXT_CONTENT,
     get_version,
     run_worker,
     upload_doc,
@@ -17,11 +18,11 @@ from tests.helpers.processing import (
 
 async def test_process_document_idempotency(auth_client, db):
     """Processing an already-ACTIVE version is a no-op; chunk count unchanged."""
-    doc_id = await upload_doc(auth_client, "Idempotency Doc", TXT_CONTENT, "policy.txt")
+    doc_id = await upload_doc(auth_client, "Idempotency Doc", DOC_TEXT, "policy.docx")
     version = await get_version(db, doc_id)
     version_id = version.id
 
-    await run_worker(version_id, TXT_CONTENT)
+    await run_worker(version_id, DOC_TEXT)
 
     db.expire_all()
     result = await db.execute(
@@ -32,7 +33,7 @@ async def test_process_document_idempotency(auth_client, db):
 
     # Second run — early-exit because status=ACTIVE; download never called.
     with patch(
-        "app.workers.main.storage.download_bytes", return_value=TXT_CONTENT
+        "app.workers.main.storage.download_bytes", return_value=make_docx(DOC_TEXT)
     ) as mock_dl:
         await process_document({}, str(version_id))
         mock_dl.assert_not_called()
@@ -53,7 +54,7 @@ async def test_process_document_idempotency(auth_client, db):
 
 async def test_crash_recovery_no_duplicate_chunks(auth_client, db):
     """Stale chunks from a partial crash are replaced, not duplicated."""
-    doc_id = await upload_doc(auth_client, "Crash Recovery Doc", TXT_CONTENT, "policy.txt")
+    doc_id = await upload_doc(auth_client, "Crash Recovery Doc", DOC_TEXT, "policy.docx")
     version = await get_version(db, doc_id)
     version_id = version.id
 
@@ -70,7 +71,7 @@ async def test_crash_recovery_no_duplicate_chunks(auth_client, db):
         )
     await db.commit()
 
-    await run_worker(version_id, TXT_CONTENT, job_try=2)
+    await run_worker(version_id, DOC_TEXT, job_try=2)
 
     db.expire_all()
     result = await db.execute(

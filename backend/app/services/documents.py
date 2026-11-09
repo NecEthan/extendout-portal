@@ -1,5 +1,7 @@
 import hashlib
+import io
 import uuid
+import zipfile
 
 from fastapi import HTTPException, UploadFile
 from sqlalchemy import select
@@ -7,21 +9,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 
-# Magic-byte signatures for supported types
+_PDF = "application/pdf"
 _DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+_UNKNOWN = "application/octet-stream"
 
-_MAGIC: dict[bytes, str] = {
-    b"\x25\x50\x44\x46": "application/pdf",
-    b"\x50\x4b\x03\x04": _DOCX,
-}
+_PDF_MAGIC = b"%PDF"
+_ZIP_MAGIC = b"PK\x03\x04"
 
-ALLOWED_CONTENT_TYPES: frozenset[str] = frozenset(
-    [
-        "application/pdf",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "text/plain",
-    ]
-)
+# Uploads are restricted to PDF, Word (.docx) and Excel (.xlsx).
+ALLOWED_CONTENT_TYPES: frozenset[str] = frozenset([_PDF, _DOCX, _XLSX])
 
 
 async def read_and_validate(file: UploadFile) -> tuple[bytes, str]:
@@ -42,38 +39,43 @@ async def read_and_validate(file: UploadFile) -> tuple[bytes, str]:
             detail=f"File exceeds {settings.max_upload_size_mb} MB limit",
         )
 
-    # Check magic bytes
-    header = content[:4]
-    detected = _MAGIC.get(header)
-
-    if detected is None:
-        # Try to classify as plain text (valid UTF-8, no null bytes)
-        try:
-            content.decode("utf-8")
-            if b"\x00" not in content:
-                detected = "text/plain"
-        except UnicodeDecodeError:
-            pass
-
-    if detected is None or detected not in ALLOWED_CONTENT_TYPES:
-        raise HTTPException(status_code=415, detail="Unsupported file type")
+    detected = detect_content_type(content)
+    if detected not in ALLOWED_CONTENT_TYPES:
+        raise HTTPException(
+            status_code=415,
+            detail=(
+                "Unsupported file type. "
+                "Upload a PDF, Word (.docx) or Excel (.xlsx) file."
+            ),
+        )
 
     return content, detected
 
 
 def detect_content_type(content: bytes) -> str:
-    """Detect content type from magic bytes. Returns 'text/plain' for valid UTF-8 text."""
-    header = content[:4]
-    detected = _MAGIC.get(header)
-    if detected is not None:
-        return detected
+    """Detect content type from the file's bytes (not its name or declared type).
+
+    DOCX and XLSX are both zip archives, so they're told apart by their contents.
+    Anything that isn't PDF, DOCX or XLSX is ``application/octet-stream``.
+    """
+    if content.startswith(_PDF_MAGIC):
+        return _PDF
+    if content.startswith(_ZIP_MAGIC):
+        return _detect_office_type(content)
+    return _UNKNOWN
+
+
+def _detect_office_type(content: bytes) -> str:
     try:
-        content.decode("utf-8")
-        if b"\x00" not in content:
-            return "text/plain"
-    except UnicodeDecodeError:
-        pass
-    return "application/octet-stream"
+        with zipfile.ZipFile(io.BytesIO(content)) as zf:
+            names = set(zf.namelist())
+    except zipfile.BadZipFile:
+        return _UNKNOWN
+    if "word/document.xml" in names:
+        return _DOCX
+    if "xl/workbook.xml" in names:
+        return _XLSX
+    return _UNKNOWN
 
 
 def compute_hash(content: bytes) -> str:

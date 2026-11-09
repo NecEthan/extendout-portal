@@ -1,5 +1,6 @@
 import { type Page, type Locator } from "@playwright/test";
 import { expect } from "@playwright/test";
+import { DOCX_MIME, makeDocx } from "../utils/docx";
 
 export class VersionHistoryPage {
   constructor(private readonly page: Page) {}
@@ -15,8 +16,8 @@ export class VersionHistoryPage {
   async uploadNewVersion(filename: string, content: string) {
     await this.page.getByLabel("File").setInputFiles({
       name: filename,
-      mimeType: "text/plain",
-      buffer: Buffer.from(content),
+      mimeType: DOCX_MIME,
+      buffer: await makeDocx(content),
     });
     await this.page
       .getByRole("button", { name: /upload new version/i })

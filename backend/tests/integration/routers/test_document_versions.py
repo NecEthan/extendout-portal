@@ -11,10 +11,11 @@ from sqlalchemy import select, update
 
 from app.models.base import DocumentVersion, ProcessingJob
 from tests.fixtures.auth import TEST_PROJECT_ID
+from tests.helpers.files import docx_upload
 
 
-def _txt_file(name: str = "v2.txt") -> dict:
-    return {"file": (name, b"Version two content", "text/plain")}
+def _docx_file(name: str = "v2.docx") -> dict:
+    return docx_upload(name, "Version two content")
 
 
 async def _upload_doc(auth_client) -> str:
@@ -22,7 +23,7 @@ async def _upload_doc(auth_client) -> str:
     with patch("app.services.storage.upload_bytes"):
         response = await auth_client.post(
             "/documents",
-            files={"file": ("v1.txt", b"Version one content", "text/plain")},
+            files=docx_upload("v1.docx", "Version one content"),
             data={"title": "Versioned Doc", "project_id": TEST_PROJECT_ID},
         )
     assert response.status_code == 202
@@ -31,7 +32,7 @@ async def _upload_doc(auth_client) -> str:
 
 async def test_upload_version_requires_auth(client):
     doc_id = uuid.uuid4()
-    response = await client.post(f"/documents/{doc_id}/versions", files=_txt_file())
+    response = await client.post(f"/documents/{doc_id}/versions", files=_docx_file())
     assert response.status_code == 401
 
 
@@ -39,7 +40,7 @@ async def test_upload_version_not_found(auth_client):
     with patch("app.services.storage.upload_bytes"):
         response = await auth_client.post(
             f"/documents/{uuid.uuid4()}/versions",
-            files=_txt_file(),
+            files=_docx_file(),
         )
     assert response.status_code == 404
 
@@ -53,7 +54,7 @@ async def test_upload_new_version_creates_db_records(auth_client, db, test_user)
     ):
         response = await auth_client.post(
             f"/documents/{doc_id}/versions",
-            files=_txt_file(),
+            files=_docx_file(),
         )
 
     assert response.status_code == 202
@@ -86,8 +87,8 @@ async def test_upload_new_version_increments_version_number(auth_client, db, tes
         patch("app.services.storage.upload_bytes"),
         patch("app.services.storage.delete_object"),
     ):
-        r2 = await auth_client.post(f"/documents/{doc_id}/versions", files=_txt_file())
-        r3 = await auth_client.post(f"/documents/{doc_id}/versions", files=_txt_file())
+        r2 = await auth_client.post(f"/documents/{doc_id}/versions", files=_docx_file())
+        r3 = await auth_client.post(f"/documents/{doc_id}/versions", files=_docx_file())
 
     assert r2.json()["version_number"] == 2
     assert r3.json()["version_number"] == 3
@@ -111,7 +112,7 @@ async def test_list_versions(auth_client, db, test_user):
         patch("app.services.storage.upload_bytes"),
         patch("app.services.storage.delete_object"),
     ):
-        await auth_client.post(f"/documents/{doc_id}/versions", files=_txt_file())
+        await auth_client.post(f"/documents/{doc_id}/versions", files=_docx_file())
 
     response = await auth_client.get(f"/documents/{doc_id}/versions")
     assert response.status_code == 200
@@ -183,7 +184,7 @@ async def _upload_and_setup_versions(auth_client, db):
     ):
         r2 = await auth_client.post(
             f"/documents/{doc_id}/versions",
-            files=_txt_file("v2.txt"),
+            files=_docx_file("v2.docx"),
         )
     assert r2.status_code == 202
     v2_id = uuid.UUID(r2.json()["id"])
@@ -262,7 +263,7 @@ async def test_activate_404_non_member(auth_client, admin_client, db, make_proje
     with patch("app.services.storage.upload_bytes"):
         r = await admin_client.post(
             "/documents",
-            files={"file": ("doc.txt", b"admin doc", "text/plain")},
+            files=docx_upload("doc.docx", "admin doc"),
             data={"title": "Admin Doc", "project_id": outsider_project},
         )
     assert r.status_code == 202
@@ -284,7 +285,7 @@ async def test_member_can_activate_other_users_doc(auth_client, admin_client, db
     with patch("app.services.storage.upload_bytes"):
         r = await admin_client.post(
             "/documents",
-            files={"file": ("doc.txt", b"shared doc", "text/plain")},
+            files=docx_upload("doc.docx", "shared doc"),
             data={"title": "Shared Doc", "project_id": TEST_PROJECT_ID},
         )
     assert r.status_code == 202

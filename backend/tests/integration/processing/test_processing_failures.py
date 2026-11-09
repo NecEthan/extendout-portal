@@ -1,18 +1,19 @@
 """Retry and permanent failure tests."""
 
+from unittest.mock import patch
+
 import pytest
 from arq import Retry
 from sqlalchemy import select
-from unittest.mock import patch
 
 from app.models.base import DocumentVersion, ProcessingJob
 from app.workers.main import process_document
-from tests.helpers.processing import TXT_CONTENT, get_version, run_worker, upload_doc
+from tests.helpers.processing import DOC_TEXT, get_version, run_worker, upload_doc
 
 
 async def test_process_document_retry_then_success(auth_client, db):
     """Transient failure on attempt 1 raises Retry; attempt 2 succeeds."""
-    doc_id = await upload_doc(auth_client, "Retry Doc", TXT_CONTENT, "policy.txt")
+    doc_id = await upload_doc(auth_client, "Retry Doc", DOC_TEXT, "policy.docx")
     version = await get_version(db, doc_id)
     version_id = version.id
 
@@ -29,7 +30,7 @@ async def test_process_document_retry_then_success(auth_client, db):
     )
     assert result.scalar_one().attempts == 1
 
-    await run_worker(version_id, TXT_CONTENT, job_try=2)
+    await run_worker(version_id, DOC_TEXT, job_try=2)
 
     db.expire_all()
     result = await db.execute(
@@ -47,7 +48,7 @@ async def test_process_document_retry_then_success(auth_client, db):
 
 async def test_process_document_permanent_failure(auth_client, db):
     """All 3 attempts fail → version=FAILED, job=FAILED."""
-    doc_id = await upload_doc(auth_client, "Permanent Failure Doc", TXT_CONTENT, "policy.txt")
+    doc_id = await upload_doc(auth_client, "Permanent Failure Doc", DOC_TEXT, "policy.docx")
     version = await get_version(db, doc_id)
     version_id = version.id
 

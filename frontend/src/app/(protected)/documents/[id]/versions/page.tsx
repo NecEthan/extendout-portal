@@ -91,7 +91,7 @@ export default function VersionHistoryPage() {
               <Input
                 id="version-file"
                 type="file"
-                accept=".pdf,.docx,.txt"
+                accept=".pdf,.docx,.xlsx"
                 required
                 ref={fileRef}
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}

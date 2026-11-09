@@ -21,7 +21,8 @@ from app.models.base import Document, DocumentChunk, DocumentVersion, Processing
 from app.services.documents import compute_hash, generate_storage_key
 from app.workers.activation import DocumentDeletedError, activate_version
 from tests.fixtures.auth import TEST_PROJECT_ID
-from tests.helpers.processing import TXT_CONTENT, run_worker
+from tests.helpers.files import make_docx
+from tests.helpers.processing import DOC_TEXT, run_worker
 
 
 async def _create_document(db, user_id: uuid.UUID) -> tuple[Document, DocumentVersion]:
@@ -39,7 +40,7 @@ async def _create_document(db, user_id: uuid.UUID) -> tuple[Document, DocumentVe
         document_id=doc.id,
         version_number=1,
         status="PROCESSING",
-        content_hash=compute_hash(TXT_CONTENT),
+        content_hash=compute_hash(make_docx(DOC_TEXT)),
         storage_key=generate_storage_key(),
         created_by=user_id,
     )
@@ -88,7 +89,7 @@ async def test_worker_produces_no_chunks_when_document_deleted(db, test_user):
     await _hard_delete(db, doc_id, version_id)
 
     # Worker handles missing version gracefully — no crash, no chunks.
-    await run_worker(version_id, TXT_CONTENT)
+    await run_worker(version_id, DOC_TEXT)
 
     db.expire_all()
     result = await db.execute(

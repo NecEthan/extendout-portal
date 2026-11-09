@@ -7,23 +7,55 @@ MinIO and Redis are mocked — no external services needed beyond the DB.
 import uuid
 from unittest.mock import patch
 
+import pytest
+
 from sqlalchemy import select
 
 from app.models.base import Document, DocumentVersion, ProcessingJob
 from tests.fixtures.auth import TEST_PROJECT_ID, UNKNOWN_PROJECT_ID
+from tests.helpers.files import XLSX_CT, docx_upload, make_xlsx
 
 
-def _txt_file(name: str = "test.txt") -> dict:
-    return {"file": (name, b"Hello KnowledgeGuard", "text/plain")}
+def _docx_file(name: str = "test.docx") -> dict:
+    return docx_upload(name, "Hello KnowledgeGuard")
 
 
 async def test_upload_requires_auth(client):
     response = await client.post(
         "/documents",
-        files=_txt_file(),
+        files=_docx_file(),
         data={"title": "Doc", "project_id": TEST_PROJECT_ID},
     )
     assert response.status_code == 401
+
+
+@pytest.mark.parametrize(
+    "filename,content,mime",
+    [
+        ("notes.txt", b"Plain text notes", "text/plain"),
+        ("notes.md", b"# Markdown notes", "text/markdown"),
+    ],
+)
+async def test_upload_rejects_text_files(auth_client, filename, content, mime):
+    response = await auth_client.post(
+        "/documents",
+        files={"file": (filename, content, mime)},
+        data={"title": "Text", "project_id": TEST_PROJECT_ID},
+    )
+    assert response.status_code == 415
+
+
+async def test_upload_accepts_xlsx(auth_client):
+    with (
+        patch("app.services.storage.upload_bytes"),
+        patch("arq.connections.ArqRedis.enqueue_job"),
+    ):
+        response = await auth_client.post(
+            "/documents",
+            files={"file": ("costs.xlsx", make_xlsx([["Beam", 450]]), XLSX_CT)},
+            data={"title": "Costs", "project_id": TEST_PROJECT_ID},
+        )
+    assert response.status_code == 202
 
 
 async def test_upload_unsupported_file_type(auth_client):
@@ -42,7 +74,7 @@ async def test_upload_creates_db_records(auth_client, db, test_user):
     ):
         response = await auth_client.post(
             "/documents",
-            files=_txt_file(),
+            files=_docx_file(),
             data={"title": "My Doc", "project_id": TEST_PROJECT_ID},
         )
 
@@ -77,7 +109,7 @@ async def test_upload_enqueues_job(auth_client, mock_pool):
     ):
         response = await auth_client.post(
             "/documents",
-            files=_txt_file(),
+            files=_docx_file(),
             data={"title": "Enqueue test", "project_id": TEST_PROJECT_ID},
         )
 
@@ -93,7 +125,7 @@ async def test_list_documents(auth_client):
     ):
         await auth_client.post(
             "/documents",
-            files=_txt_file(),
+            files=_docx_file(),
             data={"title": "Listed Doc", "project_id": TEST_PROJECT_ID},
         )
 
@@ -110,7 +142,7 @@ async def test_delete_document(auth_client, db):
     ):
         upload = await auth_client.post(
             "/documents",
-            files=_txt_file(),
+            files=_docx_file(),
             data={"title": "To Delete", "project_id": TEST_PROJECT_ID},
         )
     doc_id = upload.json()["id"]
@@ -126,7 +158,7 @@ async def test_delete_document(auth_client, db):
 async def test_upload_requires_project(auth_client):
     with patch("app.services.storage.upload_bytes"):
         response = await auth_client.post(
-            "/documents", files=_txt_file(), data={"title": "No project"}
+            "/documents", files=_docx_file(), data={"title": "No project"}
         )
     assert response.status_code == 422
 
@@ -135,7 +167,7 @@ async def test_upload_unknown_project_404(auth_client):
     with patch("app.services.storage.upload_bytes"):
         response = await auth_client.post(
             "/documents",
-            files=_txt_file(),
+            files=_docx_file(),
             data={"title": "Ghost", "project_id": str(UNKNOWN_PROJECT_ID)},
         )
     assert response.status_code == 404
@@ -146,7 +178,7 @@ async def test_non_member_cannot_upload(auth_client, make_project):
     with patch("app.services.storage.upload_bytes"):
         response = await auth_client.post(
             "/documents",
-            files=_txt_file(),
+            files=_docx_file(),
             data={"title": "Intruder", "project_id": outsider_project},
         )
     assert response.status_code == 403
@@ -160,7 +192,7 @@ async def test_admin_can_upload_to_any_project(admin_client, make_project):
     ):
         response = await admin_client.post(
             "/documents",
-            files=_txt_file(),
+            files=_docx_file(),
             data={"title": "Admin Upload", "project_id": outsider_project},
         )
     assert response.status_code == 202
@@ -180,12 +212,12 @@ async def test_user_only_sees_member_project_docs(auth_client, admin_client, mak
     ):
         await admin_client.post(
             "/documents",
-            files={"file": ("in.txt", b"member project doc", "text/plain")},
+            files=docx_upload("in.docx", "member project doc"),
             data={"title": "Member Visible", "project_id": TEST_PROJECT_ID},
         )
         await admin_client.post(
             "/documents",
-            files={"file": ("out.txt", b"outsider project doc", "text/plain")},
+            files=docx_upload("out.docx", "outsider project doc"),
             data={"title": "Hidden From Members", "project_id": outsider_project},
         )
 
@@ -202,7 +234,7 @@ async def test_admin_sees_all_project_docs(admin_client, make_project):
     ):
         await admin_client.post(
             "/documents",
-            files=_txt_file(),
+            files=_docx_file(),
             data={"title": "Admin Visible", "project_id": outsider_project},
         )
 
@@ -218,14 +250,14 @@ async def test_upload_duplicate_content_rejected(auth_client):
     ):
         first = await auth_client.post(
             "/documents",
-            files=_txt_file(),
+            files=_docx_file(),
             data={"title": "Original", "project_id": TEST_PROJECT_ID},
         )
         assert first.status_code == 202
 
         second = await auth_client.post(
             "/documents",
-            files=_txt_file(),
+            files=_docx_file(),
             data={"title": "Duplicate", "project_id": TEST_PROJECT_ID},
         )
     assert second.status_code == 409
@@ -239,12 +271,12 @@ async def test_list_documents_filtered_by_project(auth_client, make_project, tes
     ):
         await auth_client.post(
             "/documents",
-            files={"file": ("a.txt", b"Project A content", "text/plain")},
+            files=docx_upload("a.docx", "Project A content"),
             data={"title": "Doc A", "project_id": TEST_PROJECT_ID},
         )
         await auth_client.post(
             "/documents",
-            files={"file": ("b.txt", b"Project B content", "text/plain")},
+            files=docx_upload("b.docx", "Project B content"),
             data={"title": "Doc B", "project_id": other_project},
         )
 
@@ -268,17 +300,17 @@ async def test_same_content_allowed_in_different_projects(
     ):
         first = await auth_client.post(
             "/documents",
-            files=_txt_file(),
+            files=_docx_file(),
             data={"title": "Spec", "project_id": TEST_PROJECT_ID},
         )
         other = await auth_client.post(
             "/documents",
-            files=_txt_file(),
+            files=_docx_file(),
             data={"title": "Spec", "project_id": other_project},
         )
         same = await auth_client.post(
             "/documents",
-            files=_txt_file(),
+            files=_docx_file(),
             data={"title": "Spec", "project_id": TEST_PROJECT_ID},
         )
 

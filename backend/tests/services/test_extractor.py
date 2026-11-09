@@ -203,46 +203,50 @@ def test_docx_empty_paragraphs_skipped():
     assert result.strip() == "Real content"
 
 
-# ── TXT extraction ────────────────────────────────────────────────────────────
+# ── XLSX extraction ───────────────────────────────────────────────────────────
+
+_XLSX_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
-def test_txt_extracts_utf8():
-    content = "Hello, world! Café résumé.".encode()
-    result = extract_text(content, "text/plain")
-    assert "Café résumé" in result
+def _make_xlsx(sheets: dict[str, list[list]]) -> bytes:
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    wb.remove(wb.active)
+    for title, rows in sheets.items():
+        ws = wb.create_sheet(title)
+        for row in rows:
+            ws.append(row)
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
 
 
-def test_txt_strips_whitespace():
-    content = b"  hello  "
-    result = extract_text(content, "text/plain")
-    assert result == "hello"
+def test_xlsx_extracts_rows_per_sheet():
+    content = _make_xlsx(
+        {
+            "Costs": [["Item", "Price"], ["Steel beam", 450], ["Skip hire", 280]],
+            "Schedule": [["Week 1", "Foundations"]],
+        }
+    )
+    result = extract_text(content, _XLSX_CT)
+    assert "Sheet: Costs\nItem | Price\nSteel beam | 450\nSkip hire | 280" in result
+    assert "Sheet: Schedule\nWeek 1 | Foundations" in result
 
 
-def test_txt_handles_invalid_bytes_gracefully():
-    content = b"Good text \xff\xfe bad bytes"
-    result = extract_text(content, "text/plain")
-    assert "Good text" in result
+def test_xlsx_skips_empty_rows_and_cells():
+    content = _make_xlsx({"S": [["a", None, "b"], [None, None], ["c"]]})
+    assert extract_text(content, _XLSX_CT) == "Sheet: S\na | b\nc"
 
 
-# ── Markdown extraction ───────────────────────────────────────────────────────
+def test_xlsx_empty_workbook_returns_empty_string():
+    assert extract_text(_make_xlsx({"Empty": []}), _XLSX_CT) == ""
 
 
-def test_markdown_preserves_text():
-    md = b"# Title\n\nSome **bold** text and a [link](http://example.com)."
-    result = extract_text(md, "text/markdown")
-    assert "# Title" in result
-    assert "bold" in result
+# ── Unsupported types ─────────────────────────────────────────────────────────
 
 
-def test_markdown_strips_whitespace():
-    md = b"  \n\n# Heading\n\n  "
-    result = extract_text(md, "text/markdown")
-    assert result == "# Heading"
-
-
-# ── Unsupported type ──────────────────────────────────────────────────────────
-
-
-def test_unsupported_content_type_raises():
-    with pytest.raises(ValueError, match="Unsupported"):
-        extract_text(b"data", "application/zip")
+@pytest.mark.parametrize("content_type", ["text/plain", "text/markdown"])
+def test_text_types_are_unsupported(content_type):
+    with pytest.raises(ValueError, match="Unsupported content type"):
+        extract_text(b"Hello", content_type)

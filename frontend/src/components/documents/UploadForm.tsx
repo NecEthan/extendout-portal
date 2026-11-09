@@ -58,7 +58,7 @@ export function UploadForm({ projectId }: UploadFormProps) {
         <Input
           id="upload-file"
           type="file"
-          accept=".pdf,.docx,.txt"
+          accept=".pdf,.docx,.xlsx"
           required
           ref={fileRef}
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}

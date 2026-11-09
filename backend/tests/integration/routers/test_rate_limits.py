@@ -12,6 +12,7 @@ import pytest
 from app.config import settings
 from app.limiter import limiter
 from tests.fixtures.auth import TEST_PROJECT_ID
+from tests.helpers.files import docx_upload
 
 
 @pytest.fixture(autouse=True)
@@ -25,16 +26,16 @@ def low_limits(monkeypatch):
     limiter.reset()
 
 
-def _unique_txt() -> dict:
+def _unique_docx() -> dict:
     # Unique content so the duplicate-file check (409) never kicks in.
-    content = f"Site notes {uuid.uuid4()}".encode()
-    return {"file": ("notes.txt", content, "text/plain")}
+    content = f"Site notes {uuid.uuid4()}"
+    return docx_upload("notes.docx", content)
 
 
 async def _upload(client):
     return await client.post(
         "/documents",
-        files=_unique_txt(),
+        files=_unique_docx(),
         data={"title": "Notes", "project_id": TEST_PROJECT_ID},
     )
 
@@ -69,13 +70,13 @@ async def test_new_versions_share_the_upload_limit(auth_client, no_storage):
     doc_id = (await _upload(auth_client)).json()["id"]
 
     new_version = await auth_client.post(
-        f"/documents/{doc_id}/versions", files=_unique_txt()
+        f"/documents/{doc_id}/versions", files=_unique_docx()
     )
     assert new_version.status_code == 202
 
     # Third upload of either kind is over the shared 2/minute.
     blocked = await auth_client.post(
-        f"/documents/{doc_id}/versions", files=_unique_txt()
+        f"/documents/{doc_id}/versions", files=_unique_docx()
     )
     assert blocked.status_code == 429
 

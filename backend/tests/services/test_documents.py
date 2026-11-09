@@ -4,10 +4,12 @@ from app.services.documents import (
     ALLOWED_CONTENT_TYPES,
     compute_hash,
     generate_storage_key,
+    detect_content_type,
     read_and_validate,
 )
-
-_DOCX_CT = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+from tests.helpers.files import DOCX_CT as _DOCX_CT
+from tests.helpers.files import XLSX_CT as _XLSX_CT
+from tests.helpers.files import make_docx, make_xlsx
 
 
 class MockUploadFile:
@@ -60,16 +62,50 @@ async def test_validates_pdf():
 
 @pytest.mark.asyncio
 async def test_validates_docx():
-    content = b"\x50\x4b\x03\x04" + b" rest of docx"
-    _, ct = await read_and_validate(MockUploadFile(content))
+    _, ct = await read_and_validate(MockUploadFile(make_docx("hello")))
     assert ct == _DOCX_CT
 
 
 @pytest.mark.asyncio
-async def test_validates_plain_text():
-    content = b"Hello, this is plain text."
-    _, ct = await read_and_validate(MockUploadFile(content))
-    assert ct == "text/plain"
+async def test_validates_xlsx():
+    _, ct = await read_and_validate(MockUploadFile(make_xlsx([["a", 1]])))
+    assert ct == _XLSX_CT
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "content",
+    [
+        b"Hello, this is plain text.",  # .txt
+        b"# Heading\n\nMarkdown body",  # .md
+        b"PK\x03\x04 not really a zip",  # corrupt zip
+    ],
+)
+async def test_rejects_non_pdf_word_excel(content):
+    from fastapi import HTTPException
+
+    with pytest.raises(HTTPException) as exc:
+        await read_and_validate(MockUploadFile(content))
+    assert exc.value.status_code == 415
+
+
+@pytest.mark.asyncio
+async def test_rejects_other_zip_archives():
+    import io
+    import zipfile
+
+    from fastapi import HTTPException
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr("readme.txt", "just a zip")
+    with pytest.raises(HTTPException) as exc:
+        await read_and_validate(MockUploadFile(buf.getvalue()))
+    assert exc.value.status_code == 415
+
+
+def test_detect_content_type_treats_text_as_unknown():
+    assert detect_content_type(b"plain old notes") == "application/octet-stream"
 
 
 @pytest.mark.asyncio
@@ -103,7 +139,6 @@ async def test_rejects_oversized_file(monkeypatch):
 
 
 # ALLOWED_CONTENT_TYPES
-def test_allowed_content_types_contains_expected():
-    assert "application/pdf" in ALLOWED_CONTENT_TYPES
-    assert "text/plain" in ALLOWED_CONTENT_TYPES
+def test_allowed_content_types_are_pdf_word_excel():
+    assert ALLOWED_CONTENT_TYPES == {"application/pdf", _DOCX_CT, _XLSX_CT}
     assert "new/type" not in ALLOWED_CONTENT_TYPES

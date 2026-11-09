@@ -1,5 +1,6 @@
 import { type Page } from "@playwright/test";
 import { expect } from "@playwright/test";
+import { DOCX_MIME, makeDocx } from "../utils/docx";
 
 export class DocumentsPage {
   constructor(private readonly page: Page) {}
@@ -12,8 +13,8 @@ export class DocumentsPage {
     await this.page.getByLabel("Title").fill(title);
     await this.page.getByLabel("File").setInputFiles({
       name: filename,
-      mimeType: "text/plain",
-      buffer: Buffer.from(content),
+      mimeType: DOCX_MIME,
+      buffer: await makeDocx(content),
     });
     await this.page.getByRole("button", { name: /upload document/i }).click();
     await expect(this.page.getByText(title)).toBeVisible();

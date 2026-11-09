@@ -12,7 +12,7 @@ test.describe("Document deletion", () => {
     await documentsPage.goto();
     await documentsPage.uploadDocument(
       docTitle,
-      "deletion-test.txt",
+      "deletion-test.docx",
       "This document will be deleted.",
     );
 
@@ -34,7 +34,7 @@ test.describe("Document deletion", () => {
     await documentsPage.goto();
     await documentsPage.uploadDocument(
       docTitle,
-      "deletion-search-test.txt",
+      "deletion-search-test.docx",
       "This document will be deleted before querying.",
     );
     await expect(page.getByText(docTitle)).toBeVisible();

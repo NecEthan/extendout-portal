@@ -11,7 +11,7 @@ test.describe("Version History", () => {
     const docTitle = `Versioned doc ${Date.now()}`;
 
     await documentsPage.goto();
-    await documentsPage.uploadDocument(docTitle, "v1.txt", "This is version one.");
+    await documentsPage.uploadDocument(docTitle, "v1.docx", "This is version one.");
     await documentsPage.openVersionHistory(docTitle);
 
     await versionHistoryPage.assertLoaded();
@@ -27,13 +27,13 @@ test.describe("Version History", () => {
     const docTitle = `Multi-version doc ${Date.now()}`;
 
     await documentsPage.goto();
-    await documentsPage.uploadDocument(docTitle, "v1.txt", "Version one content.");
+    await documentsPage.uploadDocument(docTitle, "v1.docx", "Version one content.");
     await documentsPage.openVersionHistory(docTitle);
 
     await versionHistoryPage.assertLoaded();
     await expect(versionHistoryPage.versionRows()).toHaveCount(1);
 
-    await versionHistoryPage.uploadNewVersion("v2.txt", "Version two content.");
+    await versionHistoryPage.uploadNewVersion("v2.docx", "Version two content.");
 
     await expect(versionHistoryPage.versionRows()).toHaveCount(2);
     await expect(versionHistoryPage.versionRows().first()).toContainText("v2");
@@ -48,7 +48,7 @@ test.describe("Version History", () => {
     const docTitle = `Nav test doc ${Date.now()}`;
 
     await documentsPage.goto();
-    await documentsPage.uploadDocument(docTitle, "nav.txt", "Navigation test.");
+    await documentsPage.uploadDocument(docTitle, "nav.docx", "Navigation test.");
     await documentsPage.openVersionHistory(docTitle);
 
     await versionHistoryPage.assertLoaded();
@@ -63,12 +63,12 @@ test.describe("Version History", () => {
 
     // Upload v1 and open version history.
     await documentsPage.goto();
-    await documentsPage.uploadDocument(docTitle, "v1.txt", "Version one content.");
+    await documentsPage.uploadDocument(docTitle, "v1.docx", "Version one content.");
     await documentsPage.openVersionHistory(docTitle);
     await versionHistoryPage.assertLoaded();
 
     // Upload v2.
-    await versionHistoryPage.uploadNewVersion("v2.txt", "Version two content.");
+    await versionHistoryPage.uploadNewVersion("v2.docx", "Version two content.");
     await expect(versionHistoryPage.versionRows()).toHaveCount(2);
 
     // Wait for v2 to become ACTIVE (worker processes it).
