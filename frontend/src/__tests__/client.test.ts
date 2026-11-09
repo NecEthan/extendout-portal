@@ -1,88 +1,78 @@
-import { httpClient, ApiError } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/client";
+import { getUser } from "@/lib/api/auth";
+import { createUser } from "@/lib/api/team";
+import { lastRequest, networkError, respond } from "@/test-utils/mockApi";
 
-const mockFetch = jest.fn();
-global.fetch = mockFetch;
+const newUser = { email: "a@b.com", password: "pw", role: "builder" as const };
 
-beforeEach(() => mockFetch.mockReset());
-
-describe("httpClient", () => {
+describe("api client", () => {
   it("returns parsed JSON on success", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({ id: "1", email: "test@example.com" }),
+    respond(200, { id: "1", email: "test@example.com" });
+    await expect(getUser()).resolves.toEqual({
+      id: "1",
+      email: "test@example.com",
     });
-    const result = await httpClient("/auth/me");
-    expect(result).toEqual({ id: "1", email: "test@example.com" });
   });
 
   it("throws ApiError with detail from response body on failure", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
+    respond(409, { detail: "Email already registered" });
+    await expect(createUser(newUser)).rejects.toMatchObject({
       status: 409,
-      json: () => Promise.resolve({ detail: "Email already registered" }),
+      message: "Email already registered",
     });
-    await expect(httpClient("/team", { method: "POST" })).rejects.toMatchObject(
-      {
-        status: 409,
-        message: "Email already registered",
-      }
-    );
   });
 
   it("throws ApiError with fallback message when response has no detail", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-      json: () => Promise.reject(new Error("not json")),
-    });
-    await expect(httpClient("/health")).rejects.toMatchObject({
+    respond(500, "Internal Server Error");
+    await expect(getUser()).rejects.toMatchObject({
       status: 500,
       message: "HTTP 500",
     });
   });
 
   it("joins FastAPI's auto-validation array-shaped detail into a readable message", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      status: 422,
-      json: () =>
-        Promise.resolve({
-          detail: [
-            { loc: ["body", "email"], msg: "field required", type: "missing" },
-            {
-              loc: ["body", "password"],
-              msg: "string too short",
-              type: "value_error",
-            },
-          ],
-        }),
+    respond(422, {
+      detail: [
+        { loc: ["body", "email"], msg: "field required", type: "missing" },
+        {
+          loc: ["body", "password"],
+          msg: "string too short",
+          type: "value_error",
+        },
+      ],
     });
-    await expect(httpClient("/team", { method: "POST" })).rejects.toMatchObject(
-      {
-        status: 422,
-        message: "field required, string too short",
-      }
-    );
+    await expect(createUser(newUser)).rejects.toMatchObject({
+      status: 422,
+      message: "field required, string too short",
+    });
   });
 
   it("throws ApiError instance", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      status: 401,
-      json: () => Promise.resolve({ detail: "Unauthorized" }),
-    });
-    await expect(httpClient("/auth/me")).rejects.toBeInstanceOf(ApiError);
+    respond(401, { detail: "Unauthorized" });
+    await expect(getUser()).rejects.toBeInstanceOf(ApiError);
   });
 
-  it("sends credentials: include", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({}),
-    });
-    await httpClient("/auth/me");
-    expect(mockFetch).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.objectContaining({ credentials: "include" })
-    );
+  it("passes network errors through (not an ApiError)", async () => {
+    networkError();
+    const error = await getUser().catch((e) => e);
+    expect(error).not.toBeInstanceOf(ApiError);
+    expect(error.message).toBe("Network Error");
+  });
+
+  it("sends cookies and uses the API base URL", async () => {
+    respond(200, {});
+    await getUser();
+    const req = lastRequest();
+    expect(req.withCredentials).toBe(true);
+    expect(req.baseURL).toBe("http://localhost:8000");
+    expect(req.url).toBe("/auth/user");
+  });
+
+  it("sends JSON bodies", async () => {
+    respond(201, {});
+    await createUser(newUser);
+    const req = lastRequest();
+    expect(req.method).toBe("post");
+    expect(JSON.parse(req.data)).toEqual(newUser);
   });
 });

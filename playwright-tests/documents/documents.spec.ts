@@ -21,7 +21,6 @@ test.describe("Documents", () => {
     await documentsPage.goto();
     await documentsPage.uploadDocument(
       docTitle,
-      "test.docx",
       "This is a KnowledgeGuard E2E test document.",
     );
 
@@ -35,7 +34,6 @@ test.describe("Documents", () => {
     await documentsPage.goto();
     await documentsPage.uploadDocument(
       docTitle,
-      "delete-me.docx",
       "Delete this document.",
     );
     await documentsPage.deleteDocument(docTitle);

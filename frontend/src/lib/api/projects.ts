@@ -1,22 +1,24 @@
 import type { NewProject, Project, ProjectUpdate } from "@/interfaces";
-import { httpClient } from "./client";
+import { api } from "./client";
 
 /** Projects the current user may access (admins: all; others: their memberships). */
 export async function listProjects(): Promise<Project[]> {
-  return httpClient<Project[]>("/projects");
+  const { data } = await api.get<Project[]>("/projects");
+  return data;
 }
 
 /** One project; rejects with ApiError 403 (not a member) or 404 (unknown). */
 export async function getProject(id: number): Promise<Project> {
-  return httpClient<Project>(`/projects/${encodeURIComponent(id)}`);
+  const { data } = await api.get<Project>(
+    `/projects/${encodeURIComponent(id)}`
+  );
+  return data;
 }
 
 /** Admin only. Returns the created project (id is assigned by the server). */
 export async function createProject(body: NewProject): Promise<Project> {
-  return httpClient<Project>("/projects", {
-    method: "POST",
-    body: JSON.stringify(body),
-  });
+  const { data } = await api.post<Project>("/projects", body);
+  return data;
 }
 
 /** Admin only. Returns the updated project. */
@@ -24,8 +26,6 @@ export async function updateProject(
   id: number,
   changes: ProjectUpdate
 ): Promise<Project> {
-  return httpClient<Project>(`/projects/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify(changes),
-  });
+  const { data } = await api.patch<Project>(`/projects/${id}`, changes);
+  return data;
 }

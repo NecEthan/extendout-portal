@@ -1,53 +1,48 @@
 import type { Member, NewUser, TeamMember, UserRole } from "@/interfaces";
-import { httpClient, throwIfError } from "./client";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+import { api } from "./client";
 
 /** All team endpoints are admin only. */
 export async function listTeam(): Promise<TeamMember[]> {
-  return httpClient<TeamMember[]>("/team");
+  const { data } = await api.get<TeamMember[]>("/team");
+  return data;
 }
 
 export async function createUser(body: NewUser): Promise<TeamMember> {
-  return httpClient<TeamMember>("/team", {
-    method: "POST",
-    body: JSON.stringify(body),
-  });
+  const { data } = await api.post<TeamMember>("/team", body);
+  return data;
 }
 
 export async function updateRole(
   userId: string,
   role: UserRole
 ): Promise<TeamMember> {
-  return httpClient<TeamMember>(`/team/${userId}`, {
-    method: "PATCH",
-    body: JSON.stringify({ role }),
-  });
+  const { data } = await api.patch<TeamMember>(`/team/${userId}`, { role });
+  return data;
 }
 
 export async function listProjectMembers(projectId: number): Promise<Member[]> {
-  return httpClient<Member[]>(
+  const { data } = await api.get<Member[]>(
     `/projects/${encodeURIComponent(projectId)}/members`
   );
+  return data;
 }
 
 export async function addProjectMember(
   projectId: number,
   userId: string
 ): Promise<Member> {
-  return httpClient<Member>(
+  const { data } = await api.post<Member>(
     `/projects/${encodeURIComponent(projectId)}/members`,
-    { method: "POST", body: JSON.stringify({ user_id: userId }) }
+    { user_id: userId }
   );
+  return data;
 }
 
 export async function removeProjectMember(
   projectId: number,
   userId: string
 ): Promise<void> {
-  const res = await fetch(
-    `${API_BASE_URL}/projects/${encodeURIComponent(projectId)}/members/${userId}`,
-    { method: "DELETE", credentials: "include" }
+  await api.delete(
+    `/projects/${encodeURIComponent(projectId)}/members/${userId}`
   );
-  await throwIfError(res);
 }

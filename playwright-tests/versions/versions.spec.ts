@@ -11,7 +11,7 @@ test.describe("Version History", () => {
     const docTitle = `Versioned doc ${Date.now()}`;
 
     await documentsPage.goto();
-    await documentsPage.uploadDocument(docTitle, "v1.docx", "This is version one.");
+    await documentsPage.uploadDocument(docTitle, "This is version one.");
     await documentsPage.openVersionHistory(docTitle);
 
     await versionHistoryPage.assertLoaded();
@@ -27,7 +27,7 @@ test.describe("Version History", () => {
     const docTitle = `Multi-version doc ${Date.now()}`;
 
     await documentsPage.goto();
-    await documentsPage.uploadDocument(docTitle, "v1.docx", "Version one content.");
+    await documentsPage.uploadDocument(docTitle, "Version one content.");
     await documentsPage.openVersionHistory(docTitle);
 
     await versionHistoryPage.assertLoaded();
@@ -48,7 +48,7 @@ test.describe("Version History", () => {
     const docTitle = `Nav test doc ${Date.now()}`;
 
     await documentsPage.goto();
-    await documentsPage.uploadDocument(docTitle, "nav.docx", "Navigation test.");
+    await documentsPage.uploadDocument(docTitle, "Navigation test.");
     await documentsPage.openVersionHistory(docTitle);
 
     await versionHistoryPage.assertLoaded();
@@ -63,7 +63,7 @@ test.describe("Version History", () => {
 
     // Upload v1 and open version history.
     await documentsPage.goto();
-    await documentsPage.uploadDocument(docTitle, "v1.docx", "Version one content.");
+    await documentsPage.uploadDocument(docTitle, "Version one content.");
     await documentsPage.openVersionHistory(docTitle);
     await versionHistoryPage.assertLoaded();
 

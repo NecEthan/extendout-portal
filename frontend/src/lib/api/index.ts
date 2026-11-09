@@ -1,1 +1,1 @@
-export { httpClient as apiRequest, ApiError } from "./client";
+export { api, ApiError } from "./client";

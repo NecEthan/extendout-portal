@@ -1,9 +1,7 @@
 import type { QueryRequest, QueryResponse } from "@/interfaces";
-import { httpClient } from "./client";
+import { api } from "./client";
 
 export async function runQuery(request: QueryRequest): Promise<QueryResponse> {
-  return httpClient<QueryResponse>("/query", {
-    method: "POST",
-    body: JSON.stringify(request),
-  });
+  const { data } = await api.post<QueryResponse>("/query", request);
+  return data;
 }

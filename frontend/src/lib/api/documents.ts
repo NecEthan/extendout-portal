@@ -5,29 +5,21 @@ import type {
   PaginatedDocuments,
   VersionUploadedResponse,
 } from "@/interfaces";
-import { httpClient, throwIfError } from "./client";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+import { api } from "./client";
 
 export async function uploadDocument(
   file: File,
   title: string,
   projectId: number
 ): Promise<DocumentUploadedResponse> {
+  // JSON.stringify can't represent file bytes, so the file would be lost. Which is why we are using a form here
   const form = new FormData();
   form.append("file", file);
   form.append("title", title);
   form.append("project_id", String(projectId));
 
-  const res = await fetch(`${API_BASE_URL}/documents`, {
-    method: "POST",
-    credentials: "include",
-    body: form,
-  });
-
-  await throwIfError(res);
-
-  return res.json();
+  const { data } = await api.post<DocumentUploadedResponse>("/documents", form);
+  return data;
 }
 
 export async function listDocuments(
@@ -35,12 +27,10 @@ export async function listDocuments(
   offset: number,
   projectId?: number
 ): Promise<PaginatedDocuments> {
-  const project = projectId
-    ? `&project_id=${encodeURIComponent(projectId)}`
-    : "";
-  return httpClient<PaginatedDocuments>(
-    `/documents?limit=${limit}&offset=${offset}${project}`
-  );
+  const { data } = await api.get<PaginatedDocuments>("/documents", {
+    params: { limit, offset, project_id: projectId },
+  });
+  return data;
 }
 
 export async function uploadDocumentVersion(
@@ -50,15 +40,11 @@ export async function uploadDocumentVersion(
   const form = new FormData();
   form.append("file", file);
 
-  const res = await fetch(`${API_BASE_URL}/documents/${documentId}/versions`, {
-    method: "POST",
-    credentials: "include",
-    body: form,
-  });
-
-  await throwIfError(res);
-
-  return res.json();
+  const { data } = await api.post<VersionUploadedResponse>(
+    `/documents/${documentId}/versions`,
+    form
+  );
+  return data;
 }
 
 export async function listDocumentVersions(
@@ -66,25 +52,23 @@ export async function listDocumentVersions(
   limit: number,
   offset: number
 ): Promise<PaginatedDocumentVersions> {
-  return httpClient<PaginatedDocumentVersions>(
-    `/documents/${documentId}/versions?limit=${limit}&offset=${offset}`
+  const { data } = await api.get<PaginatedDocumentVersions>(
+    `/documents/${documentId}/versions`,
+    { params: { limit, offset } }
   );
+  return data;
 }
 
 export async function activateDocumentVersion(
   documentId: string,
   versionId: string
 ): Promise<DocumentVersion> {
-  return httpClient<DocumentVersion>(
-    `/documents/${documentId}/versions/${versionId}/activate`,
-    { method: "PATCH" }
+  const { data } = await api.patch<DocumentVersion>(
+    `/documents/${documentId}/versions/${versionId}/activate`
   );
+  return data;
 }
 
 export async function deleteDocument(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/documents/${id}`, {
-    method: "DELETE",
-    credentials: "include",
-  });
-  await throwIfError(res);
+  await api.delete(`/documents/${id}`);
 }

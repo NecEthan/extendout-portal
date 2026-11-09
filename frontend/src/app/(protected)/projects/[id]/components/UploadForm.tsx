@@ -8,13 +8,13 @@ import { Label } from "@/components/ui/label";
 import { ErrorAlert } from "@/components/ui/error-alert";
 import { useUploadDocument } from "@/hooks/useDocuments";
 import { getErrorMessage, UPLOAD_RATE_LIMITED } from "@/lib/errorMessage";
+import { titleFromFilename } from "@/lib/format";
 
 interface UploadFormProps {
   projectId: number;
 }
 
 export function UploadForm({ projectId }: UploadFormProps) {
-  const [title, setTitle] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const uploadDocument = useUploadDocument(projectId);
@@ -23,10 +23,9 @@ export function UploadForm({ projectId }: UploadFormProps) {
     e.preventDefault();
     if (!file) return;
     uploadDocument.mutate(
-      { file, title: title || file.name },
+      { file, title: titleFromFilename(file.name) },
       {
         onSuccess: () => {
-          setTitle("");
           setFile(null);
           if (fileRef.current) fileRef.current.value = "";
         },
@@ -41,17 +40,6 @@ export function UploadForm({ projectId }: UploadFormProps) {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <ErrorAlert message={error} />
-
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="upload-title">Title</Label>
-        <Input
-          id="upload-title"
-          type="text"
-          placeholder="Leave blank to use filename"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-      </div>
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="upload-file">File</Label>

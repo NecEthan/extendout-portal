@@ -9,10 +9,10 @@ export class DocumentsPage {
     await this.page.goto("/documents");
   }
 
-  async uploadDocument(title: string, filename: string, content: string) {
-    await this.page.getByLabel("Title").fill(title);
+  /** The document's title comes from the file name, so upload `<title>.docx`. */
+  async uploadDocument(title: string, content: string) {
     await this.page.getByLabel("File").setInputFiles({
-      name: filename,
+      name: `${title}.docx`,
       mimeType: DOCX_MIME,
       buffer: await makeDocx(content),
     });
@@ -41,7 +41,6 @@ export class DocumentsPage {
 
   async assertUploadFormVisible() {
     await expect(this.page.getByLabel("File")).toBeVisible();
-    await expect(this.page.getByLabel("Title")).toBeVisible();
     await expect(
       this.page.getByRole("button", { name: /upload document/i }),
     ).toBeVisible();

@@ -1,10 +1,10 @@
 import type { User } from "@/interfaces";
-import { httpClient } from "./client";
+import { api, ApiError } from "./client";
 
 export async function login(email: string, password: string): Promise<User> {
-  const user = await httpClient<User>("/auth/login", {
-    method: "POST",
-    body: JSON.stringify({ email, password }),
+  const { data: user } = await api.post<User>("/auth/login", {
+    email,
+    password,
   });
   // Set a UI routing hint cookie on this domain so proxy.ts can see it.
   // Not a security token — backend still validates the real session cookie.
@@ -14,13 +14,17 @@ export async function login(email: string, password: string): Promise<User> {
 }
 
 export async function logout(): Promise<void> {
-  await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}/auth/logout`,
-    { method: "POST", credentials: "include" }
-  );
+  try {
+    await api.post("/auth/logout");
+  } catch (error) {
+    // An HTTP error (e.g. the session already expired) still means we're
+    // logged out, so carry on; only a network failure is a real error.
+    if (!(error instanceof ApiError)) throw error;
+  }
   document.cookie = "kg_ui_auth=; path=/; max-age=0";
 }
 
 export async function getUser(): Promise<User> {
-  return httpClient<User>("/auth/user");
+  const { data } = await api.get<User>("/auth/user");
+  return data;
 }
