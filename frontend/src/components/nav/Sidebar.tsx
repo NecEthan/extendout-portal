@@ -15,13 +15,10 @@ export function Sidebar() {
   const { data: user } = useUser();
   const logoutMutation = useLogout();
   const activeHref = findActiveNavItem(pathname)?.href;
-  const isAdmin = user?.role === "admin";
-  const sections = navSections
-    .map((section) => ({
-      ...section,
-      items: section.items.filter((item) => !item.adminOnly || isAdmin),
-    }))
-    .filter((section) => section.items.length > 0);
+  // Nothing until the user has loaded, so the wrong role's links never flash.
+  const sections = user
+    ? navSections.filter((section) => section.roles.includes(user.role))
+    : [];
 
   function handleLogout() {
     logoutMutation.mutate(undefined, {

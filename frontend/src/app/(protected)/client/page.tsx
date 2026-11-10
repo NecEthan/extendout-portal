@@ -1,22 +1,15 @@
 "use client";
 
-import { CalendarCheck, Mail, Phone } from "lucide-react";
+import { Mail, Phone } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/portal/PageHeader";
-import { MilestoneTimeline } from "@/components/portal/projects/MilestoneTimeline";
 import { ErrorAlert } from "@/components/ui/error-alert";
 import { useProject } from "@/hooks/useProjects";
 import { getErrorMessage } from "@/lib/errorMessage";
 import { clientProjectId, clientWelcome } from "@/mocks/client";
-import { mockMilestones } from "@/mocks/milestones";
-import { formatDate } from "@/lib/format";
 
 export default function ClientOverviewPage() {
   const projectQuery = useProject(clientProjectId);
-  const milestones = mockMilestones.filter(
-    (m) => m.projectId === clientProjectId
-  );
-  const next = milestones.find((m) => m.status !== "Complete");
 
   const project = projectQuery.data;
   if (!project) {
@@ -50,28 +43,6 @@ export default function ClientOverviewPage() {
       </Card>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="flex flex-col gap-6 lg:col-span-2">
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Card className="gap-1 px-4">
-              <span className="text-xs text-muted-foreground uppercase">
-                Next milestone
-              </span>
-              <span className="font-semibold">{next?.title}</span>
-              <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                <CalendarCheck size={12} /> {next && formatDate(next.date)}
-              </span>
-            </Card>
-          </div>
-          <Card>
-            <CardHeader>
-              <CardTitle>Build timeline</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <MilestoneTimeline milestones={milestones} />
-            </CardContent>
-          </Card>
-        </div>
-
         <Card>
           <CardHeader>
             <CardTitle>Your ExtendOut team</CardTitle>

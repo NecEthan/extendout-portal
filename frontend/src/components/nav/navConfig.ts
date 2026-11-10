@@ -6,24 +6,26 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
+import type { UserRole } from "@/interfaces/user-interface";
 import { applicationRoutes } from "@/utils/applicationRoutes";
 
 export interface NavItem {
   href: string;
   label: string;
   icon: LucideIcon;
-  /** Only shown to admins. */
-  adminOnly?: boolean;
 }
 
 export interface NavSection {
   title: string;
+  /** Roles that see this section in the sidebar. */
+  roles: UserRole[];
   items: NavItem[];
 }
 
 export const navSections: NavSection[] = [
   {
     title: "Workspace",
+    roles: ["admin"],
     items: [
       {
         href: applicationRoutes.dashboard,
@@ -33,7 +35,8 @@ export const navSections: NavSection[] = [
     ],
   },
   {
-    title: "Office",
+    title: "Admin",
+    roles: ["admin"],
     items: [
       {
         href: applicationRoutes.projects,
@@ -44,12 +47,12 @@ export const navSections: NavSection[] = [
         href: applicationRoutes.team,
         label: "Team",
         icon: Users,
-        adminOnly: true,
       },
     ],
   },
   {
     title: "Client view",
+    roles: ["builder", "client"],
     items: [
       { href: applicationRoutes.clientOverview, label: "Overview", icon: Home },
       {

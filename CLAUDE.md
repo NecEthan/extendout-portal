@@ -124,7 +124,7 @@ Builders and clients have identical document permissions. Rules live in `app/ser
 
 There is no public sign-up. Admins create accounts with `POST /team` (`email`, `password`, `role`: `admin|builder|client`, optional `name`; role enforced by `ck_users_role`).
 
-Team management is **admin only** (`app/routers/team.py`, `app/routers/project_members.py`, all guarded by `require_admin` in `app/dependencies.py`). The frontend hides the Team sidebar link (`adminOnly` in `navConfig.ts`) and each project's Team tab from builders/clients.
+Team management is **admin only** (`app/routers/team.py`, `app/routers/project_members.py`, all guarded by `require_admin` in `app/dependencies.py`). The sidebar shows sections by role (`roles` on each section in `navConfig.ts`): admins see Workspace and Admin (Projects, Team); builders and clients see only Client view. Each project's Team tab is also hidden from builders/clients.
 - `GET /team` — every user with their `project_ids`.
 - `POST /team` `{email, password, role, name?}` — create an account (the only way accounts are made).
 - `PATCH /team/{user_id}` `{role}` — admins can't change their own role.
