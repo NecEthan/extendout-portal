@@ -12,6 +12,9 @@ from app.config import settings
 from app.models.document_version import DUPLICATE_CONTENT_INDEX
 
 DUPLICATE_CONTENT_DETAIL = "Document with identical content already exists"
+STORAGE_UNAVAILABLE_DETAIL = (
+    "File storage is temporarily unavailable. Please try again in a few minutes."
+)
 
 _PDF = "application/pdf"
 _DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"

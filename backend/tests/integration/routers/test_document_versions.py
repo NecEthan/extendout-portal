@@ -422,3 +422,22 @@ async def test_concurrent_identical_version_rejected_by_unique_index(auth_client
     assert response.status_code == 409
     assert response.json()["detail"] == "Document with identical content already exists"
     delete_object.assert_called_once()  # the losing upload's file is cleaned up
+
+
+async def test_new_version_returns_503_when_storage_is_down(auth_client, db):
+    doc_id = await _upload_doc(auth_client)
+
+    with patch(
+        "app.services.storage.upload_bytes",
+        side_effect=ConnectionError("Connection refused"),
+    ):
+        response = await auth_client.post(
+            f"/documents/{doc_id}/versions", files=_docx_file()
+        )
+
+    assert response.status_code == 503
+    assert "temporarily unavailable" in response.json()["detail"]
+    result = await db.execute(
+        select(DocumentVersion).where(DocumentVersion.document_id == uuid.UUID(doc_id))
+    )
+    assert len(result.scalars().all()) == 1  # still only v1

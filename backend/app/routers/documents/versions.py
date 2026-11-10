@@ -1,6 +1,7 @@
 import asyncio
 import uuid
 
+import structlog
 from arq.connections import ArqRedis
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile
 from sqlalchemy import func, select
@@ -18,6 +19,7 @@ from app.services import storage
 from app.services.activation import activate_version
 from app.services.documents import (
     DUPLICATE_CONTENT_DETAIL,
+    STORAGE_UNAVAILABLE_DETAIL,
     assert_no_duplicate,
     compute_hash,
     generate_storage_key,
@@ -28,6 +30,7 @@ from app.services.permissions import document_access_filters
 from app.utils.enqueue import enqueue_processing_job
 
 router = APIRouter(tags=["documents"])
+logger = structlog.get_logger(__name__)
 
 
 @router.post(
@@ -64,9 +67,17 @@ async def upload_document_version(
     # because it calls api to upload the file to miniO server
     # we allow other requests to be made while this uploads completes
     loop = asyncio.get_running_loop()
-    await loop.run_in_executor(
-        None, storage.upload_bytes, storage_key, content, content_type
-    )
+    try:
+        await loop.run_in_executor(
+            None, storage.upload_bytes, storage_key, content, content_type
+        )
+    except Exception as exc:
+        # MinIO down, unreachable or misconfigured. Nothing to clean up: no DB
+        # records exist yet and the file wasn't stored.
+        logger.exception("storage_upload_failed", storage_key=storage_key)
+        raise HTTPException(
+            status_code=503, detail=STORAGE_UNAVAILABLE_DETAIL
+        ) from exc
     await loop.run_in_executor(None, storage.tag_as_orphan, storage_key)
 
     try:

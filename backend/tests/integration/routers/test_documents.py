@@ -335,6 +335,25 @@ async def test_concurrent_duplicate_upload_rejected_by_unique_index(auth_client)
     delete_object.assert_called_once()  # the losing upload's file is cleaned up
 
 
+async def test_upload_returns_503_when_storage_is_down(auth_client, db):
+    title = f"Storage down {uuid.uuid4()}"
+    with patch(
+        "app.services.storage.upload_bytes",
+        side_effect=ConnectionError("Connection refused"),
+    ):
+        response = await auth_client.post(
+            "/documents",
+            files=docx_upload("down.docx", title),
+            data={"title": title, "project_id": TEST_PROJECT_ID},
+        )
+
+    assert response.status_code == 503
+    assert "temporarily unavailable" in response.json()["detail"]
+    # Failed before the DB transaction, so no records were created.
+    result = await db.execute(select(Document).where(Document.title == title))
+    assert result.scalar_one_or_none() is None
+
+
 async def test_list_documents_filtered_by_project(auth_client, make_project, test_user):
     other_project = await make_project(member=test_user)
     with (
