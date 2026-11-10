@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { Loader2, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { ErrorAlert } from "@/components/ui/error-alert";
-import { useProjectPhotos } from "@/hooks/usePhotos";
+import { useDeletePhoto, useProjectPhotos } from "@/hooks/usePhotos";
 import { photoFileUrl } from "@/lib/api/photos";
 import { getErrorMessage } from "@/lib/errorMessage";
 import { formatDate } from "@/lib/format";
@@ -12,8 +13,17 @@ import { PhotoUploadForm } from "./PhotoUploadForm";
 
 export function PhotosTab({ projectId }: { projectId: number }) {
   const photos = useProjectPhotos(projectId);
+  const deletePhoto = useDeletePhoto(projectId);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
-  const error = getErrorMessage(photos, "Failed to load photos");
+  const error =
+    getErrorMessage(photos, "Failed to load photos") ??
+    getErrorMessage(deletePhoto, "Couldn't delete the photo");
+
+  function handleDelete(photoId: string) {
+    if (window.confirm("Delete this photo? This can't be undone.")) {
+      deletePhoto.mutate(photoId);
+    }
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -53,10 +63,29 @@ export function PhotosTab({ projectId }: { projectId: number }) {
               {photo.description && (
                 <span className="text-sm font-medium">{photo.description}</span>
               )}
-              <span className="text-xs text-muted-foreground">
-                {photo.uploaded_by_name ?? "Former user"} ·{" "}
-                {formatDate(photo.created_at)}
-              </span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-muted-foreground">
+                  {photo.uploaded_by_name ?? "Former user"} ·{" "}
+                  {formatDate(photo.created_at)}
+                </span>
+                {photo.can_delete && (
+                  <button
+                    type="button"
+                    aria-label={`Delete ${photo.description ?? "photo"}`}
+                    title="Delete photo"
+                    className="shrink-0 rounded-sm p-1 text-muted-foreground hover:text-destructive disabled:opacity-50"
+                    disabled={deletePhoto.isPending}
+                    onClick={() => handleDelete(photo.id)}
+                  >
+                    {deletePhoto.isPending &&
+                    deletePhoto.variables === photo.id ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Trash2 size={14} />
+                    )}
+                  </button>
+                )}
+              </div>
             </figcaption>
           </figure>
         ))}

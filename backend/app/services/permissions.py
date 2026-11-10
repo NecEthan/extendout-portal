@@ -4,17 +4,29 @@ Rules:
   - admin: every project and every document.
   - builder / client: only projects listed for them in project_members, and
     only documents belonging to those projects.
+  - photos: admins can delete any photo; builders / clients only the photos
+    they uploaded themselves.
 """
 
 from fastapi import HTTPException
 from sqlalchemy import ColumnElement, Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.base import Document, Project, ProjectMember, User
+from app.models.base import Document, Project, ProjectMember, ProjectPhoto, User
 
 
 def is_admin(user: User) -> bool:
     return user.role == "admin"
+
+
+def can_delete_photo(user: User, photo: ProjectPhoto) -> bool:
+    """Admins can delete any photo; everyone else only their own uploads.
+
+    Assumes project access was already checked (ensure_project_access).
+    A photo whose uploader's account was deleted (uploaded_by is NULL) can
+    only be deleted by an admin.
+    """
+    return is_admin(user) or photo.uploaded_by == user.id
 
 
 def member_project_ids(user: User) -> Select:

@@ -6,9 +6,9 @@ from unittest.mock import patch
 
 import pytest
 from PIL import Image
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 
-from app.models.base import ProjectPhoto
+from app.models.base import ProjectPhoto, User
 from tests.fixtures.auth import TEST_PROJECT_ID, UNKNOWN_PROJECT_ID
 
 
@@ -228,3 +228,135 @@ async def test_too_many_pixels_rejected(auth_client, monkeypatch):
     response, upload = await _upload(auth_client)  # 8x8 = 64 pixels
     assert response.status_code == 413
     upload.assert_not_called()
+
+
+# ── Deleting ──────────────────────────────────────────────────────────────────
+
+
+async def _delete(client, photo_id, project_id=TEST_PROJECT_ID):
+    with patch("app.services.storage.delete_object") as delete_object:
+        response = await client.delete(f"/projects/{project_id}/photos/{photo_id}")
+    return response, delete_object
+
+
+async def _set_role(db, user, role: str) -> None:
+    await db.execute(update(User).where(User.id == user.id).values(role=role))
+    await db.commit()
+
+
+async def test_builder_can_delete_own_photo(auth_client, db):
+    uploaded, _ = await _upload(auth_client)
+    photo_id = uploaded.json()["id"]
+    storage_key = (await db.get(ProjectPhoto, uuid.UUID(photo_id))).storage_key
+
+    response, delete_object = await _delete(auth_client, photo_id)
+
+    assert response.status_code == 204
+    db.expire_all()
+    assert await db.get(ProjectPhoto, uuid.UUID(photo_id)) is None
+    delete_object.assert_called_once_with(storage_key)  # file removed from MinIO
+
+
+async def test_builder_cannot_delete_someone_elses_photo(auth_client, admin_client, db):
+    uploaded, _ = await _upload(admin_client)  # uploaded by the admin
+    photo_id = uploaded.json()["id"]
+
+    response, delete_object = await _delete(auth_client, photo_id)
+
+    assert response.status_code == 403
+    db.expire_all()
+    assert await db.get(ProjectPhoto, uuid.UUID(photo_id)) is not None
+    delete_object.assert_not_called()
+
+
+async def test_client_can_delete_own_photo_but_not_others(
+    auth_client, admin_client, db, test_user
+):
+    await _set_role(db, test_user, "client")
+    own, _ = await _upload(auth_client)
+    others, _ = await _upload(admin_client, content=_jpeg((9, 9, 9)))
+
+    assert (await _delete(auth_client, own.json()["id"]))[0].status_code == 204
+    assert (await _delete(auth_client, others.json()["id"]))[0].status_code == 403
+
+
+async def test_admin_can_delete_any_photo(auth_client, admin_client, db):
+    uploaded, _ = await _upload(auth_client)  # uploaded by the builder
+    photo_id = uploaded.json()["id"]
+
+    response, _ = await _delete(admin_client, photo_id)
+
+    assert response.status_code == 204
+    db.expire_all()
+    assert await db.get(ProjectPhoto, uuid.UUID(photo_id)) is None
+
+
+async def test_only_admin_can_delete_photo_of_deleted_user(
+    auth_client, admin_client, db
+):
+    uploaded, _ = await _upload(auth_client)
+    photo_id = uploaded.json()["id"]
+    await db.execute(
+        update(ProjectPhoto)
+        .where(ProjectPhoto.id == uuid.UUID(photo_id))
+        .values(uploaded_by=None)  # as if the uploader's account was deleted
+    )
+    await db.commit()
+
+    assert (await _delete(auth_client, photo_id))[0].status_code == 403
+    assert (await _delete(admin_client, photo_id))[0].status_code == 204
+
+
+async def test_delete_photo_in_another_project_404(
+    auth_client, make_project, test_user
+):
+    uploaded, _ = await _upload(auth_client)
+    other = await make_project(member=test_user)
+
+    response, _ = await _delete(auth_client, uploaded.json()["id"], project_id=other)
+    assert response.status_code == 404
+
+
+async def test_non_member_cannot_delete(auth_client, admin_client, make_project):
+    outsider = await make_project(member=None)
+    uploaded, _ = await _upload(admin_client, project_id=outsider)
+
+    response, _ = await _delete(auth_client, uploaded.json()["id"], project_id=outsider)
+    assert response.status_code == 403
+
+
+async def test_delete_succeeds_even_if_file_removal_fails(auth_client, db):
+    uploaded, _ = await _upload(auth_client)
+    photo_id = uploaded.json()["id"]
+
+    with patch(
+        "app.services.storage.delete_object",
+        side_effect=ConnectionError("MinIO down"),
+    ):
+        response = await auth_client.delete(
+            f"/projects/{TEST_PROJECT_ID}/photos/{photo_id}"
+        )
+
+    assert response.status_code == 204  # gone for users; file is just an orphan
+    db.expire_all()
+    assert await db.get(ProjectPhoto, uuid.UUID(photo_id)) is None
+
+
+async def test_can_delete_flag_in_list(auth_client, admin_client):
+    own, _ = await _upload(auth_client)
+    others, _ = await _upload(admin_client, content=_jpeg((5, 5, 5)))
+
+    as_builder = {
+        p["id"]: p["can_delete"]
+        for p in (await auth_client.get(f"/projects/{TEST_PROJECT_ID}/photos")).json()
+    }
+    as_admin = {
+        p["id"]: p["can_delete"]
+        for p in (await admin_client.get(f"/projects/{TEST_PROJECT_ID}/photos")).json()
+    }
+
+    assert as_builder[own.json()["id"]] is True
+    assert as_builder[others.json()["id"]] is False
+    assert as_admin[own.json()["id"]] is True
+    assert as_admin[others.json()["id"]] is True
+    assert own.json()["can_delete"] is True  # upload response includes it too

@@ -1,4 +1,5 @@
 import {
+  deleteProjectPhoto,
   listProjectPhotos,
   photoFileUrl,
   uploadProjectPhoto,
@@ -12,6 +13,7 @@ const photo = {
   content_type: "image/jpeg",
   uploaded_by_name: "Sam",
   created_at: "2026-11-10T09:00:00Z",
+  can_delete: true,
 };
 
 describe("photos API", () => {
@@ -46,5 +48,13 @@ describe("photos API", () => {
     expect(photoFileUrl(7, "p-1")).toBe(
       "http://localhost:8000/projects/7/photos/p-1/file"
     );
+  });
+
+  it("deletes a photo", async () => {
+    respond(204);
+    await deleteProjectPhoto(7, "p-1");
+    const req = lastRequest();
+    expect(req.method).toBe("delete");
+    expect(req.url).toBe("/projects/7/photos/p-1");
   });
 });

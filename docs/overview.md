@@ -23,7 +23,7 @@ Access is decided by **role + project membership**. Builders and clients only ev
 - A project has a name, client and address. Project ids are plain auto-increment numbers (`/projects/101`).
 - Only admins can create and edit projects.
 - Each project page has tabs: **Overview**, **Photos**, **Documents**, **Search**, and (admins only) **Team**.
-- **Photos** tab: anyone on the project can upload JPEG, PNG or WebP photos (up to 20 MB) with an optional description. They're stored in MinIO and shown newest first.
+- **Photos** tab: anyone on the project can upload JPEG, PNG or WebP photos (up to 20 MB) with an optional description. They're stored in MinIO and shown newest first. Admins can delete any photo; builders and clients can only delete photos they uploaded.
 
 ### Documents and versions
 

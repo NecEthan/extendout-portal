@@ -10,6 +10,7 @@ const photos: ProjectPhoto[] = ["Beam in", "Roof on", "Plastered"].map(
     content_type: "image/jpeg",
     uploaded_by_name: "Sam",
     created_at: "2026-11-10T09:00:00Z",
+    can_delete: false,
   })
 );
 

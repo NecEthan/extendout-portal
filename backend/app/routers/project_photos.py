@@ -1,5 +1,7 @@
 """Site photos for a project: upload (with an optional description), list,
-and serve the image. Anyone with access to the project can do all three.
+serve the image, and delete. Anyone with access to the project can upload,
+list and view; deleting is limited to admins (any photo) and the uploader
+(their own photos), see can_delete_photo.
 
 Images are stored in MinIO under ``photos/<uuid>``; the bucket is private, so
 the browser loads each image through ``GET .../photos/{id}/file``, which checks
@@ -28,7 +30,7 @@ from app.models.base import ProjectPhoto, User
 from app.schemas.photos import MAX_DESCRIPTION_LENGTH, PhotoResponse
 from app.services import storage
 from app.services.documents import STORAGE_UNAVAILABLE_DETAIL
-from app.services.permissions import ensure_project_access
+from app.services.permissions import can_delete_photo, ensure_project_access
 from app.services.photos import (
     generate_photo_storage_key,
     read_and_validate_photo,
@@ -45,7 +47,9 @@ def _uploader_name(user: User | None) -> str | None:
     return user.name or user.email
 
 
-def _to_response(photo: ProjectPhoto, uploader: User | None) -> PhotoResponse:
+def _to_response(
+    photo: ProjectPhoto, uploader: User | None, current_user: User
+) -> PhotoResponse:
     return PhotoResponse(
         id=photo.id,
         project_id=photo.project_id,
@@ -53,6 +57,7 @@ def _to_response(photo: ProjectPhoto, uploader: User | None) -> PhotoResponse:
         content_type=photo.content_type,
         uploaded_by_name=_uploader_name(uploader),
         created_at=photo.created_at,
+        can_delete=can_delete_photo(current_user, photo),
     )
 
 
@@ -69,7 +74,9 @@ async def list_photos(
         .where(ProjectPhoto.project_id == project_id)
         .order_by(ProjectPhoto.created_at.desc())
     )
-    return [_to_response(photo, uploader) for photo, uploader in result.all()]
+    return [
+        _to_response(photo, uploader, current_user) for photo, uploader in result.all()
+    ]
 
 
 @router.post("/{project_id}/photos", status_code=201, response_model=PhotoResponse)
@@ -117,7 +124,7 @@ async def upload_photo(
         raise
 
     logger.info("photo_uploaded", photo_id=str(photo.id), project_id=project_id)
-    return _to_response(photo, current_user)
+    return _to_response(photo, current_user, current_user)
 
 
 @router.get("/{project_id}/photos/{photo_id}/file")
@@ -154,3 +161,40 @@ async def get_photo_file(
             "Content-Security-Policy": "default-src 'none'; sandbox",
         },
     )
+
+
+@router.delete("/{project_id}/photos/{photo_id}", status_code=204)
+async def delete_photo(
+    project_id: int,
+    photo_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Response:
+    await ensure_project_access(db, current_user, project_id)
+    photo = await db.get(ProjectPhoto, photo_id)
+    if photo is None or photo.project_id != project_id:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    if not can_delete_photo(current_user, photo):
+        raise HTTPException(
+            status_code=403, detail="You can only delete photos you uploaded"
+        )
+
+    storage_key = photo.storage_key
+    await db.delete(photo)
+    await db.commit()
+
+    loop = asyncio.get_running_loop()
+    try:
+        await loop.run_in_executor(None, storage.delete_object, storage_key)
+    except Exception:
+        logger.warning(
+            "photo_file_delete_failed", photo_id=str(photo_id), exc_info=True
+        )
+
+    logger.info(
+        "photo_deleted",
+        photo_id=str(photo_id),
+        project_id=project_id,
+        deleted_by=str(current_user.id),
+    )
+    return Response(status_code=204)

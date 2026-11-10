@@ -26,6 +26,13 @@ export async function uploadProjectPhoto(
   return data;
 }
 
+export async function deleteProjectPhoto(
+  projectId: number,
+  photoId: string
+): Promise<void> {
+  await api.delete(`/projects/${projectId}/photos/${photoId}`);
+}
+
 /** URL for an <img src>. The browser sends the session cookie with it, and
  * the backend checks project access before returning the image. */
 export function photoFileUrl(projectId: number, photoId: string): string {
