@@ -9,7 +9,6 @@ import { getErrorMessage } from "@/lib/errorMessage";
 import { BackLink } from "./components/BackLink";
 import { ProjectHeader } from "./components/ProjectHeader";
 import { OverviewTab } from "./components/OverviewTab";
-import { PlanningTab } from "./components/PlanningTab";
 import { SiteEvidenceTab } from "./components/SiteEvidenceTab";
 import { DocumentsTab } from "./components/DocumentsTab";
 import { SearchTab } from "./components/SearchTab";
@@ -43,11 +42,6 @@ export default function ProjectDetailPage() {
       value: "overview",
       label: "Overview",
       content: <OverviewTab project={project} />,
-    },
-    {
-      value: "planning",
-      label: "Planning",
-      content: <PlanningTab projectId={id} />,
     },
     {
       value: "site-evidence",

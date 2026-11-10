@@ -3,8 +3,6 @@ export const applicationRoutes = {
   dashboard: "/dashboard",
   // Office
   projects: "/projects",
-  planning: "/planning",
-  materials: "/materials",
   team: "/team",
   // Client view
   clientOverview: "/client",

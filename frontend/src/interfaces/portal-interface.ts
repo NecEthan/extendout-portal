@@ -1,37 +1,12 @@
 // Types for mock-backed portal features (no backend yet).
 // Projects themselves come from the API: see ./project-interface.ts.
 
-export type PlanBucket = "Now" | "Next" | "Then";
-
-export interface PlanItem {
-  id: string;
-  projectId: number;
-  title: string;
-  bucket: PlanBucket;
-  trade: string;
-  start: string;
-  end: string;
-}
-
 export interface Milestone {
   id: string;
   projectId: number;
   title: string;
   date: string;
   status: "Complete" | "In progress" | "Upcoming" | "Delayed";
-}
-
-export type MaterialStatus = "Required" | "RFQ sent" | "Ordered" | "Delivered";
-
-export interface MaterialItem {
-  id: string;
-  projectId: number;
-  item: string;
-  quantity: string;
-  supplier?: string;
-  cost?: number;
-  needBy: string;
-  status: MaterialStatus;
 }
 
 export interface SitePhoto {

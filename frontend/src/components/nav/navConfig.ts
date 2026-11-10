@@ -1,10 +1,8 @@
 import {
-  CalendarRange,
   FolderKanban,
   Home,
   Images,
   LayoutDashboard,
-  Package,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -42,12 +40,6 @@ export const navSections: NavSection[] = [
         label: "Projects",
         icon: FolderKanban,
       },
-      {
-        href: applicationRoutes.planning,
-        label: "Planning",
-        icon: CalendarRange,
-      },
-      { href: applicationRoutes.materials, label: "Materials", icon: Package },
       {
         href: applicationRoutes.team,
         label: "Team",

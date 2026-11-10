@@ -8,7 +8,7 @@ import { ErrorAlert } from "@/components/ui/error-alert";
 import { useProject } from "@/hooks/useProjects";
 import { getErrorMessage } from "@/lib/errorMessage";
 import { clientProjectId, clientWelcome } from "@/mocks/client";
-import { mockMilestones } from "@/mocks/planning";
+import { mockMilestones } from "@/mocks/milestones";
 import { formatDate } from "@/lib/format";
 
 export default function ClientOverviewPage() {

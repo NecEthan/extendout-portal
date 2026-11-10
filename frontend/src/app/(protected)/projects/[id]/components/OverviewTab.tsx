@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MilestoneTimeline } from "@/components/portal/projects/MilestoneTimeline";
 import type { Project } from "@/interfaces";
-import { mockMilestones } from "@/mocks/planning";
+import { mockMilestones } from "@/mocks/milestones";
 
 export function OverviewTab({ project }: { project: Project }) {
   const milestones = mockMilestones.filter((m) => m.projectId === project.id);

@@ -22,7 +22,7 @@ Access is decided by **role + project membership**. Builders and clients only ev
 
 - A project has a name, client and address. Project ids are plain auto-increment numbers (`/projects/101`).
 - Only admins can create and edit projects.
-- Each project page has tabs: **Overview**, **Planning**, **Site evidence**, **Documents**, **Search**, and (admins only) **Team**.
+- Each project page has tabs: **Overview**, **Site evidence**, **Documents**, **Search**, and (admins only) **Team**.
 
 ### Documents and versions
 
@@ -68,8 +68,6 @@ The portal is being built out in stages. These features use **real data** from t
 These screens currently show **sample data** (from `frontend/src/mocks/`) while the features are built:
 
 - Dashboard activity feed
-- Planning (programme view) and the project Planning tab
-- Materials
 - Project milestones and Site evidence (photos, inspections, issues)
 - Client view: Overview and Progress Photos
 
