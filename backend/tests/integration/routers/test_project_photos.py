@@ -169,6 +169,11 @@ async def test_get_photo_file(auth_client):
     assert response.content == content
     assert response.headers["content-type"] == "image/jpeg"
     assert "private" in response.headers["cache-control"]
+    # A disguised file can't be treated as HTML or run scripts.
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["content-security-policy"] == (
+        "default-src 'none'; sandbox"
+    )
 
 
 async def test_get_photo_file_wrong_project_404(auth_client, make_project, test_user):
@@ -191,3 +196,35 @@ async def test_non_member_cannot_get_photo_file(
         f"/projects/{outsider}/photos/{uploaded.json()['id']}/file"
     )
     assert response.status_code == 403
+
+
+async def test_stored_photo_has_location_metadata_removed(auth_client):
+    img = Image.new("RGB", (40, 20), (10, 20, 30))
+    exif = Image.Exif()
+    exif[0x0110] = "iPhone 15"
+    exif.get_ifd(0x8825)[2] = (51.0, 30.0, 12.0)  # GPS latitude
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", exif=exif)
+
+    response, upload = await _upload(auth_client, content=buf.getvalue())
+
+    assert response.status_code == 201
+    stored = Image.open(io.BytesIO(upload.call_args.args[1]))  # bytes sent to MinIO
+    assert dict(stored.getexif()) == {}
+    assert dict(stored.getexif().get_ifd(0x8825)) == {}
+
+
+async def test_corrupt_image_rejected(auth_client):
+    corrupt = b"\xff\xd8\xff\xe0" + b"not really a jpeg" * 20
+    response, upload = await _upload(auth_client, content=corrupt)
+    assert response.status_code == 415
+    upload.assert_not_called()
+
+
+async def test_too_many_pixels_rejected(auth_client, monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "max_photo_pixels", 10)
+    response, upload = await _upload(auth_client)  # 8x8 = 64 pixels
+    assert response.status_code == 413
+    upload.assert_not_called()

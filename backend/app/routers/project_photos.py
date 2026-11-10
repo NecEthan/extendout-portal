@@ -29,7 +29,11 @@ from app.schemas.photos import MAX_DESCRIPTION_LENGTH, PhotoResponse
 from app.services import storage
 from app.services.documents import STORAGE_UNAVAILABLE_DETAIL
 from app.services.permissions import ensure_project_access
-from app.services.photos import generate_photo_storage_key, read_and_validate_photo
+from app.services.photos import (
+    generate_photo_storage_key,
+    read_and_validate_photo,
+    strip_metadata,
+)
 
 router = APIRouter(tags=["photos"])
 logger = structlog.get_logger(__name__)
@@ -68,9 +72,7 @@ async def list_photos(
     return [_to_response(photo, uploader) for photo, uploader in result.all()]
 
 
-@router.post(
-    "/{project_id}/photos", status_code=201, response_model=PhotoResponse
-)
+@router.post("/{project_id}/photos", status_code=201, response_model=PhotoResponse)
 @upload_limit
 async def upload_photo(
     request: Request,  # required by @upload_limit (slowapi), even though unused here
@@ -84,17 +86,19 @@ async def upload_photo(
     content, content_type = await read_and_validate_photo(file)
     description = (description or "").strip() or None
 
-    storage_key = generate_photo_storage_key()
     loop = asyncio.get_running_loop()
+    # Remove GPS location and other metadata before the photo is stored.
+    # Decoding is CPU work, so it runs in a thread to keep the server responsive.
+    content = await loop.run_in_executor(None, strip_metadata, content, content_type)
+
+    storage_key = generate_photo_storage_key()
     try:
         await loop.run_in_executor(
             None, storage.upload_bytes, storage_key, content, content_type
         )
     except Exception as exc:
         logger.exception("photo_storage_upload_failed", storage_key=storage_key)
-        raise HTTPException(
-            status_code=503, detail=STORAGE_UNAVAILABLE_DETAIL
-        ) from exc
+        raise HTTPException(status_code=503, detail=STORAGE_UNAVAILABLE_DETAIL) from exc
 
     photo = ProjectPhoto(
         project_id=project_id,
@@ -135,14 +139,18 @@ async def get_photo_file(
         )
     except Exception as exc:
         logger.exception("photo_storage_download_failed", photo_id=str(photo_id))
-        raise HTTPException(
-            status_code=503, detail=STORAGE_UNAVAILABLE_DETAIL
-        ) from exc
+        raise HTTPException(status_code=503, detail=STORAGE_UNAVAILABLE_DETAIL) from exc
 
     # A photo's bytes never change (new upload = new id), so the browser can
     # cache it. "private": only the user's browser, never a shared cache.
     return Response(
         content=content,
         media_type=photo.content_type,
-        headers={"Cache-Control": "private, max-age=86400"},
+        headers={
+            "Cache-Control": "private, max-age=86400",
+            # Never treat the file as anything but its image type (e.g. a
+            # disguised file holding HTML), and never let scripts run in it.
+            "X-Content-Type-Options": "nosniff",
+            "Content-Security-Policy": "default-src 'none'; sandbox",
+        },
     )

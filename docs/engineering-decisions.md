@@ -116,6 +116,26 @@ New documents and new versions share one 30/minute per-user limit, because each 
 
 Documents are protected by access control in the app, not by encryption. Files sit unencrypted in MinIO and their text in Postgres, so anyone with direct access to the storage or its backups can read them. For production, enable MinIO server-side encryption and encrypted Postgres volumes/backups, and serve everything over HTTPS. Encryption doesn't stop an app user who _has_ access from reading a document; that's what access control is for.
 
+# Site Photos
+
+## Location metadata is stripped on upload
+
+Phone photos carry hidden EXIF metadata: exact GPS coordinates, time taken and phone model. Location is personal data under UK GDPR, and a builder may take a photo somewhere other than the site (their home, a supplier's yard). So every photo is decoded and re-saved with Pillow before it's stored (`strip_metadata` in `app/services/photos.py`):
+
+- **Rotated upright first** (`ImageOps.exif_transpose`): "which way up" is stored in the same metadata, so dropping it without rotating would leave phone photos sideways.
+- **Colour profile kept**, everything else dropped. JPEG/WebP are re-saved at quality 90: a slight, invisible quality loss accepted in exchange for privacy.
+- **Pixel limit** (`max_photo_pixels`, 100 MP), checked from the header *before* decoding, so a "decompression bomb" (a tiny file that expands to gigabytes) is rejected with `413`.
+- **Proves it's a real image**: a file that passes the magic-byte check but can't be decoded is rejected with `415`.
+- Runs in a worker thread, since decoding is CPU work and would otherwise block the event loop.
+
+The original, with its metadata, is never stored, so photos uploaded before this change are the only ones that still contain it.
+
+## Photo responses can't be treated as web pages
+
+`GET .../photos/{id}/file` sends `X-Content-Type-Options: nosniff` and `Content-Security-Policy: default-src 'none'; sandbox`. A crafted file can start with valid image bytes and hide HTML/JavaScript inside; if a browser opened the URL directly and guessed it was a page, the script would run on the API's origin with the viewer's session. `nosniff` stops the guessing; the sandbox CSP stops scripts even if something renders. SVG is not an allowed photo type for the same reason (it can contain scripts).
+
+Images are served with `Cache-Control: private, max-age=86400`: a photo's bytes never change (a new upload gets a new id), and `private` keeps them out of shared caches.
+
 # Processing Doc
 
 I added a retry to this pipeline because just cause it fails once does not mean it will fail on the next try if the error is a transient error. I have added list of some key non retryable errors so if we encounter them we do not retry which would waste worker capacity and resources.

@@ -1,8 +1,10 @@
 """Validation and storage keys for project site photos."""
 
+import io
 import uuid
 
 from fastapi import HTTPException, UploadFile
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 from app.config import settings
 
@@ -43,6 +45,64 @@ async def read_and_validate_photo(file: UploadFile) -> tuple[bytes, str]:
             detail="Unsupported image type. Upload a JPEG, PNG or WebP photo.",
         )
     return content, content_type
+
+
+_PIL_FORMATS = {"image/jpeg": "JPEG", "image/png": "PNG", "image/webp": "WEBP"}
+
+
+def strip_metadata(content: bytes, content_type: str) -> bytes:
+    """Re-save the photo without its hidden metadata (EXIF).
+
+    Phone photos carry the exact GPS location, time taken and phone model;
+    location is personal data, so it's removed before the photo is stored.
+    The photo is rotated upright first, since "which way up" is stored in
+    that same metadata and would otherwise be lost (photos would show
+    sideways). Decoding also proves the file is a real, readable image.
+
+    CPU-bound: call it in a worker thread, not on the event loop.
+    Raises HTTPException 413 (too many pixels) or 415 (unreadable image).
+    """
+    try:
+        with Image.open(io.BytesIO(content)) as img:
+            # Image.open only reads the header, so the size is known before
+            # any pixels are decoded.
+            if img.width * img.height > settings.max_photo_pixels:
+                raise HTTPException(
+                    status_code=413,
+                    detail=(
+                        "Photo resolution is too high (max "
+                        f"{settings.max_photo_pixels // 1_000_000} megapixels)"
+                    ),
+                )
+            upright = ImageOps.exif_transpose(img)
+
+            # Keep the colour profile so colours look the same; everything
+            # else (EXIF, GPS, text chunks) is dropped by not passing it on.
+            options = {}
+            icc_profile = img.info.get("icc_profile")
+            if icc_profile:
+                options["icc_profile"] = icc_profile
+            if content_type in ("image/jpeg", "image/webp"):
+                options["quality"] = 90
+
+            out = io.BytesIO()
+            upright.save(out, format=_PIL_FORMATS[content_type], **options)
+            return out.getvalue()
+    except HTTPException:
+        raise
+    except (
+        UnidentifiedImageError,
+        OSError,
+        ValueError,
+        Image.DecompressionBombError,
+    ) as exc:
+        raise HTTPException(
+            status_code=415,
+            detail=(
+                "The photo couldn't be read. "
+                "Upload a valid JPEG, PNG or WebP photo."
+            ),
+        ) from exc
 
 
 def generate_photo_storage_key() -> str:

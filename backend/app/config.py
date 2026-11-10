@@ -32,6 +32,10 @@ class Settings(BaseSettings):
 
     max_upload_size_mb: int = 50
     max_photo_size_mb: int = 20
+    # Width x height cap, checked before decoding, so a tiny "decompression
+    # bomb" file can't expand into gigabytes of memory. 100 MP covers phone
+    # cameras (typically 12-50 MP).
+    max_photo_pixels: int = 100_000_000
 
     # LLM pricing for cost estimation per query (USD per 1M tokens).
     # Defaults match gpt-4o-mini; override via environment variables.
