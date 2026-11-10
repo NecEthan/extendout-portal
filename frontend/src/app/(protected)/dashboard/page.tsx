@@ -2,12 +2,10 @@
 
 import Link from "next/link";
 import { FolderKanban } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { StatCard } from "@/components/portal/StatCard";
 import { ProjectCard } from "@/components/portal/projects/ProjectCard";
 import { useProjects } from "@/hooks/useProjects";
-import { mockActivity } from "@/mocks/dashboard";
 import { applicationRoutes } from "@/utils/applicationRoutes";
 
 export default function DashboardPage() {
@@ -28,49 +26,22 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="mt-8 grid gap-6 xl:grid-cols-3">
-        <section className="flex flex-col gap-4 xl:col-span-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Projects</h2>
-            <Link
-              href={applicationRoutes.projects}
-              className="text-sm text-primary hover:underline"
-            >
-              View all
-            </Link>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            {projects.map((p) => (
-              <ProjectCard key={p.id} project={p} />
-            ))}
-          </div>
-        </section>
-
-        <div className="flex flex-col gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent activity</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ol className="flex flex-col gap-4 border-l pl-4">
-                {mockActivity.map((a) => (
-                  <li key={a.id} className="relative text-sm">
-                    <span className="absolute top-1.5 -left-[21px] size-2 rounded-full bg-primary" />
-                    <span className="font-medium">{a.who}</span> {a.action}{" "}
-                    <span className="font-medium">{a.target}</span>
-                    <div className="text-xs text-muted-foreground">
-                      {new Date(a.at).toLocaleString("en-GB", {
-                        dateStyle: "medium",
-                        timeStyle: "short",
-                      })}
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            </CardContent>
-          </Card>
+      <section className="mt-8 flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Projects</h2>
+          <Link
+            href={applicationRoutes.projects}
+            className="text-sm text-primary hover:underline"
+          >
+            View all
+          </Link>
         </div>
-      </div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {projects.map((p) => (
+            <ProjectCard key={p.id} project={p} />
+          ))}
+        </div>
+      </section>
     </>
   );
 }

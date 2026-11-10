@@ -37,14 +37,6 @@ export interface Issue {
   status: "Open" | "In progress" | "Resolved";
 }
 
-export interface ActivityEntry {
-  id: string;
-  who: string;
-  action: string;
-  target: string;
-  at: string;
-}
-
 export interface ProgressUpdate {
   id: string;
   date: string;
