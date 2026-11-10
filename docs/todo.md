@@ -22,7 +22,6 @@ MinIO currently runs locally in Docker (`minio` service, `minio_data` volume). F
 
 - [ ] Pick a provider and create the bucket (private, no public access).
 - [ ] Point the backend and worker at it: `STORAGE_ENDPOINT`, `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`, `STORAGE_BUCKET`. The code uses the S3 API through the `minio` Python client, which works with any S3-compatible endpoint.
-- [ ] Check orphan cleanup works on the new provider. It relies on object tags (`kg-orphan`) and a bucket lifecycle rule set at startup (`configure_bucket_lifecycle` in `app/services/storage.py`). AWS S3 supports both; other providers may need the rule set up differently.
 - [ ] Turn on server-side encryption at rest for the bucket (see *Storage is not encrypted at rest* in `docs/engineering-decisions.md`).
 - [ ] Use credentials scoped to this one bucket, not account-wide keys.
 - [ ] Copy existing files across from MinIO, keeping the same object keys (`documents/<uuid>`), since `storage_key` in the database points at them.

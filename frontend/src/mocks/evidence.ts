@@ -1,8 +1,4 @@
-import type {
-  Inspection,
-  Issue,
-  SitePhoto,
-} from "@/interfaces/portal-interface";
+import type { SitePhoto } from "@/interfaces/portal-interface";
 
 const tones = [
   "from-orange-200 to-amber-100",
@@ -77,87 +73,5 @@ export const mockPhotos: SitePhoto[] = [
     takenBy: "Dan Price",
     takenAt: "2026-11-06",
     tone: tones[0],
-  },
-];
-
-export const mockInspections: Inspection[] = [
-  {
-    id: "in-1",
-    projectId: 101,
-    title: "Building control: foundations",
-    inspector: "Mole Valley BC",
-    date: "2026-07-30",
-    status: "Passed",
-  },
-  {
-    id: "in-2",
-    projectId: 101,
-    title: "Building control: drainage",
-    inspector: "Mole Valley BC",
-    date: "2026-08-12",
-    status: "Passed",
-  },
-  {
-    id: "in-3",
-    projectId: 101,
-    title: "Pre-plaster first fix check",
-    inspector: "Tom Reeves",
-    date: "2026-11-13",
-    status: "Scheduled",
-  },
-  {
-    id: "in-4",
-    projectId: 104,
-    title: "Building control: foundation trench",
-    inspector: "Reigate & Banstead BC",
-    date: "2026-11-04",
-    status: "Failed",
-  },
-  {
-    id: "in-5",
-    projectId: 102,
-    title: "Structural engineer: steel",
-    inspector: "Hart Structures",
-    date: "2026-11-11",
-    status: "Scheduled",
-  },
-];
-
-export const mockIssues: Issue[] = [
-  {
-    id: "is-1",
-    projectId: 104,
-    title: "Trench depth insufficient: clay heave risk",
-    raisedBy: "Building control",
-    raisedAt: "2026-11-04",
-    priority: "High",
-    status: "Open",
-  },
-  {
-    id: "is-2",
-    projectId: 101,
-    title: "Rooflight upstand 20mm out of level",
-    raisedBy: "Tom Reeves",
-    raisedAt: "2026-10-27",
-    priority: "Medium",
-    status: "In progress",
-  },
-  {
-    id: "is-3",
-    projectId: 102,
-    title: "Neighbour access for scaffold not confirmed",
-    raisedBy: "Lucy Grant",
-    raisedAt: "2026-10-31",
-    priority: "Medium",
-    status: "Open",
-  },
-  {
-    id: "is-4",
-    projectId: 103,
-    title: "Damaged cabinet door on delivery",
-    raisedBy: "Marcus Hale",
-    raisedAt: "2026-11-02",
-    priority: "Low",
-    status: "Resolved",
   },
 ];

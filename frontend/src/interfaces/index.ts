@@ -4,3 +4,4 @@ export * from "./query-interface";
 export * from "./error-interface";
 export * from "./project-interface";
 export * from "./team-interface";
+export * from "./photo-interface";

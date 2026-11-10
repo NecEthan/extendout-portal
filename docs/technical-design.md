@@ -69,7 +69,7 @@ The backend checks the file is non-empty (`422`), within 50 MB (`413`) and a sup
 
 Uploading to MinIO and committing the database transaction are two separate steps. If the process dies between them, MinIO holds a file with no database record.
 
-Every uploaded object is therefore tagged `kg-orphan=true` straight away, and a MinIO lifecycle rule (set at startup) deletes tagged objects after 24 hours. Once the transaction commits, the tag is removed. Both calls are best-effort: failures are logged, not fatal, because the lifecycle rule is a safety net.
+A failed database insert deletes the file immediately (the upload's `except` block). A crash between the two steps leaves an orphaned file; these are accepted rather than cleaned up automatically, because the earlier tag-and-expire approach could delete real files. See *Orphaned files in MinIO* in `docs/engineering-decisions.md`.
 
 ### Processing uploads
 

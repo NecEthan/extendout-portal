@@ -44,8 +44,6 @@ async def _upload(client):
 def no_storage():
     with (
         patch("app.services.storage.upload_bytes"),
-        patch("app.services.storage.tag_as_orphan"),
-        patch("app.services.storage.confirm_object"),
         patch("app.services.storage.delete_object"),
     ):
         yield

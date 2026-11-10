@@ -18,6 +18,7 @@ from app.routers import (
     documents,
     health,
     project_members,
+    project_photos,
     projects,
     query,
     team,
@@ -32,7 +33,7 @@ configure_logging(settings.app_env)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     loop = asyncio.get_running_loop()
-    await loop.run_in_executor(None, storage.configure_bucket_lifecycle)
+    await loop.run_in_executor(None, storage.remove_orphan_lifecycle_rule)
     pool = await create_pool(RedisSettings.from_dsn(settings.redis_url))
     app.state.arq_pool = pool
     task = asyncio.create_task(run_poller(pool))
@@ -86,4 +87,5 @@ app.include_router(documents.router, prefix="/documents")
 app.include_router(query.router)
 app.include_router(projects.router, prefix="/projects")
 app.include_router(project_members.router, prefix="/projects")
+app.include_router(project_photos.router, prefix="/projects")
 app.include_router(team.router, prefix="/team")

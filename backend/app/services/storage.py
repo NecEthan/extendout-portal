@@ -3,16 +3,12 @@ import logging
 from urllib.parse import urlparse
 
 from minio import Minio
-from minio.commonconfig import ENABLED, Filter, Tag, Tags
 from minio.error import S3Error
-from minio.lifecycleconfig import Expiration, LifecycleConfig, Rule
+from minio.lifecycleconfig import LifecycleConfig
 
 from app.config import settings
 
 logger = logging.getLogger(__name__)
-
-_ORPHAN_TAG_KEY = "kg-orphan"
-_ORPHAN_TAG_VALUE = "true"
 
 _client_instance: Minio | None = None
 
@@ -56,51 +52,38 @@ def delete_object(key: str) -> None:
         pass
 
 
-def tag_as_orphan(key: str) -> None:
-    """Tag a freshly-uploaded object as a potential orphan.
+# A lifecycle rule this app used to create. It deleted uploads still tagged
+# "kg-orphan" after a day, which could also delete a real file if the tag
+# removal after a successful upload was missed. Removed; see
+# "Orphaned files in MinIO" in docs/engineering-decisions.md.
+_OLD_ORPHAN_RULE_ID = "expire-orphan-uploads"
 
-    If the DB commit that follows never completes (process crash, rollback),
-    the lifecycle rule will auto-expire this object after 1 day.
-    Best-effort: a tagging failure is logged but not raised.
+
+def remove_orphan_lifecycle_rule() -> None:
+    """Remove the old orphan-expiry rule from the bucket, if it's still there.
+
+    The rule lives in MinIO, not in this code, so it keeps deleting tagged
+    files until it's removed. Other lifecycle rules on the bucket are kept.
+    Called at startup; idempotent and best-effort (failure is logged).
     """
     try:
-        tags = Tags.new_object_tags()
-        tags[_ORPHAN_TAG_KEY] = _ORPHAN_TAG_VALUE
-        _client().set_object_tags(settings.storage_bucket, key, tags)
-    except Exception:
-        logger.warning("tag_as_orphan failed for key=%s", key, exc_info=True)
-
-
-def confirm_object(key: str) -> None:
-    """Remove the orphan tag once the DB record has been committed.
-
-    Best-effort: if removal fails, the lifecycle rule will auto-expire the
-    object after 1 day, which will cause the processing job to fail.
-    """
-    try:
-        _client().delete_object_tags(settings.storage_bucket, key)
-    except Exception:
-        logger.warning("confirm_object failed for key=%s", key, exc_info=True)
-
-
-def configure_bucket_lifecycle() -> None:
-    """Idempotently set a lifecycle rule that auto-expires orphaned uploads.
-
-    Called once at application startup. Best-effort: failure is logged but
-    does not prevent the application from starting.
-    """
-    try:
-        config = LifecycleConfig(
-            [
-                Rule(
-                    ENABLED,
-                    rule_filter=Filter(tag=Tag(_ORPHAN_TAG_KEY, _ORPHAN_TAG_VALUE)),
-                    rule_id="expire-orphan-uploads",
-                    expiration=Expiration(days=1),
-                )
-            ]
+        client = _client()
+        config = client.get_bucket_lifecycle(settings.storage_bucket)
+        if config is None:
+            return
+        remaining = [r for r in config.rules if r.rule_id != _OLD_ORPHAN_RULE_ID]
+        if len(remaining) == len(config.rules):
+            return
+        if remaining:
+            client.set_bucket_lifecycle(
+                settings.storage_bucket, LifecycleConfig(remaining)
+            )
+        else:
+            client.delete_bucket_lifecycle(settings.storage_bucket)
+        logger.info(
+            "Removed lifecycle rule %s from bucket %s",
+            _OLD_ORPHAN_RULE_ID,
+            settings.storage_bucket,
         )
-        _client().set_bucket_lifecycle(settings.storage_bucket, config)
-        logger.info("MinIO lifecycle rule configured for bucket %s", settings.storage_bucket)
     except Exception:
-        logger.warning("configure_bucket_lifecycle failed", exc_info=True)
+        logger.warning("remove_orphan_lifecycle_rule failed", exc_info=True)

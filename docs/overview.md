@@ -22,7 +22,8 @@ Access is decided by **role + project membership**. Builders and clients only ev
 
 - A project has a name, client and address. Project ids are plain auto-increment numbers (`/projects/101`).
 - Only admins can create and edit projects.
-- Each project page has tabs: **Overview**, **Site evidence**, **Documents**, **Search**, and (admins only) **Team**.
+- Each project page has tabs: **Overview**, **Photos**, **Documents**, **Search**, and (admins only) **Team**.
+- **Photos** tab: anyone on the project can upload JPEG, PNG or WebP photos (up to 20 MB) with an optional description. They're stored in MinIO and shown newest first.
 
 ### Documents and versions
 
@@ -67,7 +68,7 @@ The portal is being built out in stages. These features use **real data** from t
 
 These screens currently show **sample data** (from `frontend/src/mocks/`) while the features are built:
 
-- Project milestones and Site evidence (photos, inspections, issues)
+- Project milestones
 - Client view: Overview and Progress Photos
 
 ## Example journey

@@ -71,9 +71,15 @@ If an error occurs after the job is enqueued but before its status is set to `DI
 
 ## Orphaned files in MinIO
 
-The file is uploaded to MinIO _before_ the DB transaction, so a crash or rollback in between would leave a file with no record. To clean these up, each new object is tagged `kg-orphan` straight after upload, and the tag is removed (`confirm_object`) once the DB commit succeeds. A bucket lifecycle rule deletes objects still tagged after 1 day. A failed commit also deletes the object immediately.
+A file is uploaded to MinIO _before_ its database row is committed, because the two can't be done atomically. If the database insert fails with an error, the upload's `except` block deletes the file straight away. If the process is killed in between (crash, container restart), the file stays in MinIO with nothing pointing to it: an orphan.
 
-Known gap: removing the tag is best-effort. If it fails, the lifecycle rule deletes a file that belongs to a committed document after a day. Retrying the tag removal, or moving it into the worker, would close this.
+**Decision: accept rare orphans; never delete files automatically.**
+
+The first version tagged each new object `kg-orphan`, removed the tag after the commit, and had a MinIO lifecycle rule delete anything still tagged after a day. It was removed because it failed in the wrong direction: if the tag removal was missed (a crash or MinIO hiccup right after a successful commit), the rule deleted a **real** photo or document a day later, leaving a broken record. Losing client data is far worse than wasting a little storage.
+
+For this app's scale (around a dozen customers), orphans need a crash in a window of milliseconds during an upload, so they should be rare to non-existent, and each one only costs storage. The old lifecycle rule is removed from the bucket at startup (`remove_orphan_lifecycle_rule` in `app/services/storage.py`), since rules live in MinIO and would otherwise keep deleting tagged files.
+
+If orphans ever matter, the safe fix is a clean-up job that lists objects older than a day and deletes only those **no database row references** (`document_versions.storage_key`, `project_photos.storage_key`). That fails safe: when unsure, it keeps the file.
 
 ## Duplicate uploads are rejected per project
 

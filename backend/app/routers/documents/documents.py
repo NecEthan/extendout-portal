@@ -67,7 +67,6 @@ async def upload_document(
         raise HTTPException(
             status_code=503, detail=STORAGE_UNAVAILABLE_DETAIL
         ) from exc
-    await loop.run_in_executor(None, storage.tag_as_orphan, storage_key)
 
     try:
         doc, version, job = await create_document_records(
@@ -83,7 +82,6 @@ async def upload_document(
             ) from exc
         raise
 
-    await loop.run_in_executor(None, storage.confirm_object, storage_key)
     await enqueue_processing_job(arq_pool, db, job, version.id)
 
     return DocumentUploadedResponse(id=doc.id, status="accepted")

@@ -9,7 +9,7 @@ import { getErrorMessage } from "@/lib/errorMessage";
 import { BackLink } from "./components/BackLink";
 import { ProjectHeader } from "./components/ProjectHeader";
 import { OverviewTab } from "./components/OverviewTab";
-import { SiteEvidenceTab } from "./components/SiteEvidenceTab";
+import { PhotosTab } from "./components/PhotosTab";
 import { DocumentsTab } from "./components/DocumentsTab";
 import { SearchTab } from "./components/SearchTab";
 import { TeamTab } from "./components/TeamTab";
@@ -44,9 +44,9 @@ export default function ProjectDetailPage() {
       content: <OverviewTab project={project} />,
     },
     {
-      value: "site-evidence",
-      label: "Site evidence",
-      content: <SiteEvidenceTab projectId={id} />,
+      value: "photos",
+      label: "Photos",
+      content: <PhotosTab projectId={id} />,
     },
     {
       value: "documents",

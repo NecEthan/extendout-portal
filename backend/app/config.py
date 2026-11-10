@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     session_max_age_hours: int = 24
 
     max_upload_size_mb: int = 50
+    max_photo_size_mb: int = 20
 
     # LLM pricing for cost estimation per query (USD per 1M tokens).
     # Defaults match gpt-4o-mini; override via environment variables.
