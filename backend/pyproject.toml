@@ -1,7 +1,7 @@
 [project]
-name = "knowledgeguard-backend"
+name = "extendout-portal-backend"
 version = "0.1.0"
-description = "KnowledgeGuard backend API"
+description = "ExtendOut Portal backend API"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115.0",

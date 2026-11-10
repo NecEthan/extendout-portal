@@ -10,6 +10,7 @@ from arq import Retry
 from sqlalchemy import select
 
 from app.models.base import DocumentVersion
+from app.workers.constants import MAX_TRIES
 from app.workers.main import process_document
 from tests.helpers.processing import (
     get_version,
@@ -68,13 +69,13 @@ async def test_previous_version_protected_on_failure(auth_client, db, test_user)
     v2 = await insert_version(db, doc_id, 2, "Version two content.", user_id)
     v2_id = v2.id  # capture before expire_all
     error = RuntimeError("extraction failed")
-    for attempt in (1, 2):
+    for attempt in range(1, MAX_TRIES):
         with patch("app.workers.main.storage.download_bytes", side_effect=error):
             with pytest.raises(Retry):
                 await process_document({"job_try": attempt}, str(v2_id))
     with patch("app.workers.main.storage.download_bytes", side_effect=error):
-        with pytest.raises(RuntimeError):
-            await process_document({"job_try": 3}, str(v2_id))
+        with pytest.raises(RuntimeError, match="extraction failed"):
+            await process_document({"job_try": MAX_TRIES}, str(v2_id))
 
     db.expire_all()
     result = await db.execute(

@@ -1,5 +1,5 @@
 /**
- * KnowledgeGuard k6 load tests
+ * ExtendOut Portal k6 load tests
  *
  * Usage:
  *   k6 run load-test.js                          # default: smoke
@@ -26,7 +26,7 @@ import { Counter, Trend } from 'k6/metrics';
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8000';
 const SCENARIO = __ENV.SCENARIO || 'smoke';
-const SESSION_COOKIE = __ENV.SESSION_COOKIE || 'kg_session_dev';
+const SESSION_COOKIE = __ENV.SESSION_COOKIE || 'eo_session_dev';
 
 // Custom metrics
 const uploadAccepted = new Counter('uploads_accepted');
@@ -151,11 +151,11 @@ function makeTextFile(label) {
   const unique = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   return `This is a load test document (${label} / ${unique}).
 
-KnowledgeGuard load testing content. This document contains information about
-enterprise knowledge management, document retrieval, and AI-powered search.
+ExtendOut Portal load testing content. This document contains information about
+building project documents, drawings, and AI-powered search.
 
 Section 1: Overview
-Organizations need fast, accurate access to internal knowledge. This system
+Builders and clients need fast, accurate access to project documents. This system
 provides semantic search over uploaded documents using vector embeddings.
 
 Section 2: Features

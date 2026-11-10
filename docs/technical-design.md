@@ -1,6 +1,6 @@
 # Technical Design
 
-**Product:** ExtendOut Portal (repository: `knowledgeguard`)
+**Product:** ExtendOut Portal (repository: `extendout-portal`)
 **See also:** [overview.md](overview.md), [architecture.md](architecture.md), [requirements.md](requirements.md)
 
 ---
@@ -17,7 +17,7 @@ The design guarantees three things: people only see the projects they belong to,
 
 ### Route protection
 
-`src/proxy.ts` redirects to `/login` when the `kg_ui_auth` hint cookie is missing, and away from `/login` when it's present. It also lets public image files (logo, favicon) through without a session. This is a convenience only: anyone can call the API directly, so the backend performs the real authentication and authorisation on every request.
+`src/proxy.ts` redirects to `/login` when the `eo_ui_auth` hint cookie is missing, and away from `/login` when it's present. It also lets public image files (logo, favicon) through without a session. This is a convenience only: anyone can call the API directly, so the backend performs the real authentication and authorisation on every request.
 
 Admin-only UI (the Team page and sidebar link, the project Team tab, **New project** and **Edit**) is hidden for builders and clients. The backend rejects those actions with `403` regardless.
 

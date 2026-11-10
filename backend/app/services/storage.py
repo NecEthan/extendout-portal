@@ -53,7 +53,7 @@ def delete_object(key: str) -> None:
 
 
 # A lifecycle rule this app used to create. It deleted uploads still tagged
-# "kg-orphan" after a day, which could also delete a real file if the tag
+# as orphans after a day, which could also delete a real file if the tag
 # removal after a successful upload was missed. Removed; see
 # "Orphaned files in MinIO" in docs/engineering-decisions.md.
 _OLD_ORPHAN_RULE_ID = "expire-orphan-uploads"

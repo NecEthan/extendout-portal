@@ -75,7 +75,7 @@ A file is uploaded to MinIO _before_ its database row is committed, because the 
 
 **Decision: accept rare orphans; never delete files automatically.**
 
-The first version tagged each new object `kg-orphan`, removed the tag after the commit, and had a MinIO lifecycle rule delete anything still tagged after a day. It was removed because it failed in the wrong direction: if the tag removal was missed (a crash or MinIO hiccup right after a successful commit), the rule deleted a **real** photo or document a day later, leaving a broken record. Losing client data is far worse than wasting a little storage.
+The first version tagged each new object as an orphan, removed the tag after the commit, and had a MinIO lifecycle rule delete anything still tagged after a day. It was removed because it failed in the wrong direction: if the tag removal was missed (a crash or MinIO hiccup right after a successful commit), the rule deleted a **real** photo or document a day later, leaving a broken record. Losing client data is far worse than wasting a little storage.
 
 For this app's scale (around a dozen customers), orphans need a crash in a window of milliseconds during an upload, so they should be rare to non-existent, and each one only costs storage. The old lifecycle rule is removed from the bucket at startup (`remove_orphan_lifecycle_rule` in `app/services/storage.py`), since rules live in MinIO and would otherwise keep deleting tagged files.
 
@@ -254,7 +254,7 @@ All API calls go through one axios instance (`src/lib/api/axiosClient.ts`) inste
 
 # Frontend: Error Handling
 
-- **401** — global, one place: the axios response interceptor (`src/lib/api/axiosClient.ts`) clears the `kg_ui_auth` cookie and does a full-page redirect to `/login`, then never settles the request so screens don't flash an error. `/auth/login` and `/auth/logout` are excluded, so a wrong password still shows "Invalid credentials".
+- **401** — global, one place: the axios response interceptor (`src/lib/api/axiosClient.ts`) clears the `eo_ui_auth` cookie and does a full-page redirect to `/login`, then never settles the request so screens don't flash an error. `/auth/login` and `/auth/logout` are excluded, so a wrong password still shows "Invalid credentials".
 - **Everything else (403/404/409/413/415/422/429/503/network)** — inline, next to the failing action. `getErrorMessage()`/`firstErrorMessage()` (`src/lib/errorMessage.ts`) pull the message off `ApiError`, rendered via `<ErrorAlert>`.
 - **422 array-shaped detail** — FastAPI's auto Pydantic validation sends `detail` as `[{msg, loc, type}]`, not a string. `extractErrorDetail()` (`src/lib/api/apiError.ts`) joins the `msg` fields instead of stringifying the array.
 - **429 body shape** — slowapi default returns `{"error": ...}`; backend's custom handler (`main.py`) normalizes to `{"detail": ...}` to match every other endpoint.

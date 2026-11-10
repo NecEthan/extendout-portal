@@ -2,7 +2,7 @@
 
 import uuid
 
-from sqlalchemy import func, update
+from sqlalchemy import delete, func, update
 
 from app.database import AsyncSessionLocal
 from app.models.base import DocumentChunk, DocumentVersion
@@ -18,7 +18,12 @@ async def persist_results(
 ) -> None:
     """Atomically write chunks and activate version."""
     async with AsyncSessionLocal() as db:
-       
+        # Remove chunks left by an earlier attempt that crashed mid-write,
+        # so a retry replaces them instead of hitting the unique index.
+        await db.execute(
+            delete(DocumentChunk).where(DocumentChunk.document_version_id == version_id)
+        )
+
         # Insert chunks with embeddings.
         for i, (chunk_content, embedding) in enumerate(zip(raw_chunks, embeddings)):
             db.add(

@@ -21,7 +21,7 @@ test.describe("Documents", () => {
     await documentsPage.goto();
     await documentsPage.uploadDocument(
       docTitle,
-      "This is a KnowledgeGuard E2E test document.",
+      "This is a ExtendOut Portal E2E test document.",
     );
 
     await expect(page.getByText(docTitle)).toBeVisible();

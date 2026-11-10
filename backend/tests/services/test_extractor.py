@@ -57,7 +57,7 @@ def test_pdf_extracts_text():
     """
     # 80 chars — safely above the 50-char/page threshold.
     page_text = (
-        "Hello KnowledgeGuard. This is a document text extraction test with content.\n"
+        "Hello ExtendOut Portal. This is a document text extraction test with content.\n"
     )
     mock_doc = _mock_fitz_doc([page_text])
 
@@ -65,7 +65,7 @@ def test_pdf_extracts_text():
         mock_fitz.open.return_value = mock_doc
         result = extract_text(b"fake pdf bytes", "application/pdf")
 
-    assert "Hello KnowledgeGuard" in result
+    assert "Hello ExtendOut Portal" in result
 
 
 def test_pdf_multipage_extracts_all_text():

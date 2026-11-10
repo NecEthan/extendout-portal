@@ -6,7 +6,7 @@ const PUBLIC_PATHS: string[] = [applicationRoutes.login];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const hasSession = request.cookies.has("kg_ui_auth");
+  const hasSession = request.cookies.has("eo_ui_auth");
 
   if (!hasSession && !PUBLIC_PATHS.includes(pathname)) {
     return NextResponse.redirect(new URL(applicationRoutes.login, request.url));

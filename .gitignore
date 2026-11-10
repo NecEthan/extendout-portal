@@ -4,5 +4,4 @@ playwright-tests/test-results/
 playwright-tests/.auth/
 .env
 .env.dev
-.env.test
 .env.prod

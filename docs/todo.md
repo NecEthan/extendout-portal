@@ -28,7 +28,7 @@ MinIO currently runs locally in Docker (`minio` service, `minio_data` volume). F
 
 ## Orphaned MinIO files
 
-Orphan tagging (`kg-orphan` tag + lifecycle rule) was removed because it could delete real files; see *Orphaned files in MinIO* in `docs/engineering-decisions.md`. Rare orphans (a crash between saving the file and saving its database row) are accepted for now.
+Orphan tagging (orphan tag + lifecycle rule) was removed because it could delete real files; see *Orphaned files in MinIO* in `docs/engineering-decisions.md`. Rare orphans (a crash between saving the file and saving its database row) are accepted for now.
 
 - [ ] **Optional: safe clean-up job.** Only if orphans ever matter. Periodically list objects older than a day and delete those that **no database row references** (`document_versions.storage_key`, `project_photos.storage_key`). Fails safe: when unsure, keep the file. Could start as a one-off script run by hand.
 - [ ] **Remove the startup clean-up call.** `remove_orphan_lifecycle_rule()` (called in `main.py`'s lifespan) deletes the old `expire-orphan-uploads` rule from the bucket. Once it has run against every environment's bucket, delete the function and the call.

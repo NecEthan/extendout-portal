@@ -1,7 +1,7 @@
 import { Page } from "@playwright/test";
 
 export const MOCK_QUERY_RESPONSE = {
-  answer: "This is a mocked answer from the knowledge base.",
+  answer: "This is a mocked answer from the project documents.",
   citations: [
     {
       document_title: "Test Document",

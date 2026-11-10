@@ -13,7 +13,7 @@ from app.schemas.query import LLMAnswer
 logger = structlog.get_logger(__name__)
 
 _SYSTEM_PROMPT = (
-    "You are a knowledge assistant. Answer questions using ONLY the provided context.\n"
+    "You are the ExtendOut Portal assistant. Answer questions using ONLY the provided context.\n"
     "Rules:\n"
     "- Answer only using information present in the context below.\n"
     "- Do not use any outside knowledge or information not present in the context.\n"

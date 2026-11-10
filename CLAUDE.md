@@ -4,12 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Project Is
 
-The ExtendOut Portal (repo name `knowledgeguard`) is the project workspace for ExtendOut Design | Build, a construction company doing extensions and loft conversions. Each job is a project; admins, builders and clients share its documents, which the system chunks and embeds to answer natural-language questions with citations to the source document and version. Product docs are in `docs/` (start with `docs/overview.md`).
+The ExtendOut Portal (repo name `extendout-portal`) is the project workspace for ExtendOut Design | Build, a construction company doing extensions and loft conversions. Each job is a project; admins, builders and clients share its documents, which the system chunks and embeds to answer natural-language questions with citations to the source document and version. Product docs are in `docs/` (start with `docs/overview.md`).
 
 ## Monorepo Layout
 
 ```
-knowledgeguard/
+extendout-portal/
 ├── backend/          FastAPI service (Python, uv)
 ├── frontend/         Next.js 14 app (TypeScript, npm)
 ├── playwright-tests/ E2E tests (Playwright, npm)
@@ -77,7 +77,7 @@ Requires all services running. Auth state is persisted to `.auth/user.json` by `
 
 ### Request lifecycle
 
-1. Cookie auth: `get_current_user()` in `app/dependencies.py` validates the `kg_session` cookie via `Session` table.
+1. Cookie auth: `get_current_user()` in `app/dependencies.py` validates the `eo_session` cookie via `Session` table.
 2. DB session: `get_db()` yields an `AsyncSession` per request.
 3. ARQ pool: `get_arq_pool()` reads `app.state.arq_pool` (set at startup via lifespan in `main.py`).
 

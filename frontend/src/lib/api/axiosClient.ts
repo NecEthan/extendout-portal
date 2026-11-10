@@ -29,7 +29,7 @@ const AUTH_ENDPOINTS = ["/auth/login", "/auth/logout"];
  * the login page. Returns false if we're already there.
  */
 function redirectToLogin(): boolean {
-  document.cookie = "kg_ui_auth=; path=/; max-age=0";
+  document.cookie = "eo_ui_auth=; path=/; max-age=0";
   if (window.location.pathname === applicationRoutes.login) return false;
   navigateTo(applicationRoutes.login);
   return true;

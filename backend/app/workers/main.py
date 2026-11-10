@@ -51,11 +51,6 @@ async def process_document(ctx: dict, document_version_id: str) -> None:
 
     # ── Phase 1: mark job PROCESSING, load version ────────────────────────────
     async with AsyncSessionLocal() as db:
-        await db.execute(
-            update(ProcessingJob)
-            .where(ProcessingJob.document_version_id == version_id)
-            .values(status="PROCESSING", attempts=ProcessingJob.attempts + 1)
-        )
         version_result = await db.execute(
             select(DocumentVersion).where(DocumentVersion.id == version_id)
         )
@@ -64,6 +59,17 @@ async def process_document(ctx: dict, document_version_id: str) -> None:
             # Document was deleted before the worker started — nothing to do.
             logger.info("job_skipped", reason="version_not_found")
             return
+        if version.status != "PROCESSING":
+            # Already handled (e.g. a duplicate enqueue after success) — no-op.
+            logger.info(
+                "job_skipped", reason="already_processed", status=version.status
+            )
+            return
+        await db.execute(
+            update(ProcessingJob)
+            .where(ProcessingJob.document_version_id == version_id)
+            .values(status="PROCESSING", attempts=ProcessingJob.attempts + 1)
+        )
         document_id = version.document_id
         storage_key = version.storage_key
         await db.commit()

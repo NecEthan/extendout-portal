@@ -1,6 +1,6 @@
 # Requirements
 
-**Product:** ExtendOut Portal (repository: `knowledgeguard`)
+**Product:** ExtendOut Portal (repository: `extendout-portal`)
 **See also:** [overview.md](overview.md), [architecture.md](architecture.md), [technical-design.md](technical-design.md)
 
 What the portal does today. Screens that still show sample data are listed in [overview.md](overview.md#whats-real-vs-sample-data) and are not covered here.

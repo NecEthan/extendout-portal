@@ -45,7 +45,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     # Global rate-limit backstop for every route (see app/limiter.py).
     dependencies=[Depends(global_rate_limit)],
-    title="KnowledgeGuard API",
+    title="ExtendOut Portal API",
     version="0.1.0",
     lifespan=lifespan,
     docs_url="/docs" if settings.app_env == "development" else None,

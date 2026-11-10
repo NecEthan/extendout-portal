@@ -17,7 +17,7 @@ from tests.helpers.files import XLSX_CT, docx_upload, make_xlsx
 
 
 def _docx_file(name: str = "test.docx") -> dict:
-    return docx_upload(name, "Hello KnowledgeGuard")
+    return docx_upload(name, "Hello ExtendOut Portal")
 
 
 async def test_upload_requires_auth(client):

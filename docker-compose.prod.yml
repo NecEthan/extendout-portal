@@ -75,7 +75,7 @@ services:
       STORAGE_ACCESS_KEY: minioadmin
       STORAGE_SECRET_KEY: minioadmin
       STORAGE_BUCKET: knowledgeguard-prod
-      SESSION_COOKIE_NAME: kg_session_prod
+      SESSION_COOKIE_NAME: eo_session_prod
       CORS_ORIGINS: http://localhost:3002
       OPENAI_API_KEY: ${OPENAI_API_KEY:?OPENAI_API_KEY is required}
     depends_on:
@@ -99,7 +99,7 @@ services:
       STORAGE_ACCESS_KEY: minioadmin
       STORAGE_SECRET_KEY: minioadmin
       STORAGE_BUCKET: knowledgeguard-prod
-      SESSION_COOKIE_NAME: kg_session_prod
+      SESSION_COOKIE_NAME: eo_session_prod
       OPENAI_API_KEY: ${OPENAI_API_KEY:?OPENAI_API_KEY is required}
     depends_on:
       redis:
@@ -116,7 +116,7 @@ services:
     environment:
       API_URL: http://backend:8000
       NEXT_PUBLIC_API_URL: http://localhost:8002
-      SESSION_COOKIE_NAME: kg_session_prod
+      SESSION_COOKIE_NAME: eo_session_prod
       NEXT_TELEMETRY_DISABLED: "1"
       NODE_ENV: production
     depends_on:

@@ -1,4 +1,4 @@
-"""Tests for the document deletion race condition (KG-010).
+"""Tests for the document deletion race condition (EO-010).
 
 Verifies that a worker processing a document version does not activate it
 if the document was deleted mid-processing.

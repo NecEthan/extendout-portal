@@ -153,7 +153,7 @@ async def admin_cookies(db, admin_user):
     )
     db.add(session)
     await db.commit()
-    return {"kg_session": token}
+    return {"eo_session": token}
 
 
 @pytest.fixture
@@ -176,7 +176,7 @@ async def auth_cookies(db, test_user):
     )
     db.add(session)
     await db.commit()
-    return {"kg_session": token}
+    return {"eo_session": token}
 
 
 @pytest.fixture

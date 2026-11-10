@@ -1,4 +1,4 @@
-"""Integration tests for document deletion (KG-010).
+"""Integration tests for document deletion (EO-010).
 
 Verifies that DELETE /documents/:id:
   - marks all versions DELETED
@@ -23,7 +23,7 @@ from tests.helpers.files import docx_upload
 
 
 def _docx_file(name: str = "test.docx") -> dict:
-    return docx_upload(name, "Hello KnowledgeGuard")
+    return docx_upload(name, "Hello ExtendOut Portal")
 
 
 async def _upload(client, title: str = "Doc", project_id: str = TEST_PROJECT_ID) -> str:
@@ -241,7 +241,7 @@ async def test_delete_removes_all_versions_and_chunks(auth_client, db):
         # Upload a second version.
         r2 = await auth_client.post(
             f"/documents/{doc_id}/versions",
-            files=docx_upload("v2.docx", "Hello KnowledgeGuard, version two"),
+            files=docx_upload("v2.docx", "Hello ExtendOut Portal, version two"),
         )
     assert r2.status_code == 202
 
