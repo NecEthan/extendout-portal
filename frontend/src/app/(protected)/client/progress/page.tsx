@@ -6,10 +6,7 @@ import { formatDate } from "@/lib/format";
 export default function ProgressPhotosPage() {
   return (
     <>
-      <PageHeader
-        title="Progress Photos"
-        description="Weekly updates and photos from site, straight from your site manager."
-      />
+      <PageHeader title="Progress Photos" />
       <ol className="flex flex-col gap-8 border-l-2 border-primary/30 pl-6">
         {mockProgressUpdates.map((u) => (
           <li key={u.id} className="relative flex flex-col gap-3">

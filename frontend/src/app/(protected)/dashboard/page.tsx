@@ -13,10 +13,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <PageHeader
-        title="Good morning"
-        description="Here's what's happening across your ExtendOut projects today."
-      />
+      <PageHeader title="Good morning" />
 
       <div className="grid grid-cols-2 gap-4">
         <StatCard

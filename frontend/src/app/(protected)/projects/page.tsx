@@ -20,7 +20,6 @@ export default function ProjectsPage() {
     <>
       <PageHeader
         title="Projects"
-        description="Every job in one place: quotes, plans, people and progress."
         actions={
           isAdmin &&
           !creating && (

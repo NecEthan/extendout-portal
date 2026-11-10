@@ -53,7 +53,7 @@ The answer comes only from that project's documents, and only from their **curre
 ### Team (admins only)
 
 - **Team page** — every account, with role and projects. Admins change roles and add/remove people from projects.
-- **Project Team tab** — the people on one project.
+- **Project Team tab** — read-only list of the people on one project. Adding or removing people is done on the Team page.
 
 ## What's real vs sample data
 

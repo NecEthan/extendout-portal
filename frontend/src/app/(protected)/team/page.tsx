@@ -138,7 +138,6 @@ export default function TeamPage() {
     <>
       <PageHeader
         title="Team"
-        description="Everyone with an account. Change roles and choose which projects each person can access."
         actions={
           !adding && (
             <Button onClick={() => setAdding(true)}>
