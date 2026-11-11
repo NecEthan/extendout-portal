@@ -13,6 +13,7 @@ import { PhotosTab } from "./components/PhotosTab";
 import { DocumentsTab } from "./components/DocumentsTab";
 import { SearchTab } from "./components/SearchTab";
 import { TeamTab } from "./components/TeamTab";
+import { SettingsTab } from "./components/SettingsTab";
 
 export default function ProjectDetailPage() {
   const id = Number(useParams<{ id: string }>().id);
@@ -59,18 +60,24 @@ export default function ProjectDetailPage() {
       content: <SearchTab projectId={id} />,
     },
   ];
+  // Team and Settings are admin only (the API enforces this too).
   if (isAdmin) {
     tabs.push({
       value: "team",
       label: "Team",
       content: <TeamTab projectId={id} />,
     });
+    tabs.push({
+      value: "settings",
+      label: "Settings",
+      content: <SettingsTab project={project} />,
+    });
   }
 
   return (
     <>
       <BackLink />
-      <ProjectHeader project={project} isAdmin={isAdmin} />
+      <ProjectHeader project={project} />
       <Tabs defaultValue={tab} tabs={tabs} />
     </>
   );

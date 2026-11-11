@@ -29,3 +29,9 @@ export async function updateProject(
   const { data } = await api.patch<Project>(`/projects/${id}`, changes);
   return data;
 }
+
+/** Admin only. Permanently deletes the project with its documents, photos and
+ * memberships. */
+export async function deleteProject(id: number): Promise<void> {
+  await api.delete(`/projects/${encodeURIComponent(id)}`);
+}

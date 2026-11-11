@@ -1,6 +1,6 @@
 /** Tabs on a project's page (`?tab=`). */
 export type ProjectTab =
-  "overview" | "photos" | "documents" | "search" | "team";
+  "overview" | "photos" | "documents" | "search" | "team" | "settings";
 
 /** Every page route in the app. Build links from here, never by hand. */
 export const applicationRoutes = {
