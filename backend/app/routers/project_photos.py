@@ -34,6 +34,7 @@ from app.services.permissions import can_delete_photo, ensure_project_access
 from app.services.photos import (
     generate_photo_storage_key,
     read_and_validate_photo,
+    stored_content_type,
     strip_metadata,
 )
 
@@ -99,6 +100,7 @@ async def upload_photo(
     # Remove GPS location and other metadata before the photo is stored.
     # Decoding is CPU work, so it runs in a thread to keep the server responsive.
     content = await loop.run_in_executor(None, strip_metadata, content, content_type)
+    content_type = stored_content_type(content_type)  # HEIC is stored as JPEG
 
     storage_key = generate_photo_storage_key()
     try:

@@ -32,7 +32,8 @@ class Settings(BaseSettings):
     session_cookie_name: str = "eo_session"
     session_max_age_hours: int = 24
 
-    max_upload_size_mb: int = 50
+    # Full drawing sets and scanned calc packs can be 50-100 MB.
+    max_upload_size_mb: int = 100
     max_photo_size_mb: int = 20
     # Width x height cap, checked before decoding, so a tiny "decompression
     # bomb" file can't expand into gigabytes of memory. 100 MP covers phone

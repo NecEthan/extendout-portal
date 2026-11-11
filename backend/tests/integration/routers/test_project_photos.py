@@ -360,3 +360,16 @@ async def test_can_delete_flag_in_list(auth_client, admin_client):
     assert as_admin[own.json()["id"]] is True
     assert as_admin[others.json()["id"]] is True
     assert own.json()["can_delete"] is True  # upload response includes it too
+
+
+async def test_heic_upload_is_stored_as_jpeg(auth_client, db):
+    """iPhone photos (HEIC) are accepted and converted to JPEG."""
+    buf = io.BytesIO()
+    Image.new("RGB", (40, 20), (10, 120, 200)).save(buf, format="HEIF")
+    response, upload = await _upload(auth_client, content=buf.getvalue())
+
+    assert response.status_code == 201
+    assert response.json()["content_type"] == "image/jpeg"
+    _key, stored_bytes, stored_type = upload.call_args.args
+    assert stored_type == "image/jpeg"
+    assert Image.open(io.BytesIO(stored_bytes)).format == "JPEG"

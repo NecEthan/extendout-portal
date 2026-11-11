@@ -47,7 +47,7 @@ An AI model would add cost and latency per file and could misread figures, which
 
 ## Upload is a multipart form, not JSON
 
-`POST /documents` takes `multipart/form-data` (`file`, `title`, `project_id`), read by FastAPI's `UploadFile` and `Form()`. JSON can't carry raw bytes: `JSON.stringify` turns a `File` into `{}`. Base64 inside JSON works but makes the file about 33% bigger and forces both sides to hold the whole thing in memory. A presigned-URL upload straight to MinIO was also considered. It keeps big files off the API server but needs three requests, cleanup for abandoned uploads, and moves the file-type check after the file is stored. At a 50 MB limit, multipart through the API is simpler.
+`POST /documents` takes `multipart/form-data` (`file`, `title`, `project_id`), read by FastAPI's `UploadFile` and `Form()`. JSON can't carry raw bytes: `JSON.stringify` turns a `File` into `{}`. Base64 inside JSON works but makes the file about 33% bigger and forces both sides to hold the whole thing in memory. A presigned-URL upload straight to MinIO was also considered. It keeps big files off the API server but needs three requests, cleanup for abandoned uploads, and moves the file-type check after the file is stored. At a 100 MB limit, multipart through the API is still simpler.
 
 The URL is `/documents` (plural): `POST` to the collection creates an item in it, matching `/projects`, `/team` and `/projects/{id}/members`.
 
@@ -59,7 +59,7 @@ The title is **not** searchable yet: keyword search and embeddings only use the 
 
 ## Size limit
 
-Uploads are capped at 50 MB (`max_upload_size_mb`). The backend reads at most limit + 1 bytes, so an oversized file is rejected with `413` without reading the whole thing into memory. The file is also checked for being empty (`422`).
+Uploads are capped at 100 MB (`max_upload_size_mb`), raised from 50 MB because full drawing sets and scanned calc packs can exceed 50 MB. The backend reads at most limit + 1 bytes, so an oversized file is rejected with `413` without reading the whole thing into memory. The file is also checked for being empty (`422`).
 
 ## Save to the database before Redis (transactional outbox)
 
@@ -158,7 +158,7 @@ Single API key means all users share one OpenAI RPM/TPM quota. Three controls pr
 
 **Query rate limit** — `POST /query` is capped at 20 requests/minute **per user** via slowapi/Redis. Each query costs 2 OpenAI calls (embed + chat). 20/min allows ~1 query every 3 seconds — fine for interactive use, stops scripted abuse. It was per-IP at first, but a site office or household shares one IP, so one busy person blocked everyone there; keying by user fixes that. To handle more users, upgrade OpenAI tier or add a second API key to multiply quota.
 
-**Upload rate limit** — new documents and new versions share one 30/minute per-user bucket. Each upload can store 50 MB and trigger OCR plus hundreds of embedding calls, so a runaway script or bulk upload could otherwise run up the OpenAI bill and fill the 5-slot worker queue for everyone. See `docs/technical-design.md` → Rate limiting for the full table.
+**Upload rate limit** — new documents and new versions share one 30/minute per-user bucket. Each upload can store 100 MB and trigger OCR plus hundreds of embedding calls, so a runaway script or bulk upload could otherwise run up the OpenAI bill and fill the 5-slot worker queue for everyone. See `docs/technical-design.md` → Rate limiting for the full table.
 
 **Worker concurrency cap** — ARQ limited to 5 concurrent jobs (`max_jobs=5`). One document can produce 100+ embedding batches; 10 simultaneous uploads without a cap would blast the embeddings RPM limit. The 6th job waits in Redis — no work lost. 5 jobs × 100 chunks ≈ 500 embedding calls/min, within tier 1 limits. Raise in `config.py` as tier increases.
 

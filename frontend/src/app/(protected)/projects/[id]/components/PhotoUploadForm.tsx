@@ -49,7 +49,7 @@ export function PhotoUploadForm({ projectId }: { projectId: number }) {
           <Input
             id="photo-file"
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
             required
             ref={fileRef}
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}

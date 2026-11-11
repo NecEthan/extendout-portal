@@ -6,7 +6,7 @@ import pytest
 from fastapi import HTTPException
 from PIL import Image
 
-from app.services.photos import strip_metadata
+from app.services.photos import detect_image_type, strip_metadata
 
 GPS_IFD = 0x8825
 
@@ -23,6 +23,18 @@ def _phone_photo(fmt: str = "JPEG", size=(40, 20), orientation: int = 6) -> byte
     gps[3], gps[4] = "W", (0.0, 7.0, 39.0)
     buf = io.BytesIO()
     img.save(buf, format=fmt, exif=exif)
+    return buf.getvalue()
+
+
+def _phone_heic(size=(40, 20)) -> bytes:
+    """An iPhone-style HEIC photo with GPS and camera metadata."""
+    img = Image.new("RGB", size, (200, 100, 50))
+    exif = Image.Exif()
+    exif[0x010F] = "Apple"
+    gps = exif.get_ifd(GPS_IFD)
+    gps[1], gps[2] = "N", (51.0, 30.0, 12.0)
+    buf = io.BytesIO()
+    img.save(buf, format="HEIF", exif=exif.tobytes())
     return buf.getvalue()
 
 
@@ -72,3 +84,18 @@ def test_rejects_corrupt_image():
     with pytest.raises(HTTPException) as exc:
         strip_metadata(corrupt, "image/jpeg")
     assert exc.value.status_code == 415
+
+
+def test_detects_heic_from_bytes():
+    assert detect_image_type(_phone_heic()) == "image/heic"
+
+
+def test_heic_is_converted_to_jpeg_without_metadata():
+    original = _phone_heic()
+    assert _open(original).getexif().get_ifd(GPS_IFD)  # sanity: GPS present
+
+    cleaned = _open(strip_metadata(original, "image/heic"))
+
+    assert cleaned.format == "JPEG"  # browsers can't show HEIC
+    assert cleaned.size == (40, 20)
+    assert dict(cleaned.getexif()) == {}

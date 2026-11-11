@@ -5,10 +5,23 @@ import uuid
 
 from fastapi import HTTPException, UploadFile
 from PIL import Image, ImageOps, UnidentifiedImageError
+from pillow_heif import register_heif_opener
 
 from app.config import settings
 
-ALLOWED_PHOTO_TYPES = frozenset(["image/jpeg", "image/png", "image/webp"])
+# Lets Pillow open HEIC/HEIF, the default format of iPhone photos.
+register_heif_opener()
+
+ALLOWED_PHOTO_TYPES = frozenset(["image/jpeg", "image/png", "image/webp", "image/heic"])
+
+# HEIF "ftyp" brands used by iPhone and other phone photos.
+_HEIC_BRANDS = frozenset(
+    [b"heic", b"heix", b"hevc", b"hevx", b"heim", b"heis", b"mif1", b"msf1"]
+)
+
+UNSUPPORTED_PHOTO_DETAIL = (
+    "Unsupported image type. Upload a JPEG, PNG, WebP or HEIC photo."
+)
 
 
 def detect_image_type(content: bytes) -> str | None:
@@ -19,7 +32,15 @@ def detect_image_type(content: bytes) -> str | None:
         return "image/png"
     if content[:4] == b"RIFF" and content[8:12] == b"WEBP":
         return "image/webp"
+    if content[4:8] == b"ftyp" and content[8:12] in _HEIC_BRANDS:
+        return "image/heic"
     return None
+
+
+def stored_content_type(content_type: str) -> str:
+    """Type the photo is stored as. HEIC is converted to JPEG, since most
+    browsers (Chrome, Firefox, Edge) can't display HEIC."""
+    return "image/jpeg" if content_type == "image/heic" else content_type
 
 
 async def read_and_validate_photo(file: UploadFile) -> tuple[bytes, str]:
@@ -40,10 +61,7 @@ async def read_and_validate_photo(file: UploadFile) -> tuple[bytes, str]:
 
     content_type = detect_image_type(content)
     if content_type not in ALLOWED_PHOTO_TYPES:
-        raise HTTPException(
-            status_code=415,
-            detail="Unsupported image type. Upload a JPEG, PNG or WebP photo.",
-        )
+        raise HTTPException(status_code=415, detail=UNSUPPORTED_PHOTO_DETAIL)
     return content, content_type
 
 
@@ -51,7 +69,8 @@ _PIL_FORMATS = {"image/jpeg": "JPEG", "image/png": "PNG", "image/webp": "WEBP"}
 
 
 def strip_metadata(content: bytes, content_type: str) -> bytes:
-    """Re-save the photo without its hidden metadata (EXIF).
+    """Re-save the photo without its hidden metadata (EXIF), as
+    ``stored_content_type(content_type)`` (HEIC becomes JPEG).
 
     Phone photos carry the exact GPS location, time taken and phone model;
     location is personal data, so it's removed before the photo is stored.
@@ -75,6 +94,9 @@ def strip_metadata(content: bytes, content_type: str) -> bytes:
                     ),
                 )
             upright = ImageOps.exif_transpose(img)
+            out_type = stored_content_type(content_type)
+            if out_type == "image/jpeg" and upright.mode not in ("RGB", "L"):
+                upright = upright.convert("RGB")  # JPEG has no alpha channel
 
             # Keep the colour profile so colours look the same; everything
             # else (EXIF, GPS, text chunks) is dropped by not passing it on.
@@ -82,11 +104,11 @@ def strip_metadata(content: bytes, content_type: str) -> bytes:
             icc_profile = img.info.get("icc_profile")
             if icc_profile:
                 options["icc_profile"] = icc_profile
-            if content_type in ("image/jpeg", "image/webp"):
+            if out_type in ("image/jpeg", "image/webp"):
                 options["quality"] = 90
 
             out = io.BytesIO()
-            upright.save(out, format=_PIL_FORMATS[content_type], **options)
+            upright.save(out, format=_PIL_FORMATS[out_type], **options)
             return out.getvalue()
     except HTTPException:
         raise
@@ -100,7 +122,7 @@ def strip_metadata(content: bytes, content_type: str) -> bytes:
             status_code=415,
             detail=(
                 "The photo couldn't be read. "
-                "Upload a valid JPEG, PNG or WebP photo."
+                "Upload a valid JPEG, PNG, WebP or HEIC photo."
             ),
         ) from exc
 
