@@ -239,7 +239,15 @@ jobs:
         run: npm ci
       - name: Install Playwright browsers
         working-directory: playwright-tests
-        run: npm ci && npx playwright install --with-deps chromium
+        # Retried: apt mirrors on GitHub's runners occasionally fail to resolve.
+        run: |
+          npm ci
+          for attempt in 1 2 3; do
+            npx playwright install --with-deps chromium && exit 0
+            echo "Browser install failed (attempt $attempt), retrying in 20s..."
+            sleep 20
+          done
+          exit 1
       - name: Run E2E tests
         working-directory: playwright-tests
         run: npm run test:e2e
