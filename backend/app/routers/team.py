@@ -3,7 +3,7 @@ memberships, creates users, and lets admins change roles."""
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -36,11 +36,13 @@ async def list_team(
 
 @router.post("", status_code=201, response_model=TeamMemberResponse)
 async def create_team_member(
+    request: Request,
     body: CreateTeamMemberRequest,
     db: AsyncSession = Depends(get_db),
     _admin: User = Depends(require_admin),
 ) -> TeamMemberResponse:
     """Admin creates an account. There is no public sign-up."""
+    request.state.audit_details = {"email": body.email, "role": body.role}
     existing = await db.scalar(select(User).where(User.email == body.email))
     if existing is not None:
         raise HTTPException(status_code=409, detail="Email already registered")
@@ -53,11 +55,13 @@ async def create_team_member(
     db.add(user)
     await db.commit()
     await db.refresh(user)
+    request.state.audit_details["user_id"] = str(user.id)
     return to_team_member_response(user, [])
 
 
 @router.patch("/{user_id}", response_model=TeamMemberResponse)
 async def update_role(
+    request: Request,
     user_id: uuid.UUID,
     body: RoleUpdateRequest,
     db: AsyncSession = Depends(get_db),
@@ -69,6 +73,7 @@ async def update_role(
     user = await db.get(User, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
+    request.state.audit_details = {"old_role": user.role, "new_role": body.role}
     user.role = body.role
     await db.commit()
     memberships = await get_memberships(db, [user.id])

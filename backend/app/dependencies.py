@@ -34,9 +34,18 @@ async def get_current_user(
     # Bind user_id to the structlog context so it appears in all subsequent
     # log entries for this request.
     structlog.contextvars.bind_contextvars(user_id=str(user.id))
-    # Lets the rate limiter key per-user limits (see app/limiter.py).
-    request.state.user_id = str(user.id)
+    set_request_user(request, user)
     return user
+
+
+def set_request_user(request: Request, user: User) -> None:
+    """Record who is making this request. The rate limiter keys per-user
+    limits on user_id (app/limiter.py); the audit middleware records id,
+    email, name and role as the actor (app/audit/middleware.py)."""
+    request.state.user_id = str(user.id)
+    request.state.user_email = user.email
+    request.state.user_name = user.name
+    request.state.user_role = user.role
 
 
 async def require_admin(current_user: User = Depends(get_current_user)) -> User:

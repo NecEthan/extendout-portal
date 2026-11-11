@@ -122,7 +122,13 @@ Limits stop cost and abuse from signed-in clients; they don't stop a traffic flo
 
 ### Observability
 
-Structured logs (`structlog`) to stdout: request logs with `request_id`, status and duration; LLM calls with tokens, duration and cost; worker jobs with duration, chunk count and attempt; poller queue depth. Locally they're visible with `docker compose logs`. There is no metrics dashboard or audit log.
+Structured logs (`structlog`) to stdout: request logs with `request_id`, status and duration; LLM calls with tokens, duration and cost; worker jobs with duration, chunk count and attempt; poller queue depth. Locally they're visible with `docker compose logs`. There is no metrics dashboard.
+
+### Audit log
+
+`AuditMiddleware` (`app/audit/middleware.py`) records every change, every failed or denied request, and every successful document or version open (`should_record`), skipping other successful reads, `/health` and `OPTIONS`. Each entry has who (user id, email, name and role, from `request.state`, set by `get_current_user`), method and route template (e.g. `DELETE /projects/{project_id}/photos/{photo_id}`, rebuilt from the URL and its path parameters), status code and outcome (`success` / `denied` for 4xx / `error` for 5xx), project and entity from the path parameters, IP, user agent, duration, and `details` an endpoint adds (`request.state.audit_details`, never passwords, file contents or search text). It's plain ASGI so unhandled exceptions are recorded as 500s, and it writes after the endpoint finishes; a failed write is logged (`audit_write_failed`) without affecting the response. Each entry is also logged as an `audit_event` line.
+
+Where entries go depends on `AUDIT_BACKEND`: `file` (local development, set in `docker-compose.yml` and `backend/.env`) appends JSON lines to `<temp dir>/extendout-portal-audit.log`; `db` (default; production and tests) inserts into `audit_events`, which a trigger keeps append-only. The log isn't exposed in the app (no page or API); read the table with a database client. Details in `docs/audit-logging-plan.md`.
 
 ---
 

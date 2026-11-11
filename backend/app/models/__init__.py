@@ -1,3 +1,4 @@
+from app.models.audit_event import AuditEvent
 from app.models.document import Document
 from app.models.document_chunk import DocumentChunk
 from app.models.document_version import DocumentVersion
@@ -17,4 +18,5 @@ __all__ = [
     "Project",
     "ProjectMember",
     "ProjectPhoto",
+    "AuditEvent",
 ]

@@ -52,6 +52,7 @@ async def run_query(
     db: AsyncSession = Depends(get_db),
 ) -> QueryResponse:
     question = body.question.strip()
+    request.state.audit_project_id = body.project_id  # never the question text
 
     if body.project_id is not None:
         await ensure_project_access(db, current_user, body.project_id)
@@ -85,6 +86,7 @@ async def run_query(
     # 5. Reciprocal Rank Fusion
     combined = rrf_combine(vector_chunk_ranks, fts_chunk_ranks)
     top_chunk_ids = [chunk_id for chunk_id, _ in combined[:_CONTEXT_CHUNKS]]
+    request.state.audit_details = {"result_count": len(top_chunk_ids)}
 
     if not top_chunk_ids:
         return QueryResponse(

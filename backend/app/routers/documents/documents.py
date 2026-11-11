@@ -42,6 +42,7 @@ async def upload_document(
     current_user: User = Depends(get_current_user),
     arq_pool: ArqRedis = Depends(get_arq_pool),
 ) -> DocumentUploadedResponse:
+    request.state.audit_project_id = project_id
     logger.info(
         "document_upload_start",
         filename=file.filename,

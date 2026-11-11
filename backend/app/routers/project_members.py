@@ -8,7 +8,7 @@ Mounted under /projects, all admin only:
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -38,11 +38,13 @@ async def list_project_members(
 
 @router.post("/{project_id}/members", status_code=201, response_model=MemberResponse)
 async def add_project_member(
+    request: Request,
     project_id: int,
     body: AddMemberRequest,
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ) -> MemberResponse:
+    request.state.audit_details = {"user_id": str(body.user_id)}
     await ensure_project_access(db, admin, project_id)  # 404 if unknown project
     user = await db.get(User, body.user_id)
     if user is None:

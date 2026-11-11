@@ -3,12 +3,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.dependencies import get_arq_pool, get_current_user, get_db
+from app.dependencies import get_arq_pool, get_current_user, get_db, set_request_user
 from app.limiter import ip_key, limiter
 from app.models.base import User
 from app.schemas.auth import LoginRequest, UserResponse
 from app.services.auth import (
     create_session,
+    get_valid_session,
     invalidate_session,
     verify_password,
 )
@@ -25,6 +26,8 @@ async def login(
     db: AsyncSession = Depends(get_db),
     redis=Depends(get_arq_pool),
 ) -> UserResponse:
+    # Audited on success and failure; the password is never recorded.
+    request.state.audit_details = {"email": body.email}
     lockout_key = f"login_fail:{body.email}"
     fail_count = await redis.get(lockout_key)
     if fail_count and int(fail_count) >= settings.login_max_attempts:
@@ -38,6 +41,7 @@ async def login(
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     await redis.delete(lockout_key)
+    set_request_user(request, user)
     session = await create_session(db, user.id)
     await db.commit()
     is_production = settings.app_env != "development"
@@ -61,6 +65,9 @@ async def logout(
 ) -> None:
     token = request.cookies.get(settings.session_cookie_name)
     if token:
+        session = await get_valid_session(db, token)
+        if session is not None:
+            set_request_user(request, session.user)  # audit: who logged out
         await invalidate_session(db, token)
     response.delete_cookie(
         key=settings.session_cookie_name,

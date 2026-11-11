@@ -1,4 +1,6 @@
 import os
+import tempfile
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -61,6 +63,11 @@ class Settings(BaseSettings):
 
     # Set to true to skip real OpenAI calls (load testing / CI)
     mock_llm: bool = False
+
+    audit_backend: Literal["file", "db"] = "db"
+    audit_file_path: str = os.path.join(
+        tempfile.gettempdir(), "extendout-portal-audit.log"
+    )
 
 
 settings = Settings()

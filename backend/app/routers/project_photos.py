@@ -82,7 +82,7 @@ async def list_photos(
 @router.post("/{project_id}/photos", status_code=201, response_model=PhotoResponse)
 @upload_limit
 async def upload_photo(
-    request: Request,  # required by @upload_limit (slowapi), even though unused here
+    request: Request,  # required by @upload_limit (slowapi); also used for audit
     project_id: int,
     file: UploadFile,
     description: str | None = Form(None, max_length=MAX_DESCRIPTION_LENGTH),
@@ -92,6 +92,8 @@ async def upload_photo(
     await ensure_project_access(db, current_user, project_id)
     content, content_type = await read_and_validate_photo(file)
     description = (description or "").strip() or None
+    # Only the length: the description text itself isn't audit data.
+    request.state.audit_details = {"description_length": len(description or "")}
 
     loop = asyncio.get_running_loop()
     # Remove GPS location and other metadata before the photo is stored.

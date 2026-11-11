@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 
+from app.audit.middleware import AuditMiddleware
 from app.config import settings
 from app.limiter import global_rate_limit, limiter
 from app.logging_config import configure_logging
@@ -70,6 +71,9 @@ def rate_limit_exceeded_handler(
 
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
+# Added first so it sits inside RequestLoggingMiddleware and its audit_event
+# log lines carry the request_id. Records every request except /health and
+app.add_middleware(AuditMiddleware)
 # RequestLoggingMiddleware must be added before CORSMiddleware so that
 # request_id is bound before any early-exit CORS responses are logged.
 app.add_middleware(RequestLoggingMiddleware)

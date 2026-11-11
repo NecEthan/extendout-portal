@@ -12,6 +12,15 @@ Leave everything else alone: authenticated reads are cheap and scoped to your ow
 
 **What app limits can't do:** stop a real flood of traffic (a DDoS). That has to be stopped before it reaches FastAPI, by a reverse proxy or a service like Cloudflare in production. App-level limits are for cost and abuse control, not traffic floods.
 
+## Lock down production services (before deploying)
+
+`docker-compose.prod.yml` publishes Postgres (`5436`), Redis (`6381`) and MinIO (`9014`/`9015`) on the host, with default credentials (`postgres`/`postgres`, `minioadmin`/`minioadmin`, Redis with no password). On an internet-facing server, anyone could log in directly and read or delete every user, project, document and photo (including the audit log), bypassing the app's permission checks, rate limits and audit logging entirely.
+
+- [ ] Remove the `ports:` entries for `postgres`, `redis` and `minio` in `docker-compose.prod.yml`. The backend and worker reach them over Docker's internal network; nothing else needs them. (For manual access use `docker compose -f docker-compose.prod.yml --env-file .env.prod exec postgres psql ...`.)
+- [ ] Set strong, unique passwords in `.env.prod` and use them in the compose file instead of the defaults: `POSTGRES_PASSWORD` (and the matching `DATABASE_URL`), `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` (and `STORAGE_ACCESS_KEY`/`STORAGE_SECRET_KEY`), and a Redis password (`requirepass`, plus `REDIS_URL`).
+- [ ] Firewall the server so only 80/443 (and SSH, ideally restricted) are reachable.
+- [ ] Fix `make prod-down`: it doesn't pass `--env-file .env.prod`, so it targets the wrong project name and doesn't stop the prod containers.
+
 ## Login error messages
 
 - [ ] Fix the login error messages for the account lock and "try again in 1 minute".
@@ -35,18 +44,11 @@ Orphan tagging (orphan tag + lifecycle rule) was removed because it could delete
 
 ## Audit logging
 
-There's no audit log yet: structured logs record requests, but not a durable "who did what, when" history (see *Observability* in `docs/technical-design.md`). For a portal holding clients' drawings, calcs and photos, the office should be able to answer questions like "who deleted that drawing?" or "who gave this person access?".
+Done — see `docs/audit-logging-plan.md` and *Audit logging* in `docs/engineering-decisions.md`. Every API request (except `/health` and `OPTIONS`) is recorded by `app/audit/middleware.py`: to a temp file locally (`AUDIT_BACKEND=file`), to the append-only `audit_events` table in production and tests (`AUDIT_BACKEND=db`). It is not exposed in the app (no page or API): read the file locally, or query `audit_events` with a database client in production.
 
-An old, empty `audit_events` table left over from a deleted migration was dropped (migration `d6a1e4b8c2f9`), so this starts from a clean slate with a new migration.
-
-- [ ] **Data model.** One append-only table: who (`user_id`), what (`event_type`, e.g. `document.deleted`), which thing (`entity_type` + `entity_id`, plus `project_id` for filtering), when (`created_at`), and extra detail in `metadata` (old/new role, file name, IP). Never updated or deleted by the app.
-- [ ] **Write it in the same transaction** as the change it describes, so a change can't happen without its audit row (and a rolled-back change leaves none).
-- [ ] **Events worth recording:**
-  - Documents: upload, new version, set active version, delete.
-  - Photos: upload (and delete, once that exists).
-  - Access: user created, role changed, added to / removed from a project.
-  - Projects: created, edited.
-  - Auth: login success/failure and account lockout (also useful for spotting attacks).
-- [ ] **Admin view.** An audit page or per-project "History" list for admins, filterable by project, user and event type.
-- [ ] **Retention.** Decide how long to keep entries (e.g. 2 years) and avoid storing more personal data than needed in `metadata` (UK GDPR).
-- [ ] **Searches:** decide whether to log questions asked in Search. Useful for usage insight, but it's personal content, so probably store only counts or opt in.
+- [x] **Data model.** `audit_events` (migration `e7b3c9d1a5f2`): actor, method + route, status/outcome, project, entity, IP, user agent, duration, `details`. A trigger rejects `UPDATE`, `DELETE` and `TRUNCATE`.
+- [x] **Meaningful actions recorded:** every change, login and search; every failed or denied request (401/403/404/429/500); document and version opens. Other successful reads are skipped.
+- [x] **Searches:** only the result count is stored, never the question.
+- [ ] **Same-transaction writes.** Entries are written after the request, in their own transaction (accepted trade-off). If needed, call the writer inside a sensitive change's own transaction too.
+- [ ] **Production hardening** (when deploying): run `alembic upgrade head`; app DB user with only `INSERT, SELECT` on `audit_events`; ship container logs (`audit_event` lines) off-server; uvicorn `--proxy-headers --forwarded-allow-ips=<proxy>` so IPs are real; alerts later.
+- [ ] **Retention.** Delete entries older than 2 years in a scheduled job run as a privileged user (it must disable the trigger), and mention the audit log in the privacy notice.
