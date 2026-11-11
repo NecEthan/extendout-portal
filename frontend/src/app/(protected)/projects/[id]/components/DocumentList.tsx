@@ -7,6 +7,7 @@ import { ErrorAlert } from "@/components/ui/error-alert";
 import { useDeleteDocument } from "@/hooks/useDocuments";
 import { getErrorMessage } from "@/lib/errorMessage";
 import { STATUS_STYLES } from "@/utils/documentStatus";
+import { applicationRoutes } from "@/utils/applicationRoutes";
 
 interface DocumentListProps {
   documents: Document[];
@@ -53,11 +54,7 @@ export function DocumentList({ documents }: DocumentListProps) {
           </div>
           <div className="flex items-center gap-2">
             <Link
-              href={
-                doc.project_id
-                  ? `/documents/${doc.id}/versions?project=${encodeURIComponent(doc.project_id)}`
-                  : `/documents/${doc.id}/versions`
-              }
+              href={applicationRoutes.documentVersions(doc.id, doc.project_id)}
             >
               <Button variant="outline" size="sm">
                 Versions

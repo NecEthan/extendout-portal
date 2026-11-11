@@ -19,7 +19,7 @@ export function AddProjectForm({ onCancel }: { onCancel: () => void }) {
       onSubmit={(values) =>
         createProject.mutate(values, {
           onSuccess: (project) =>
-            router.push(`${applicationRoutes.projects}/${project.id}`),
+            router.push(applicationRoutes.project(project.id)),
         })
       }
       onCancel={onCancel}

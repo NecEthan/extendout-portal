@@ -11,28 +11,18 @@ import { getErrorMessage } from "@/lib/errorMessage";
 import { applicationRoutes } from "@/utils/applicationRoutes";
 
 export default function DashboardPage() {
-  const projectsQuery = useProjects();
+  const projects = useProjects();
 
-  if (projectsQuery.isPending) {
-    return (
-      <>
-        <PageHeader title="Good morning" />
-        <p className="text-sm text-muted-foreground">Loading projects…</p>
-      </>
-    );
-  }
-  if (projectsQuery.isError) {
+  if (projects.isError) {
     return (
       <>
         <PageHeader title="Good morning" />
         <ErrorAlert
-          message={getErrorMessage(projectsQuery, "Failed to load projects")}
+          message={getErrorMessage(projects, "Failed to load projects")}
         />
       </>
     );
   }
-  const projects = projectsQuery.data; // loaded: TypeScript knows it's defined
-
   return (
     <>
       <PageHeader title="Good morning" />
@@ -40,7 +30,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 gap-4">
         <StatCard
           label="Projects"
-          value={String(projects.length)}
+          value={projects.data ? String(projects.data.length) : ""}
           icon={FolderKanban}
         />
       </div>
@@ -56,7 +46,7 @@ export default function DashboardPage() {
           </Link>
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {projects.map((p) => (
+          {projects.data?.map((p) => (
             <ProjectCard key={p.id} project={p} />
           ))}
         </div>

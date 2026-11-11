@@ -6,10 +6,7 @@ import type { Project } from "@/interfaces";
 
 export function ProjectCard({ project }: { project: Project }) {
   return (
-    <Link
-      href={`${applicationRoutes.projects}/${project.id}`}
-      className="group"
-    >
+    <Link href={applicationRoutes.project(project.id)} className="group">
       <Card className="h-full gap-3 px-4 transition-shadow group-hover:shadow-md group-hover:ring-primary/30">
         <span className="font-heading font-semibold group-hover:text-primary">
           {project.name}

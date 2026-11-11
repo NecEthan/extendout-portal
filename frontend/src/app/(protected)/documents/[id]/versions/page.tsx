@@ -16,6 +16,7 @@ import {
 } from "@/hooks/useDocumentVersions";
 import { firstErrorMessage, UPLOAD_RATE_LIMITED } from "@/lib/errorMessage";
 import { STATUS_STYLES } from "@/utils/documentStatus";
+import { applicationRoutes } from "@/utils/applicationRoutes";
 
 const PAGE_SIZE = 20;
 
@@ -27,7 +28,7 @@ export default function VersionHistoryPage() {
 
   function handleBack() {
     if (projectId) {
-      router.push(`/projects/${encodeURIComponent(projectId)}?tab=documents`);
+      router.push(applicationRoutes.project(projectId, "documents"));
     } else {
       router.back();
     }

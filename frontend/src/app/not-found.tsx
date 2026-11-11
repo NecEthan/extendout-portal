@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { applicationRoutes } from "@/utils/applicationRoutes";
 
 export default function NotFound() {
   return (
@@ -13,7 +14,10 @@ export default function NotFound() {
           <p className="text-sm text-muted-foreground">
             The page you&apos;re looking for doesn&apos;t exist.
           </p>
-          <Button className="w-full" render={<Link href="/" />}>
+          <Button
+            className="w-full"
+            render={<Link href={applicationRoutes.home} />}
+          >
             Back to ExtendOut Portal
           </Button>
         </CardContent>
