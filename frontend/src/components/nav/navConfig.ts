@@ -22,9 +22,17 @@ export interface NavSection {
   items: NavItem[];
 }
 
+// Both roles get the Projects link; the API lists all projects for admins and
+// only their member projects for builders and clients.
+const projectsItem: NavItem = {
+  href: applicationRoutes.projects,
+  label: "Projects",
+  icon: FolderKanban,
+};
+
 export const navSections: NavSection[] = [
   {
-    title: "Workspace",
+    title: "Admin",
     roles: ["admin"],
     items: [
       {
@@ -32,17 +40,7 @@ export const navSections: NavSection[] = [
         label: "Dashboard",
         icon: LayoutDashboard,
       },
-    ],
-  },
-  {
-    title: "Admin",
-    roles: ["admin"],
-    items: [
-      {
-        href: applicationRoutes.projects,
-        label: "Projects",
-        icon: FolderKanban,
-      },
+      projectsItem,
       {
         href: applicationRoutes.team,
         label: "Team",
@@ -60,6 +58,7 @@ export const navSections: NavSection[] = [
         label: "Progress Photos",
         icon: Images,
       },
+      projectsItem,
     ],
   },
 ];
