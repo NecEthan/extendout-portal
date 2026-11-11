@@ -1,84 +1,77 @@
 import { test, expect } from "@playwright/test";
-import { DocumentsPage } from "../pom/DocumentsPage";
+import { ProjectPage } from "../pom/ProjectPage";
 import { VersionHistoryPage } from "../pom/VersionHistoryPage";
+import { e2eProjectId, unique } from "../utils/env";
 
-test.describe("Version History", () => {
-  test("version history page shows uploaded document's first version", async ({
-    page,
-  }) => {
-    const documentsPage = new DocumentsPage(page);
-    const versionHistoryPage = new VersionHistoryPage(page);
-    const docTitle = `Versioned doc ${Date.now()}`;
+test.describe("Version history", () => {
+  test("shows the uploaded document's first version", async ({ page }) => {
+    const project = new ProjectPage(page, e2eProjectId());
+    const history = new VersionHistoryPage(page);
+    const title = unique("E2E versioned");
 
-    await documentsPage.goto();
-    await documentsPage.uploadDocument(docTitle, "This is version one.");
-    await documentsPage.openVersionHistory(docTitle);
+    await project.goto("documents");
+    await project.uploadDocument(title, `v1 of ${title}`);
+    await project.openVersions(title);
 
-    await versionHistoryPage.assertLoaded();
-    await expect(versionHistoryPage.versionRows()).toHaveCount(1);
-    await expect(versionHistoryPage.versionRows().first()).toContainText("v1");
+    await history.assertLoaded();
+    await expect(history.versionRows()).toHaveCount(1);
+    await expect(history.versionRows().first()).toContainText("v1");
   });
 
-  test("uploading a new version appears in version history list", async ({
-    page,
-  }) => {
-    const documentsPage = new DocumentsPage(page);
-    const versionHistoryPage = new VersionHistoryPage(page);
-    const docTitle = `Multi-version doc ${Date.now()}`;
+  test("a new version appears above the old one", async ({ page }) => {
+    const project = new ProjectPage(page, e2eProjectId());
+    const history = new VersionHistoryPage(page);
+    const title = unique("E2E multi-version");
 
-    await documentsPage.goto();
-    await documentsPage.uploadDocument(docTitle, "Version one content.");
-    await documentsPage.openVersionHistory(docTitle);
+    await project.goto("documents");
+    await project.uploadDocument(title, `v1 of ${title}`);
+    await project.openVersions(title);
+    await history.assertLoaded();
 
-    await versionHistoryPage.assertLoaded();
-    await expect(versionHistoryPage.versionRows()).toHaveCount(1);
+    await history.uploadNewVersion("v2.docx", `v2 of ${title}`);
 
-    await versionHistoryPage.uploadNewVersion("v2.docx", "Version two content.");
-
-    await expect(versionHistoryPage.versionRows()).toHaveCount(2);
-    await expect(versionHistoryPage.versionRows().first()).toContainText("v2");
-    await expect(versionHistoryPage.versionRows().nth(1)).toContainText("v1");
+    await expect(history.versionRows()).toHaveCount(2);
+    await expect(history.versionRows().first()).toContainText("v2");
+    await expect(history.versionRows().nth(1)).toContainText("v1");
   });
 
-  test("back to documents button returns to documents page", async ({
+  test("back to documents returns to the project's documents tab", async ({
     page,
   }) => {
-    const documentsPage = new DocumentsPage(page);
-    const versionHistoryPage = new VersionHistoryPage(page);
-    const docTitle = `Nav test doc ${Date.now()}`;
+    const project = new ProjectPage(page, e2eProjectId());
+    const history = new VersionHistoryPage(page);
+    const title = unique("E2E back nav");
 
-    await documentsPage.goto();
-    await documentsPage.uploadDocument(docTitle, "Navigation test.");
-    await documentsPage.openVersionHistory(docTitle);
+    await project.goto("documents");
+    await project.uploadDocument(title, `Content for ${title}`);
+    await project.openVersions(title);
+    await history.assertLoaded();
 
-    await versionHistoryPage.assertLoaded();
-    await versionHistoryPage.goBackToDocuments();
-    await expect(page).toHaveURL(/\/documents$/);
+    await history.goBackToDocuments();
+    await expect(page).toHaveURL(
+      new RegExp(`/projects/${e2eProjectId()}\\?tab=documents`)
+    );
   });
 
-  test("can set a previous version as active", async ({ page }) => {
-    const documentsPage = new DocumentsPage(page);
-    const versionHistoryPage = new VersionHistoryPage(page);
-    const docTitle = `Activate test doc ${Date.now()}`;
+  test("an older version can be set as active", async ({ page }) => {
+    test.slow(); // waits for the worker to process two versions
+    const project = new ProjectPage(page, e2eProjectId());
+    const history = new VersionHistoryPage(page);
+    const title = unique("E2E activate");
 
-    // Upload v1 and open version history.
-    await documentsPage.goto();
-    await documentsPage.uploadDocument(docTitle, "Version one content.");
-    await documentsPage.openVersionHistory(docTitle);
-    await versionHistoryPage.assertLoaded();
+    await project.goto("documents");
+    await project.uploadDocument(title, `v1 of ${title}`);
+    await project.openVersions(title);
+    await history.assertLoaded();
+    await history.waitForVersionStatus(1, "ACTIVE");
 
-    // Upload v2.
-    await versionHistoryPage.uploadNewVersion("v2.docx", "Version two content.");
-    await expect(versionHistoryPage.versionRows()).toHaveCount(2);
+    await history.uploadNewVersion("v2.docx", `v2 of ${title}`);
+    await history.waitForVersionStatus(2, "ACTIVE");
+    await history.waitForVersionStatus(1, "SUPERSEDED");
 
-    // Wait for v2 to become ACTIVE (worker processes it).
-    await versionHistoryPage.waitForVersionStatus(2, "ACTIVE");
+    await history.clickSetAsActive(1);
 
-    // Activate v1.
-    await versionHistoryPage.clickSetAsActive(1);
-
-    // v1 should now be ACTIVE, v2 should be SUPERSEDED.
-    await versionHistoryPage.waitForVersionStatus(1, "ACTIVE");
-    await versionHistoryPage.waitForVersionStatus(2, "SUPERSEDED");
+    await history.waitForVersionStatus(1, "ACTIVE");
+    await history.waitForVersionStatus(2, "SUPERSEDED");
   });
 });

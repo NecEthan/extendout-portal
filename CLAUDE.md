@@ -71,7 +71,7 @@ npm run test:headed     # Visible browser
 npm run test:ui         # Interactive Playwright UI
 ```
 
-Requires all services running. Auth state is persisted to `.auth/user.json` by `utils/auth.setup.ts` and reused by authenticated projects. Playwright projects: `unauthenticated` (auth specs), `authenticated` (documents specs), `versions` (version history specs), `search` (search specs). Page Object Models live in `pom/`.
+Requires all services running (including the worker). `utils/auth.setup.ts` logs in as an admin (`E2E_ADMIN_EMAIL` / `E2E_ADMIN_PASSWORD`, default `test@gmail.com` / `password`, which CI seeds), creates the `e2e@example.com` builder and a fresh project for the run (id in `.auth/project.json`), and saves the builder's session to `.auth/user.json`. Specs drive that project's tabs (`/projects/{id}?tab=documents|search|photos`) through `pom/ProjectPage.ts`. Playwright projects: `unauthenticated` (auth specs), `authenticated` (documents + photos specs), `versions`, `search`. In CI the backend and worker run with `MOCK_LLM=true`, so no OpenAI calls.
 
 ## Backend Architecture
 

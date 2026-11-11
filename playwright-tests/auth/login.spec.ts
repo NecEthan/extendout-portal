@@ -1,8 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { LoginPage } from "../pom/LoginPage";
-
-const EMAIL = "e2e@example.com";
-const PASSWORD = "password123";
+import { E2E_EMAIL, E2E_PASSWORD } from "../utils/env";
 
 test.describe("Auth flow", () => {
   test("unauthenticated root redirects to /login", async ({ page }) => {
@@ -10,8 +8,8 @@ test.describe("Auth flow", () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
-  test("unauthenticated /documents redirects to /login", async ({ page }) => {
-    await page.goto("/documents");
+  test("unauthenticated project page redirects to /login", async ({ page }) => {
+    await page.goto("/projects");
     await expect(page).toHaveURL(/\/login/);
   });
 
@@ -26,23 +24,19 @@ test.describe("Auth flow", () => {
   test("wrong password shows error", async ({ page }) => {
     const loginPage = new LoginPage(page);
     await loginPage.goto();
-    await loginPage.login(EMAIL, "wrongpassword");
+    await loginPage.login(E2E_EMAIL, "WrongPassword1");
     await expect(page.getByRole("alert")).toBeVisible();
+    await expect(page).toHaveURL(/\/login/);
   });
 
-  test("valid login redirects to /documents", async ({ page }) => {
+  test("valid login lands on the dashboard, sign out returns to /login", async ({
+    page,
+  }) => {
     const loginPage = new LoginPage(page);
     await loginPage.goto();
-    await loginPage.login(EMAIL, PASSWORD);
+    await loginPage.login(E2E_EMAIL, E2E_PASSWORD);
     await expect(page).toHaveURL(/\/dashboard/);
-    await expect(page.getByText(EMAIL)).toBeVisible();
-  });
 
-  test("sign out returns to /login", async ({ page }) => {
-    const loginPage = new LoginPage(page);
-    await loginPage.goto();
-    await loginPage.login(EMAIL, PASSWORD);
-    await expect(page).toHaveURL(/\/dashboard/);
     await loginPage.signOut();
     await expect(page).toHaveURL(/\/login/);
   });

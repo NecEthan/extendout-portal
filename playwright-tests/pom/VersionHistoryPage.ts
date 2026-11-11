@@ -30,13 +30,14 @@ export class VersionHistoryPage {
       .click();
   }
 
+  /** Waits for the worker: the page refreshes the list while versions process. */
   async waitForVersionStatus(versionNumber: number, status: string) {
-    await this.page
-      .getByTestId("version-row")
-      .filter({ hasText: `v${versionNumber}` })
-      .getByTestId("version-status")
-      .filter({ hasText: status })
-      .waitFor({ state: "visible" });
+    await expect(
+      this.page
+        .getByTestId("version-row")
+        .filter({ hasText: `v${versionNumber}` })
+        .getByTestId("version-status")
+    ).toHaveText(status, { timeout: 60_000 });
   }
 
   async clickSetAsActive(versionNumber: number) {

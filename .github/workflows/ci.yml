@@ -57,6 +57,16 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      # The rate limiter (slowapi) keeps its counters in Redis.
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     defaults:
       run:
         working-directory: backend
@@ -76,6 +86,7 @@ jobs:
       - run: uv run pytest tests/ -v
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5434/knowledgeguard
+          REDIS_URL: redis://localhost:6379/0
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
 
@@ -159,6 +170,27 @@ jobs:
         run: uv run alembic upgrade head
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5434/knowledgeguard
+      - name: Create E2E admin
+        # Fresh database: utils/auth.setup.ts logs in as this admin to create
+        # the E2E user (there is no public sign-up).
+        working-directory: backend
+        run: |
+          uv run python - <<'EOF'
+          import asyncio
+          from app.database import AsyncSessionLocal
+          from app.models.base import User
+          from app.services.auth import hash_password
+
+          async def main():
+              async with AsyncSessionLocal() as db:
+                  db.add(User(email="test@gmail.com", name="E2E Admin", role="admin",
+                              password_hash=await hash_password("password")))
+                  await db.commit()
+
+          asyncio.run(main())
+          EOF
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5434/knowledgeguard
       - name: Create MinIO bucket
         run: |
           pip install minio
@@ -183,6 +215,8 @@ jobs:
           STORAGE_BUCKET: knowledgeguard
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          # Fake embeddings and answers: E2E never calls OpenAI.
+          MOCK_LLM: "true"
       - name: Start ARQ worker
         working-directory: backend
         run: uv run arq app.workers.main.WorkerSettings &
@@ -195,6 +229,8 @@ jobs:
           STORAGE_BUCKET: knowledgeguard
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          # Fake embeddings and answers: E2E never calls OpenAI.
+          MOCK_LLM: "true"
       - name: Install frontend deps
         working-directory: frontend
         run: npm ci

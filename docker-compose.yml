@@ -103,6 +103,9 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    # Restart if it dies (e.g. Redis not ready yet), or documents silently
+    # stop processing.
+    restart: unless-stopped
     command: uv run arq app.workers.main.WorkerSettings
     environment:
       APP_ENV: ${APP_ENV:-development}
