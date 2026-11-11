@@ -16,15 +16,27 @@ Leave everything else alone: authenticated reads are cheap and scoped to your ow
 
 - [ ] Fix the login error messages for the account lock and "try again in 1 minute".
 
-## Replace MinIO in production
+## Replace MinIO in production with a Railway Storage Bucket
 
-MinIO currently runs locally in Docker (`minio` service, `minio_data` volume). For production, move file storage to a hosted S3-compatible service (AWS S3, Cloudflare R2 or Backblaze B2) so we don't have to run, back up and secure our own storage server.
+Production files (documents, drawings, site photos) are stored by a self-hosted MinIO service on Railway (`Bucket` service + `Console`), on a single volume with no backups, a 5 GB Hobby default size, and public domains it doesn't need. Decision: move to Railway's built-in **Storage Buckets** (S3-compatible, $0.015/GB-month on Pro, unlimited capacity, one bill, private access from the backend). Spending is controlled by the workspace **Hard Usage Limit**. Local development keeps MinIO in Docker.
 
-- [ ] Pick a provider and create the bucket (private, no public access).
-- [ ] Point the backend and worker at it: `STORAGE_ENDPOINT`, `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`, `STORAGE_BUCKET`. The code uses the S3 API through the `minio` Python client, which works with any S3-compatible endpoint.
-- [ ] Turn on server-side encryption at rest for the bucket (see *Storage is not encrypted at rest* in `docs/engineering-decisions.md`).
-- [ ] Use credentials scoped to this one bucket, not account-wide keys.
-- [ ] Copy existing files across from MinIO, keeping the same object keys (`documents/<uuid>` and `photos/<uuid>`), since `storage_key` in the database points at them.
+**Before switching, confirm:**
+- [ ] Backups / versioning: does a Railway Bucket keep old versions or support backups? If not, add a separate nightly copy elsewhere, because a deleted or overwritten file would otherwise be lost.
+- [ ] Region: the bucket must be in the EU (services run in `europe-west4`) for UK GDPR.
+- [ ] What the two existing buckets are (`customizable-flask`, `functional-packetcase`): reuse one or delete them.
+
+**Switch:**
+- [ ] Create (or reuse) a private bucket in the production environment.
+- [ ] Point the backend (`loving-luck`) and worker (`knowledgeguard`) at it: `STORAGE_ENDPOINT`, `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`, `STORAGE_BUCKET`. The code uses the S3 API through the `minio` Python client, so no code change should be needed. Test uploads, downloads and deletes on a staging environment first.
+- [ ] Copy existing files from MinIO, keeping the same object keys (`documents/<uuid>`, `photos/<uuid>`), since `storage_key` in the database points at them. Spot-check that old documents and photos still open.
+- [ ] Turn on encryption at rest if Railway Buckets offer it (see *Storage is not encrypted at rest* in `docs/engineering-decisions.md`).
+
+**Spending limit:**
+- [ ] Set the workspace Hard Usage Limit well above normal monthly spend, with a usage alert at a lower amount. Hitting it suspends everything in the workspace (backend, database, storage), not just storage, so it should only trigger in an emergency.
+
+**After switching:**
+- [ ] Remove the MinIO `Bucket` and `Console` services (and their public domains and volume) once the copy is verified.
+- [ ] Back up Postgres too (Railway backups or a scheduled `pg_dump`), so files and the database rows that point at them can be restored together. Test a restore once.
 
 ## Orphaned MinIO files
 
