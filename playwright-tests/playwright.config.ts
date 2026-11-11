@@ -1,5 +1,13 @@
 import { defineConfig, devices } from "@playwright/test";
 
+// PLAYWRIGHT_CHANNEL=chrome uses the installed Google Chrome instead of
+// Playwright's own Chromium. CI sets it: GitHub's runners already have Chrome,
+// and installing Chromium's system libraries via apt can hang there.
+const desktopChrome = {
+  ...devices["Desktop Chrome"],
+  channel: process.env.PLAYWRIGHT_CHANNEL || undefined,
+};
+
 export default defineConfig({
   testDir: ".",
   outputDir: "test-results",
@@ -20,14 +28,14 @@ export default defineConfig({
     {
       name: "unauthenticated",
       testMatch: /auth\/.+\.spec\.ts/,
-      use: { ...devices["Desktop Chrome"] },
+      use: desktopChrome,
       dependencies: ["setup"],
     },
     {
       name: "authenticated",
       testMatch: /(documents|photos)\/.+\.spec\.ts/,
       use: {
-        ...devices["Desktop Chrome"],
+        ...desktopChrome,
         storageState: ".auth/user.json",
       },
       dependencies: ["setup"],
@@ -36,7 +44,7 @@ export default defineConfig({
       name: "search",
       testMatch: /search\/.+\.spec\.ts/,
       use: {
-        ...devices["Desktop Chrome"],
+        ...desktopChrome,
         storageState: ".auth/user.json",
       },
       dependencies: ["setup"],
@@ -45,7 +53,7 @@ export default defineConfig({
       name: "versions",
       testMatch: /versions\/.+\.spec\.ts/,
       use: {
-        ...devices["Desktop Chrome"],
+        ...desktopChrome,
         storageState: ".auth/user.json",
       },
       dependencies: ["setup"],

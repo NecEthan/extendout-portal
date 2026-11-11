@@ -112,6 +112,8 @@ jobs:
   e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
+    # Fail fast instead of hanging for GitHub's 6-hour default.
+    timeout-minutes: 20
     needs: build
     services:
       postgres:
@@ -237,23 +239,22 @@ jobs:
       - name: Install frontend deps
         working-directory: frontend
         run: npm ci
-      - name: Install Playwright browsers
+      - name: Install Playwright
         working-directory: playwright-tests
-        # Retried: apt mirrors on GitHub's runners occasionally fail to resolve.
+        # No browser download or `--with-deps`: that installs system libraries
+        # through apt, which hung for 20+ minutes on GitHub's runners (Ubuntu
+        # mirrors failing to resolve). The tests use the runner's preinstalled
+        # Google Chrome instead (PLAYWRIGHT_CHANNEL=chrome below).
         run: |
           npm ci
-          for attempt in 1 2 3; do
-            npx playwright install --with-deps chromium && exit 0
-            echo "Browser install failed (attempt $attempt), retrying in 20s..."
-            sleep 20
-          done
-          exit 1
+          google-chrome --version
       - name: Run E2E tests
         working-directory: playwright-tests
         run: npm run test:e2e
         env:
           CI: "true"
           NEXT_PUBLIC_API_URL: http://localhost:8000
+          PLAYWRIGHT_CHANNEL: chrome
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v4
