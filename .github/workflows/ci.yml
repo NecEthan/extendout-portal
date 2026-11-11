@@ -136,18 +136,6 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-      minio:
-        image: minio/minio:latest
-        env:
-          MINIO_ROOT_USER: minioadmin
-          MINIO_ROOT_PASSWORD: minioadmin
-        ports:
-          - 9000:9000
-        options: >-
-          --health-cmd "curl -f http://localhost:9000/minio/health/live"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -191,6 +179,20 @@ jobs:
           EOF
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5434/knowledgeguard
+      - name: Start MinIO
+        # Not a `services:` entry: those can't pass the `server /data` command
+        # MinIO needs, and minio/minio is no longer published on Docker Hub.
+        # Same image as local docker-compose.yml.
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
+            quay.io/minio/minio:latest server /data
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:9000/minio/health/live && exit 0
+            sleep 2
+          done
+          docker logs minio
+          exit 1
       - name: Create MinIO bucket
         run: |
           pip install minio
