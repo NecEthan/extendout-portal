@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { applicationRoutes } from "@/utils/applicationRoutes";
@@ -16,7 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ErrorAlert } from "@/components/ui/error-alert";
-import { useLogin } from "@/hooks/useUser";
+import { useLogin, useUser } from "@/hooks/useUser";
 import { getErrorMessage } from "@/lib/errorMessage";
 
 export function AuthForm() {
@@ -24,6 +24,11 @@ export function AuthForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const loginMutation = useLogin();
+  // Already logged in (valid session cookie)? Skip the form.
+  const currentUser = useUser();
+  useEffect(() => {
+    if (currentUser.data) router.replace(applicationRoutes.dashboard);
+  }, [currentUser.data, router]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

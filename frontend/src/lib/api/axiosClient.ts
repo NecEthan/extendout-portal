@@ -24,12 +24,12 @@ export const api = axios.create({
 const AUTH_ENDPOINTS = ["/auth/login", "/auth/logout"];
 
 /**
- * The backend session expired or is invalid. Clear the UI routing hint cookie
- * (otherwise proxy.ts bounces /login straight back into the app) and go to
- * the login page. Returns false if we're already there.
+ * Not logged in, or the session expired. This is how protected pages send
+ * logged-out visitors to /login: every page loads the current user, so the
+ * first request gets a 401 and lands here. Returns false if we're already
+ * on the login page (so it can show its own errors without a redirect loop).
  */
 function redirectToLogin(): boolean {
-  document.cookie = "eo_ui_auth=; path=/; max-age=0";
   if (window.location.pathname === applicationRoutes.login) return false;
   navigateTo(applicationRoutes.login);
   return true;

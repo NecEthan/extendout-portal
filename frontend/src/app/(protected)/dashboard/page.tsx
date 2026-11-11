@@ -5,11 +5,33 @@ import { FolderKanban } from "lucide-react";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { StatCard } from "@/components/portal/StatCard";
 import { ProjectCard } from "@/components/portal/projects/ProjectCard";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import { useProjects } from "@/hooks/useProjects";
+import { getErrorMessage } from "@/lib/errorMessage";
 import { applicationRoutes } from "@/utils/applicationRoutes";
 
 export default function DashboardPage() {
-  const projects = useProjects().data ?? [];
+  const projectsQuery = useProjects();
+
+  if (projectsQuery.isPending) {
+    return (
+      <>
+        <PageHeader title="Good morning" />
+        <p className="text-sm text-muted-foreground">Loading projects…</p>
+      </>
+    );
+  }
+  if (projectsQuery.isError) {
+    return (
+      <>
+        <PageHeader title="Good morning" />
+        <ErrorAlert
+          message={getErrorMessage(projectsQuery, "Failed to load projects")}
+        />
+      </>
+    );
+  }
+  const projects = projectsQuery.data; // loaded: TypeScript knows it's defined
 
   return (
     <>

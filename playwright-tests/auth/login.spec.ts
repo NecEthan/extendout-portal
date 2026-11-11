@@ -37,6 +37,10 @@ test.describe("Auth flow", () => {
     await loginPage.login(E2E_EMAIL, E2E_PASSWORD);
     await expect(page).toHaveURL(/\/dashboard/);
 
+    // Already logged in: /login sends you back to the dashboard.
+    await page.goto("/login");
+    await expect(page).toHaveURL(/\/dashboard/);
+
     await loginPage.signOut();
     await expect(page).toHaveURL(/\/login/);
   });

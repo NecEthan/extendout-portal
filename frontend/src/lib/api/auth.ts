@@ -3,14 +3,11 @@ import { ApiError } from "./apiError";
 import { api } from "./axiosClient";
 
 export async function login(email: string, password: string): Promise<User> {
+  // The backend sets the HttpOnly session cookie; nothing to store here.
   const { data: user } = await api.post<User>("/auth/login", {
     email,
     password,
   });
-  // Set a UI routing hint cookie on this domain so proxy.ts can see it.
-  // Not a security token — backend still validates the real session cookie.
-  const secure = location.protocol === "https:" ? "; Secure" : "";
-  document.cookie = `eo_ui_auth=1; path=/; SameSite=Strict${secure}`;
   return user;
 }
 
@@ -22,7 +19,6 @@ export async function logout(): Promise<void> {
     // logged out, so carry on; only a network failure is a real error.
     if (!(error instanceof ApiError)) throw error;
   }
-  document.cookie = "eo_ui_auth=; path=/; max-age=0";
 }
 
 export async function getUser(): Promise<User> {

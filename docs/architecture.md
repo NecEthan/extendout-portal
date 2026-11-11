@@ -138,7 +138,7 @@ Search only ever uses **current** versions. Superseded versions keep their chunk
 ## Frontend
 
 - **Pages** live in `frontend/src/app/`. Protected pages are under `(protected)/` with a shared layout (sidebar + top bar). `/login` is public.
-- **Route guard:** `src/proxy.ts` redirects to `/login` when there's no `eo_ui_auth` cookie. It's a convenience, not the security boundary — the backend checks every request.
+- **Route guard:** no middleware. Every protected page loads the current user (`useUser`); a `401` makes the axios interceptor redirect to `/login`. The login page sends an already-logged-in user to `/dashboard`. The backend checks the session on every request; the frontend redirects are only convenience.
 - **Server state:** TanStack Query hooks in `src/hooks/`. API calls go through `src/lib/api/client.ts` with `credentials: "include"`.
 - **Errors:** a 401 anywhere redirects to `/login` (handled once in `QueryProvider`); other errors show inline with `ErrorAlert`.
 - **Feature code** sits next to the page that uses it, e.g. `projects/add/`, `projects/edit/`, `projects/[id]/components/`.

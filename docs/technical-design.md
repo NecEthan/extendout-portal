@@ -17,7 +17,7 @@ The design guarantees three things: people only see the projects they belong to,
 
 ### Route protection
 
-`src/proxy.ts` redirects to `/login` when the `eo_ui_auth` hint cookie is missing, and away from `/login` when it's present. It also lets public image files (logo, favicon) through without a session. This is a convenience only: anyone can call the API directly, so the backend performs the real authentication and authorisation on every request.
+There is no route middleware. Each protected page loads the current user, so a logged-out visitor's first request gets `401` and the axios interceptor redirects to `/login`; the login page sends an already-logged-in user to `/dashboard`. The only cookie is the backend's HttpOnly session cookie. This is a convenience only: anyone can call the API directly, so the backend performs the real authentication and authorisation on every request.
 
 Admin-only UI (the Team page and sidebar link, the project Team tab, **New project** and **Edit**) is hidden for builders and clients. The backend rejects those actions with `403` regardless.
 

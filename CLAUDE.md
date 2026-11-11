@@ -164,7 +164,7 @@ Run worker: `uv run arq app.workers.main.WorkerSettings` (or via Docker: `worker
 
 Next.js 14 App Router. All pages under `src/app/`. API calls go through the shared axios instance `api` in `src/lib/api/axiosClient.ts` (`withCredentials: true` for session cookie passthrough). Its response interceptor turns non-2xx responses into `ApiError` (`src/lib/api/apiError.ts`) and redirects to `/login` on a 401 (except from `/auth/login` / `/auth/logout`). Jest tests stub the transport with `src/test-utils/mockApi.ts`. Types in `src/types/index.ts` mirror the backend data model.
 
-Protected pages live under `src/app/(protected)/` with a shared layout. `/login` is the only public page. Middleware in `src/proxy.ts` handles auth redirects. Post-login redirect lands on `/dashboard`.
+Protected pages live under `src/app/(protected)/` with a shared layout. `/login` is the only public page. There is no auth middleware: a `401` from any API call redirects to `/login` (axios interceptor), and the login page redirects logged-in users to `/dashboard`. The only auth cookie is the backend's HttpOnly session cookie (no frontend hint cookie). Post-login redirect lands on `/dashboard`.
 
 UI components are shadcn/ui (in `src/components/ui/`). Navigation is `src/components/nav/Sidebar.tsx`.
 

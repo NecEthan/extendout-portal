@@ -16,6 +16,15 @@ Leave everything else alone: authenticated reads are cheap and scoped to your ow
 
 - [ ] Fix the login error messages for the account lock and "try again in 1 minute".
 
+## Store session tokens hashed
+
+The session ID in the `eo_session` cookie is stored as-is in `sessions.session_token` (`create_session` in `app/services/auth.py`). Anyone with a copy of the database (e.g. a leaked backup) could use those values to log in as any user with a live session. Do this before lengthening sessions beyond 24 hours, since tokens would stay valid much longer.
+
+- [ ] Store `sha256(token)` instead of the token: `create_session` still returns the raw token for the cookie, but saves only its hash; `get_valid_session` and `invalidate_session` hash the cookie value before looking it up. (SHA-256 is enough: tokens are 32 random bytes, so no salt or slow hash is needed.)
+- [ ] Migration: rename/repurpose the column (e.g. `session_token_hash`) and delete existing sessions (everyone logs in once), since old raw tokens can't be converted into usable hashes.
+- [ ] Tests: the stored value is not the cookie value; login, authenticated requests and logout still work; a request using the stored hash as a cookie is rejected.
+- [ ] Update `tests/fixtures/auth.py`, which inserts `Session(session_token=token)` directly.
+
 ## Replace MinIO in production with a Railway Storage Bucket
 
 Production files (documents, drawings, site photos) are stored by a self-hosted MinIO service on Railway (`Bucket` service + `Console`), on a single volume with no backups, a 5 GB Hobby default size, and public domains it doesn't need. Decision: move to Railway's built-in **Storage Buckets** (S3-compatible, $0.015/GB-month on Pro, unlimited capacity, one bill, private access from the backend). Spending is controlled by the workspace **Hard Usage Limit**. Local development keeps MinIO in Docker.

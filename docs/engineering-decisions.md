@@ -254,7 +254,7 @@ All API calls go through one axios instance (`src/lib/api/axiosClient.ts`) inste
 
 # Frontend: Error Handling
 
-- **401** — global, one place: the axios response interceptor (`src/lib/api/axiosClient.ts`) clears the `eo_ui_auth` cookie and does a full-page redirect to `/login`, then never settles the request so screens don't flash an error. `/auth/login` and `/auth/logout` are excluded, so a wrong password still shows "Invalid credentials".
+- **401** — global, one place: the axios response interceptor (`src/lib/api/axiosClient.ts`) does a full-page redirect to `/login`, then never settles the request so screens don't flash an error. `/auth/login` and `/auth/logout` are excluded, so a wrong password still shows "Invalid credentials".
 - **Everything else (403/404/409/413/415/422/429/503/network)** — inline, next to the failing action. `getErrorMessage()`/`firstErrorMessage()` (`src/lib/errorMessage.ts`) pull the message off `ApiError`, rendered via `<ErrorAlert>`.
 - **422 array-shaped detail** — FastAPI's auto Pydantic validation sends `detail` as `[{msg, loc, type}]`, not a string. `extractErrorDetail()` (`src/lib/api/apiError.ts`) joins the `msg` fields instead of stringifying the array.
 - **429 body shape** — slowapi default returns `{"error": ...}`; backend's custom handler (`main.py`) normalizes to `{"detail": ...}` to match every other endpoint.
@@ -292,3 +292,7 @@ One middleware (`app/audit/middleware.py`) sees every API request, rather than e
 ## Append-only table
 
 `audit_events` has no foreign keys (entries outlive deleted users and projects) and a trigger that rejects `UPDATE`, `DELETE` and `TRUNCATE`, even for the superuser the app connects as. Retention cleanup (2 years) has to disable the trigger explicitly as a privileged user. Search questions are never stored, only the result count.
+
+## No frontend "logged in" hint cookie
+
+The frontend used to set its own `eo_ui_auth=1` cookie from JavaScript so a Next.js middleware (`src/proxy.ts`) could redirect logged-out visitors before a page loaded; it couldn't read the real session cookie, which belongs to the backend's domain. It was removed because it logged people out early: it had no expiry, so browsers deleted it when fully closed, and Safari caps JavaScript-set cookies at 7 days, while the real session was still valid. Now the only cookie is the backend's HttpOnly session cookie. Protected pages load the current user and the axios 401 handler redirects to `/login` (a logged-out visitor may briefly see the empty page frame, never data); the login page redirects an already-logged-in user to `/dashboard`. Once API calls go through the frontend's own domain, a middleware could check the real session cookie directly instead.

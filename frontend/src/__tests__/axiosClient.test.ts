@@ -84,17 +84,15 @@ describe("expired session (401)", () => {
   beforeEach(() => {
     jest.mocked(navigateTo).mockReset();
     window.history.pushState({}, "", "/projects/1");
-    document.cookie = "eo_ui_auth=1; path=/";
   });
 
-  it("clears the UI auth cookie and redirects to /login", async () => {
+  it("redirects to /login", async () => {
     respond(401, { detail: "Session invalid or expired" });
     let settled = false;
     getUser().finally(() => (settled = true));
     await new Promise((r) => setTimeout(r, 0));
 
     expect(navigateTo).toHaveBeenCalledWith("/login");
-    expect(document.cookie).not.toContain("eo_ui_auth=1");
     // Never settles, so screens don't flash an error while navigating away.
     expect(settled).toBe(false);
   });
