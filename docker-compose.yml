@@ -1,3 +1,5 @@
+# Local development only. Ports are bound to 127.0.0.1 so only this machine can
+# reach them (not others on the same Wi-Fi); the default passwords are fine here.
 services:
   # ─── Infrastructure ───────────────────────────────────────────────────────────
 
@@ -9,7 +11,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "${POSTGRES_PORT:-5434}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5434}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
@@ -23,7 +25,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -39,8 +41,8 @@ services:
     volumes:
       - minio_data:/data
     ports:
-      - "${MINIO_PORT:-9010}:9000"
-      - "${MINIO_CONSOLE_PORT:-9011}:9001"
+      - "127.0.0.1:${MINIO_PORT:-9010}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9011}:9001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 5s
@@ -67,7 +69,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "${BACKEND_PORT:-8000}:8000"
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
     environment:
       APP_ENV: ${APP_ENV:-development}
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/${POSTGRES_DB:-extendout_portal}
@@ -125,7 +127,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "${FRONTEND_PORT:-3000}:3000"
+      - "127.0.0.1:${FRONTEND_PORT:-3000}:3000"
     environment:
       # API_URL is used by Next.js server-side code (container → container).
       API_URL: http://backend:8000

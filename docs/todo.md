@@ -12,15 +12,6 @@ Leave everything else alone: authenticated reads are cheap and scoped to your ow
 
 **What app limits can't do:** stop a real flood of traffic (a DDoS). That has to be stopped before it reaches FastAPI, by a reverse proxy or a service like Cloudflare in production. App-level limits are for cost and abuse control, not traffic floods.
 
-## Lock down production services (before deploying)
-
-`docker-compose.prod.yml` publishes Postgres (`5436`), Redis (`6381`) and MinIO (`9014`/`9015`) on the host, with default credentials (`postgres`/`postgres`, `minioadmin`/`minioadmin`, Redis with no password). On an internet-facing server, anyone could log in directly and read or delete every user, project, document and photo (including the audit log), bypassing the app's permission checks, rate limits and audit logging entirely.
-
-- [ ] Remove the `ports:` entries for `postgres`, `redis` and `minio` in `docker-compose.prod.yml`. The backend and worker reach them over Docker's internal network; nothing else needs them. (For manual access use `docker compose -f docker-compose.prod.yml --env-file .env.prod exec postgres psql ...`.)
-- [ ] Set strong, unique passwords in `.env.prod` and use them in the compose file instead of the defaults: `POSTGRES_PASSWORD` (and the matching `DATABASE_URL`), `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` (and `STORAGE_ACCESS_KEY`/`STORAGE_SECRET_KEY`), and a Redis password (`requirepass`, plus `REDIS_URL`).
-- [ ] Firewall the server so only 80/443 (and SSH, ideally restricted) are reachable.
-- [ ] Fix `make prod-down`: it doesn't pass `--env-file .env.prod`, so it targets the wrong project name and doesn't stop the prod containers.
-
 ## Login error messages
 
 - [ ] Fix the login error messages for the account lock and "try again in 1 minute".

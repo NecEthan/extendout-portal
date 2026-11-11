@@ -50,7 +50,7 @@ prod-build:
 	docker compose -f docker-compose.prod.yml --env-file .env.prod up --build
 
 prod-down:
-	docker compose -f docker-compose.prod.yml down
+	docker compose -f docker-compose.prod.yml --env-file .env.prod down
 
 # Prod audit entries, newest first. Runs psql inside the prod postgres
 # container (no open DB port needed).
