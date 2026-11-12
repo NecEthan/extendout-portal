@@ -183,7 +183,7 @@ async def test_unhandled_exception_is_recorded_as_error(admin_cookies, db, admin
         cookies=admin_cookies,
     ) as c:
         with patch(
-            "app.routers.team.get_memberships", side_effect=RuntimeError("boom")
+            "app.routers.team.list.get_memberships", side_effect=RuntimeError("boom")
         ):
             resp = await c.get("/team")
     assert resp.status_code == 500

@@ -1,16 +1,18 @@
+"""POST /auth/login — check the password and start a session
+(`apiRoutes.auth.login`).
+"""
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.dependencies import get_arq_pool, get_current_user, get_db, set_request_user
+from app.dependencies import get_arq_pool, get_db, set_request_user
 from app.limiter import ip_key, limiter
 from app.models.base import User
 from app.schemas.auth import LoginRequest, UserResponse
 from app.services.auth import (
     create_session,
-    get_valid_session,
-    invalidate_session,
     verify_password,
 )
 
@@ -51,34 +53,7 @@ async def login(
         httponly=True,
         secure=is_production,
         samesite="none" if is_production else "lax",
-        max_age=settings.session_max_age_hours * 3600, # 24 hours
+        max_age=settings.session_max_age_hours * 3600,  # 24 hours
         path="/",
     )
     return UserResponse.model_validate(user)
-
-
-@router.post("/logout", status_code=204)
-async def logout(
-    request: Request,
-    response: Response,
-    db: AsyncSession = Depends(get_db),
-) -> None:
-    token = request.cookies.get(settings.session_cookie_name)
-    if token:
-        session = await get_valid_session(db, token)
-        if session is not None:
-            set_request_user(request, session.user)  # audit: who logged out
-        await invalidate_session(db, token)
-    response.delete_cookie(
-        key=settings.session_cookie_name,
-        path="/",
-        httponly=True,
-        samesite="strict",
-    )
-
-
-@router.get("/user", response_model=UserResponse)
-async def get_user(
-    current_user: User = Depends(get_current_user),
-) -> UserResponse:
-    return UserResponse.model_validate(current_user)

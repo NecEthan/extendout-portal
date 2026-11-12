@@ -1,3 +1,6 @@
+"""GET/POST /documents/{document_id}/versions — version history; upload a new
+version (`apiRoutes.documents.versions`)."""
+
 import asyncio
 import uuid
 
@@ -16,7 +19,6 @@ from app.schemas.documents import (
     VersionUploadedResponse,
 )
 from app.services import storage
-from app.services.activation import activate_version
 from app.services.documents import (
     DUPLICATE_CONTENT_DETAIL,
     STORAGE_UNAVAILABLE_DETAIL,
@@ -75,9 +77,7 @@ async def upload_document_version(
         # MinIO down, unreachable or misconfigured. Nothing to clean up: no DB
         # records exist yet and the file wasn't stored.
         logger.exception("storage_upload_failed", storage_key=storage_key)
-        raise HTTPException(
-            status_code=503, detail=STORAGE_UNAVAILABLE_DETAIL
-        ) from exc
+        raise HTTPException(status_code=503, detail=STORAGE_UNAVAILABLE_DETAIL) from exc
 
     try:
         # get max number of existing versions for this document to determine the next version number
@@ -160,86 +160,3 @@ async def list_document_versions(
     return PaginatedDocumentVersionsResponse(
         items=items, total=total or 0, limit=limit, offset=offset
     )
-
-
-@router.get(
-    "/{document_id}/versions/{version_id}",
-    response_model=DocumentVersionResponse,
-)
-async def get_document_version(
-    document_id: uuid.UUID,
-    version_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> DocumentVersionResponse:
-    result = await db.execute(
-        select(Document)
-        .where(Document.id == document_id)
-        .where(*document_access_filters(current_user))
-    )
-    if result.scalar_one_or_none() is None:
-        raise HTTPException(status_code=404, detail="Document not found")
-
-    result = await db.execute(
-        select(DocumentVersion)
-        .where(DocumentVersion.id == version_id)
-        .where(DocumentVersion.document_id == document_id)
-    )
-    version = result.scalar_one_or_none()
-    if version is None:
-        raise HTTPException(status_code=404, detail="Version not found")
-
-    return DocumentVersionResponse.model_validate(version)
-
-
-_ACTIVATABLE_STATUSES = {"ACTIVE", "SUPERSEDED"}
-
-
-@router.patch(
-    "/{document_id}/versions/{version_id}/activate",
-    response_model=DocumentVersionResponse,
-)
-async def activate_document_version(
-    document_id: uuid.UUID,
-    version_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> DocumentVersionResponse:
-    doc_result = await db.execute(
-        select(Document)
-        .where(Document.id == document_id)
-        .where(*document_access_filters(current_user))
-    )
-    doc = doc_result.scalar_one_or_none()
-    if doc is None:
-        raise HTTPException(status_code=404, detail="Document not found")
-
-    ver_result = await db.execute(
-        select(DocumentVersion)
-        .where(DocumentVersion.id == version_id)
-        .where(DocumentVersion.document_id == document_id)
-    )
-    version = ver_result.scalar_one_or_none()
-    if version is None:
-        raise HTTPException(status_code=404, detail="Version not found")
-
-    if version.status not in _ACTIVATABLE_STATUSES:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Cannot activate a version with status {version.status}",
-        )
-
-    if version.status == "ACTIVE":
-        return DocumentVersionResponse.model_validate(version)
-
-    await activate_version(db, version_id, document_id)
-
-    await db.commit()
-
-    ver_result = await db.execute(
-        select(DocumentVersion)
-        .where(DocumentVersion.id == version_id)
-        .where(DocumentVersion.document_id == document_id)
-    )
-    version = ver_result.scalar_one()
-    return DocumentVersionResponse.model_validate(version)

@@ -316,7 +316,7 @@ async def test_concurrent_duplicate_upload_rejected_by_unique_index(auth_client)
         patch("app.services.storage.upload_bytes"),
         patch("app.services.storage.delete_object") as delete_object,
         # Simulate the race: neither upload sees the other in the code check.
-        patch("app.routers.documents.documents.assert_no_duplicate"),
+        patch("app.routers.documents.list.assert_no_duplicate"),
     ):
         first = await auth_client.post(
             "/documents",

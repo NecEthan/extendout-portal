@@ -24,7 +24,6 @@ export function AuthForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const loginMutation = useLogin();
-  // Already logged in (valid session cookie)? Skip the form.
   const currentUser = useUser();
   useEffect(() => {
     if (currentUser.data) router.replace(applicationRoutes.dashboard);

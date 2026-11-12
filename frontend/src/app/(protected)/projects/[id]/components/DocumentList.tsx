@@ -59,6 +59,7 @@ export function DocumentList({ documents }: DocumentListProps) {
               <a
                 href={documentDownloadUrl(doc.id)}
                 download
+                aria-label={`Download ${doc.title}`}
                 className={buttonVariants({ variant: "outline", size: "sm" })}
               >
                 <Download /> Download

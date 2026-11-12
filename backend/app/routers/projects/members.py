@@ -1,14 +1,7 @@
-"""Project members router — who can access a project.
+"""GET/POST /projects/{project_id}/members — who can access a project; add someone
+(admin only) (`apiRoutes.projects.members`)."""
 
-Mounted under /projects, all admin only:
-  GET    /projects/{project_id}/members
-  POST   /projects/{project_id}/members
-  DELETE /projects/{project_id}/members/{user_id}
-"""
-
-import uuid
-
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -55,18 +48,3 @@ async def add_project_member(
     db.add(ProjectMember(project_id=project_id, user_id=user.id))
     await db.commit()
     return MemberResponse.model_validate(user)
-
-
-@router.delete("/{project_id}/members/{user_id}", status_code=204)
-async def remove_project_member(
-    project_id: int,
-    user_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_admin),
-) -> Response:
-    member = await db.get(ProjectMember, (project_id, user_id))
-    if member is None:
-        raise HTTPException(status_code=404, detail="Not a member of this project")
-    await db.delete(member)
-    await db.commit()
-    return Response(status_code=204)

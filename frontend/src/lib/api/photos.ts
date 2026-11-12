@@ -6,7 +6,7 @@ export async function listProjectPhotos(
   projectId: number
 ): Promise<ProjectPhoto[]> {
   const { data } = await api.get<ProjectPhoto[]>(
-    apiRoutes.projectPhotos(projectId)
+    apiRoutes.projects.photos(projectId)
   );
   return data;
 }
@@ -21,7 +21,7 @@ export async function uploadProjectPhoto(
   if (description) form.append("description", description);
 
   const { data } = await api.post<ProjectPhoto>(
-    apiRoutes.projectPhotos(projectId),
+    apiRoutes.projects.photos(projectId),
     form
   );
   return data;
@@ -31,11 +31,11 @@ export async function deleteProjectPhoto(
   projectId: number,
   photoId: string
 ): Promise<void> {
-  await api.delete(apiRoutes.projectPhoto(projectId, photoId));
+  await api.delete(apiRoutes.projects.photo(projectId, photoId));
 }
 
 /** URL for an <img src>. The browser sends the session cookie with it, and
  * the backend checks project access before returning the image. */
 export function photoFileUrl(projectId: number, photoId: string): string {
-  return `${api.defaults.baseURL}${apiRoutes.projectPhotoFile(projectId, photoId)}`;
+  return `${api.defaults.baseURL}${apiRoutes.projects.photoFile(projectId, photoId)}`;
 }

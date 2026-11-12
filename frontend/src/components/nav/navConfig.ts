@@ -52,9 +52,9 @@ export const navSections: NavSection[] = [
     title: "Client view",
     roles: ["builder", "client"],
     items: [
-      { href: applicationRoutes.clientOverview, label: "Overview", icon: Home },
+      { href: applicationRoutes.client, label: "Overview", icon: Home },
       {
-        href: applicationRoutes.progress,
+        href: applicationRoutes.clientProgress,
         label: "Progress Photos",
         icon: Images,
       },

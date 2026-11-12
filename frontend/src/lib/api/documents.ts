@@ -20,7 +20,7 @@ export async function uploadDocument(
   form.append("project_id", String(projectId));
 
   const { data } = await api.post<DocumentUploadedResponse>(
-    apiRoutes.documents,
+    apiRoutes.documents.list,
     form
   );
   return data;
@@ -31,7 +31,7 @@ export async function listDocuments(
   offset: number,
   projectId?: number
 ): Promise<PaginatedDocuments> {
-  const { data } = await api.get<PaginatedDocuments>(apiRoutes.documents, {
+  const { data } = await api.get<PaginatedDocuments>(apiRoutes.documents.list, {
     params: { limit, offset, project_id: projectId },
   });
   return data;
@@ -45,7 +45,7 @@ export async function uploadDocumentVersion(
   form.append("file", file);
 
   const { data } = await api.post<VersionUploadedResponse>(
-    apiRoutes.documentVersions(documentId),
+    apiRoutes.documents.versions(documentId),
     form
   );
   return data;
@@ -57,7 +57,7 @@ export async function listDocumentVersions(
   offset: number
 ): Promise<PaginatedDocumentVersions> {
   const { data } = await api.get<PaginatedDocumentVersions>(
-    apiRoutes.documentVersions(documentId),
+    apiRoutes.documents.versions(documentId),
     { params: { limit, offset } }
   );
   return data;
@@ -68,13 +68,13 @@ export async function activateDocumentVersion(
   versionId: string
 ): Promise<DocumentVersion> {
   const { data } = await api.patch<DocumentVersion>(
-    apiRoutes.activateDocumentVersion(documentId, versionId)
+    apiRoutes.documents.activateVersion(documentId, versionId)
   );
   return data;
 }
 
 export async function deleteDocument(id: string): Promise<void> {
-  await api.delete(apiRoutes.document(id));
+  await api.delete(apiRoutes.documents.document(id));
 }
 
 /** URL that downloads the document's current (ACTIVE) file. Used as a plain
@@ -82,5 +82,5 @@ export async function deleteDocument(id: string): Promise<void> {
  * answers with `Content-Disposition: attachment`, so the file is saved rather
  * than opened in the app. */
 export function documentDownloadUrl(documentId: string): string {
-  return `${api.defaults.baseURL}${apiRoutes.documentDownload(documentId)}`;
+  return `${api.defaults.baseURL}${apiRoutes.documents.download(documentId)}`;
 }

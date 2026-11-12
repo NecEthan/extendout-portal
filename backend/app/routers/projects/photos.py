@@ -1,15 +1,10 @@
-"""Site photos for a project: upload (with an optional description), list,
-serve the image, and delete. Anyone with access to the project can upload,
-list and view; deleting is limited to admins (any photo) and the uploader
-(their own photos), see can_delete_photo.
+"""GET/POST /projects/{project_id}/photos — list and upload site photos
+(`apiRoutes.projects.photos`). Anyone with access to the project can do both.
 
-Images are stored in MinIO under ``photos/<uuid>``; the bucket is private, so
-the browser loads each image through ``GET .../photos/{id}/file``, which checks
-project access first.
-"""
+Images are stored in MinIO under ``photos/<uuid>``; the bucket is private, so the
+browser loads each one through photo_file.py, which checks project access first."""
 
 import asyncio
-import uuid
 
 import structlog
 from fastapi import (
@@ -18,7 +13,6 @@ from fastapi import (
     Form,
     HTTPException,
     Request,
-    Response,
     UploadFile,
 )
 from sqlalchemy import select
@@ -129,76 +123,3 @@ async def upload_photo(
 
     logger.info("photo_uploaded", photo_id=str(photo.id), project_id=project_id)
     return _to_response(photo, current_user, current_user)
-
-
-@router.get("/{project_id}/photos/{photo_id}/file")
-async def get_photo_file(
-    project_id: int,
-    photo_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> Response:
-    await ensure_project_access(db, current_user, project_id)
-    photo = await db.get(ProjectPhoto, photo_id)
-    if photo is None or photo.project_id != project_id:
-        raise HTTPException(status_code=404, detail="Photo not found")
-
-    loop = asyncio.get_running_loop()
-    try:
-        content = await loop.run_in_executor(
-            None, storage.download_bytes, photo.storage_key
-        )
-    except Exception as exc:
-        logger.exception("photo_storage_download_failed", photo_id=str(photo_id))
-        raise HTTPException(status_code=503, detail=STORAGE_UNAVAILABLE_DETAIL) from exc
-
-    # A photo's bytes never change (new upload = new id), so the browser can
-    # cache it. "private": only the user's browser, never a shared cache.
-    return Response(
-        content=content,
-        media_type=photo.content_type,
-        headers={
-            "Cache-Control": "private, max-age=86400",
-            # Never treat the file as anything but its image type (e.g. a
-            # disguised file holding HTML), and never let scripts run in it.
-            "X-Content-Type-Options": "nosniff",
-            "Content-Security-Policy": "default-src 'none'; sandbox",
-        },
-    )
-
-
-@router.delete("/{project_id}/photos/{photo_id}", status_code=204)
-async def delete_photo(
-    project_id: int,
-    photo_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> Response:
-    await ensure_project_access(db, current_user, project_id)
-    photo = await db.get(ProjectPhoto, photo_id)
-    if photo is None or photo.project_id != project_id:
-        raise HTTPException(status_code=404, detail="Photo not found")
-    if not can_delete_photo(current_user, photo):
-        raise HTTPException(
-            status_code=403, detail="You can only delete photos you uploaded"
-        )
-
-    storage_key = photo.storage_key
-    await db.delete(photo)
-    await db.commit()
-
-    loop = asyncio.get_running_loop()
-    try:
-        await loop.run_in_executor(None, storage.delete_object, storage_key)
-    except Exception:
-        logger.warning(
-            "photo_file_delete_failed", photo_id=str(photo_id), exc_info=True
-        )
-
-    logger.info(
-        "photo_deleted",
-        photo_id=str(photo_id),
-        project_id=project_id,
-        deleted_by=str(current_user.id),
-    )
-    return Response(status_code=204)

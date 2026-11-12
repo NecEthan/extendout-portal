@@ -1,3 +1,7 @@
+"""GET/POST /documents — list documents, upload a new one
+(`apiRoutes.documents.list`).
+"""
+
 import asyncio
 
 import structlog

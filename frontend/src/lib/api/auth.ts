@@ -5,7 +5,7 @@ import { api } from "./axiosClient";
 
 export async function login(email: string, password: string): Promise<User> {
   // The backend sets the HttpOnly session cookie; nothing to store here.
-  const { data: user } = await api.post<User>(apiRoutes.login, {
+  const { data: user } = await api.post<User>(apiRoutes.auth.login, {
     email,
     password,
   });
@@ -14,7 +14,7 @@ export async function login(email: string, password: string): Promise<User> {
 
 export async function logout(): Promise<void> {
   try {
-    await api.post(apiRoutes.logout);
+    await api.post(apiRoutes.auth.logout);
   } catch (error) {
     // An HTTP error (e.g. the session already expired) still means we're
     // logged out, so carry on; only a network failure is a real error.
@@ -23,6 +23,6 @@ export async function logout(): Promise<void> {
 }
 
 export async function getUser(): Promise<User> {
-  const { data } = await api.get<User>(apiRoutes.currentUser);
+  const { data } = await api.get<User>(apiRoutes.auth.user);
   return data;
 }

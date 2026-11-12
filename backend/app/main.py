@@ -14,16 +14,7 @@ from app.limiter import global_rate_limit, limiter
 from app.logging_config import configure_logging
 from app.middleware import RequestLoggingMiddleware
 from app.poller import run_poller
-from app.routers import (
-    auth,
-    documents,
-    health,
-    project_members,
-    project_photos,
-    projects,
-    query,
-    team,
-)
+from app.routers import auth, documents, health, projects, query, team
 from app.services import storage
 
 # Configure structured logging before the app object is created so that
@@ -90,6 +81,4 @@ app.include_router(auth.router, prefix="/auth")
 app.include_router(documents.router, prefix="/documents")
 app.include_router(query.router)
 app.include_router(projects.router, prefix="/projects")
-app.include_router(project_members.router, prefix="/projects")
-app.include_router(project_photos.router, prefix="/projects")
 app.include_router(team.router, prefix="/team")
