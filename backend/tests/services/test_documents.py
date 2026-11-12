@@ -142,3 +142,21 @@ async def test_rejects_oversized_file(monkeypatch):
 def test_allowed_content_types_are_pdf_word_excel():
     assert ALLOWED_CONTENT_TYPES == {"application/pdf", _DOCX_CT, _XLSX_CT}
     assert "new/type" not in ALLOWED_CONTENT_TYPES
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "office_file",
+    [make_docx("Hello"), make_xlsx([["a", 1]])],
+    ids=["docm-renamed-docx", "xlsm-renamed-xlsx"],
+)
+async def test_rejects_macro_enabled_office_files(office_file):
+    from fastapi import HTTPException
+
+    from tests.helpers.files import with_macros
+
+    macro_file = with_macros(office_file)
+    assert detect_content_type(macro_file) == "application/octet-stream"
+    with pytest.raises(HTTPException) as exc:
+        await read_and_validate(MockUploadFile(macro_file))
+    assert exc.value.status_code == 415

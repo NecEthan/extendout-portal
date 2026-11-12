@@ -34,6 +34,9 @@ class DocumentResponse(BaseModel):
     project_id: int | None = None
     created_at: datetime
     latest_version_status: str | None = None
+    # True when a version can be downloaded (an older one may be ACTIVE while
+    # a new upload is still processing).
+    has_active_version: bool = False
 
 
 class DocumentDetailResponse(DocumentResponse):

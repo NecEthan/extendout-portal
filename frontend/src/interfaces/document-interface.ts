@@ -16,6 +16,7 @@ export interface Document {
   project_id: number | null;
   created_at: string;
   latest_version_status: DocumentVersionStatus | null;
+  has_active_version: boolean;
 }
 
 export interface DocumentVersion {

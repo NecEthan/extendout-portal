@@ -83,15 +83,17 @@ Requires all services running (including the worker). `utils/auth.setup.ts` logs
 
 ### Document upload flow (transactional outbox pattern)
 
-`POST /documents` in `app/routers/documents/documents.py`. The `documents/` router is a package split into `documents.py` (list/upload), `document.py` (get/patch/delete by id), `versions.py` (version endpoints), combined in `__init__.py` via `router.routes.extend()`.
+`POST /documents` in `app/routers/documents/documents.py`. The `documents/` router is a package split into `documents.py` (list/upload), `document.py` (get/patch/delete by id), `download.py` (original file download), `versions.py` (version endpoints), combined in `__init__.py` via `router.routes.extend()`.
 
 1. Check project access (`ensure_project_access`) — `project_id` is required; 404 unknown project, 403 if a non-admin isn't a member.
-2. Validate file type by content (allowed: pdf, docx, xlsx — docx/xlsx told apart by their zip contents).
+2. Validate file type by content (allowed: pdf, docx, xlsx — docx/xlsx told apart by their zip contents; macro-enabled files, i.e. any zip containing `vbaProject.bin`, are rejected as unsupported).
 3. Upload bytes to MinIO.
 4. Insert `Document`, `DocumentVersion` (status=PROCESSING), `ProcessingJob` (status=QUEUED) — all in one DB transaction.
 5. Best-effort enqueue to Redis via arq with deterministic `_job_id = f"process_document:{version.id}"`.
 6. If enqueue succeeds → set job status to DISPATCHED and commit.
 7. If Redis is down → job stays QUEUED; background poller retries it.
+
+**Download**: `GET /documents/{id}/download` (`download.py`) serves the ACTIVE version's original file (409 if none is ACTIVE) with the same access rules as reading the document. It re-checks the type from the bytes (so files stored before an upload rule existed are refused) and sends `Content-Disposition: attachment` (ASCII-safe `filename` + UTF-8 `filename*` from the title), `nosniff`, a sandboxing CSP and `Cache-Control: private, no-store`. Recorded in the audit log (`RECORDED_READS`). The list response's `has_active_version` tells the Documents tab when to show the Download link, a plain `<a href>` to the API (the session cookie goes with it, like photo `<img>`s).
 
 **Poller** (`app/poller.py`): runs as an `asyncio.Task` in the lifespan. Every 30 s it:
 1. Calls `reap_stale_processing_jobs()` (`app/reaper.py`) — resets PROCESSING jobs stuck for 10+ min (worker hard crash) back to QUEUED; marks FAILED and deletes MinIO object if attempts exhausted.

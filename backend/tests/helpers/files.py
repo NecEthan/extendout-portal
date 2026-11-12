@@ -40,3 +40,19 @@ def make_xlsx(rows: list[list[object]], title: str = "Sheet1") -> bytes:
 def docx_upload(name: str, text: str) -> dict:
     """``files=`` payload for an httpx multipart upload of a .docx."""
     return {"file": (name, make_docx(text), DOCX_CT)}
+
+
+def with_macros(office_file: bytes) -> bytes:
+    """``office_file`` plus a vbaProject.bin, i.e. a .docm/.xlsm renamed."""
+    import zipfile
+
+    buf = io.BytesIO()
+    with (
+        zipfile.ZipFile(io.BytesIO(office_file)) as src,
+        zipfile.ZipFile(buf, "w") as dst,
+    ):
+        for item in src.infolist():
+            dst.writestr(item, src.read(item.filename))
+        folder = "word" if "word/document.xml" in src.namelist() else "xl"
+        dst.writestr(f"{folder}/vbaProject.bin", b"\xd0\xcf\x11\xe0 fake macros")
+    return buf.getvalue()

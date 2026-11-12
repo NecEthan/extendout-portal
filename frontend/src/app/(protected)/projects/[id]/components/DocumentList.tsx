@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { Download } from "lucide-react";
 import type { Document } from "@/interfaces";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { ErrorAlert } from "@/components/ui/error-alert";
 import { useDeleteDocument } from "@/hooks/useDocuments";
+import { documentDownloadUrl } from "@/lib/api/documents";
 import { getErrorMessage } from "@/lib/errorMessage";
 import { STATUS_STYLES } from "@/utils/documentStatus";
 import { applicationRoutes } from "@/utils/applicationRoutes";
@@ -53,6 +55,15 @@ export function DocumentList({ documents }: DocumentListProps) {
             </span>
           </div>
           <div className="flex items-center gap-2">
+            {doc.has_active_version && (
+              <a
+                href={documentDownloadUrl(doc.id)}
+                download
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+              >
+                <Download /> Download
+              </a>
+            )}
             <Link
               href={applicationRoutes.documentVersions(doc.id, doc.project_id)}
             >

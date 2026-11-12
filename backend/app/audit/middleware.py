@@ -42,6 +42,7 @@ READ_METHODS = frozenset({"GET", "HEAD"})
 RECORDED_READS = frozenset(
     {
         "/documents/{document_id}",
+        "/documents/{document_id}/download",
         "/documents/{document_id}/versions/{version_id}",
     }
 )

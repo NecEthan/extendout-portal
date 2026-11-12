@@ -72,3 +72,11 @@ export async function activateDocumentVersion(
 export async function deleteDocument(id: string): Promise<void> {
   await api.delete(`/documents/${id}`);
 }
+
+/** URL that downloads the document's current (ACTIVE) file. Used as a plain
+ * link: the browser sends the session cookie, the backend checks access and
+ * answers with `Content-Disposition: attachment`, so the file is saved rather
+ * than opened in the app. */
+export function documentDownloadUrl(documentId: string): string {
+  return `${api.defaults.baseURL}/documents/${encodeURIComponent(documentId)}/download`;
+}

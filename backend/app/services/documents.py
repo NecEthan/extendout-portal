@@ -27,6 +27,9 @@ _ZIP_MAGIC = b"PK\x03\x04"
 # Uploads are restricted to PDF, Word (.docx) and Excel (.xlsx).
 ALLOWED_CONTENT_TYPES: frozenset[str] = frozenset([_PDF, _DOCX, _XLSX])
 
+# File extension for each allowed type, used to name downloads.
+FILE_EXTENSIONS: dict[str, str] = {_PDF: ".pdf", _DOCX: ".docx", _XLSX: ".xlsx"}
+
 
 async def read_and_validate(file: UploadFile) -> tuple[bytes, str]:
     """Read the upload, enforce size limit, detect real content type.
@@ -77,6 +80,11 @@ def _detect_office_type(content: bytes) -> str:
         with zipfile.ZipFile(io.BytesIO(content)) as zf:
             names = set(zf.namelist())
     except zipfile.BadZipFile:
+        return _UNKNOWN
+    # Macro-enabled files (.docm/.xlsm, possibly renamed to .docx/.xlsx) carry
+    # their macros in vbaProject.bin. Rejected so a downloaded file can never
+    # run code in Word or Excel.
+    if any(name.endswith("vbaProject.bin") for name in names):
         return _UNKNOWN
     if "word/document.xml" in names:
         return _DOCX

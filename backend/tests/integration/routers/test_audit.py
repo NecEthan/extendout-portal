@@ -68,6 +68,7 @@ def test_route_template(path, params, expected):
         # Opening a specific document or version: recorded.
         ("GET", "/documents/{document_id}", 200, True),
         ("GET", "/documents/{document_id}/versions/{version_id}", 200, True),
+        ("GET", "/documents/{document_id}/download", 200, True),
         # Other successful reads: skipped (page loads, lists, polling, photos).
         ("GET", "/auth/user", 200, False),
         ("GET", "/projects", 200, False),

@@ -31,6 +31,7 @@ from app.utils.enqueue import enqueue_processing_job
 router = APIRouter(tags=["documents"])
 logger = structlog.get_logger(__name__)
 
+
 @router.post("", status_code=202, response_model=DocumentUploadedResponse)
 @upload_limit
 async def upload_document(
@@ -65,9 +66,7 @@ async def upload_document(
         # MinIO down, unreachable or misconfigured. Nothing to clean up: no DB
         # records exist yet and the file wasn't stored.
         logger.exception("storage_upload_failed", storage_key=storage_key)
-        raise HTTPException(
-            status_code=503, detail=STORAGE_UNAVAILABLE_DETAIL
-        ) from exc
+        raise HTTPException(status_code=503, detail=STORAGE_UNAVAILABLE_DETAIL) from exc
 
     try:
         doc, version, job = await create_document_records(
@@ -112,8 +111,20 @@ async def list_documents(
         .scalar_subquery()
     )
 
+    has_active = (
+        select(DocumentVersion.id)
+        .where(DocumentVersion.document_id == Document.id)
+        .where(DocumentVersion.status == "ACTIVE")
+        .correlate(Document)
+        .exists()
+    )
+
     result = await db.execute(
-        select(Document, latest_status.label("latest_version_status"))
+        select(
+            Document,
+            latest_status.label("latest_version_status"),
+            has_active.label("has_active_version"),
+        )
         .where(*filters)
         .order_by(Document.created_at.desc())
         .limit(limit)
@@ -128,8 +139,9 @@ async def list_documents(
             project_id=doc.project_id,
             created_at=doc.created_at,
             latest_version_status=status,
+            has_active_version=active,
         )
-        for doc, status in result.all()
+        for doc, status, active in result.all()
     ]
     return PaginatedDocumentsResponse(
         items=items, total=total or 0, limit=limit, offset=offset
