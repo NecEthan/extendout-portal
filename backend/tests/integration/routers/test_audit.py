@@ -231,7 +231,7 @@ async def test_role_change_records_old_and_new_role(admin_client, db, admin_user
     assert created.details["role"] == "client"
     assert created.details["user_id"] == other["id"]
     [changed] = await _events(db, actor_user_id=admin_id, route="/team/{user_id}")
-    assert changed.details == {"old_role": "client", "new_role": "builder"}
+    assert changed.details == {"changes": {"role": {"old": "client", "new": "builder"}}}
     assert (changed.entity_type, changed.entity_id) == ("user", other["id"])
 
     await db.execute(text("DELETE FROM users WHERE id = :id"), {"id": other["id"]})

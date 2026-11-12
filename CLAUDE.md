@@ -133,7 +133,8 @@ There is no public sign-up. Admins create accounts with `POST /team` (`email`, `
 Team management is **admin only** (`app/routers/team.py`, `app/routers/project_members.py`, all guarded by `require_admin` in `app/dependencies.py`). The sidebar shows sections by role (`roles` on each section in `navConfig.ts`): admins see Admin (Dashboard, Projects, Team); builders and clients see Client view (Overview, Progress Photos, Projects — only their member projects). Each project's Team and Settings tabs (edit/delete project) are admin only.
 - `GET /team` — every user with their `project_ids`.
 - `POST /team` `{email, password, role, name?}` — create an account (the only way accounts are made).
-- `PATCH /team/{user_id}` `{role}` — admins can't change their own role.
+- `PATCH /team/{user_id}` `{email?, name?, role?, password?}` — edit an account; only fields sent change. 409 if the email is taken; admins can't change their own role. A password reset ends the user's sessions.
+- `DELETE /team/{user_id}` — delete an account (not yourself). Sessions and memberships cascade; their documents/versions/photos stay, with `owner_id`/`created_by`/uploader set to NULL.
 - `GET /projects/{id}/members`, `POST /projects/{id}/members` `{user_id}`, `DELETE /projects/{id}/members/{user_id}`.
 
 ### Worker
@@ -164,7 +165,7 @@ Run worker: `uv run arq app.workers.main.WorkerSettings` (or via Docker: `worker
 
 ## Frontend Architecture
 
-Next.js 14 App Router. All pages under `src/app/`. API calls go through the shared axios instance `api` in `src/lib/api/axiosClient.ts` (`withCredentials: true` for session cookie passthrough). Its response interceptor turns non-2xx responses into `ApiError` (`src/lib/api/apiError.ts`) and redirects to `/login` on a 401 (except from `/auth/login` / `/auth/logout`). Jest tests stub the transport with `src/test-utils/mockApi.ts`. Types in `src/types/index.ts` mirror the backend data model.
+Next.js 14 App Router. All pages under `src/app/`. Paths are never written by hand: backend endpoints come from `apiRoutes` (`src/lib/api/apiRoutes.ts`), frontend pages from `applicationRoutes` (`src/utils/applicationRoutes.ts`); both encode ids. API calls go through the shared axios instance `api` in `src/lib/api/axiosClient.ts` (`withCredentials: true` for session cookie passthrough). Its response interceptor turns non-2xx responses into `ApiError` (`src/lib/api/apiError.ts`) and redirects to `/login` on a 401 (except from `/auth/login` / `/auth/logout`). Jest tests stub the transport with `src/test-utils/mockApi.ts`. Types in `src/types/index.ts` mirror the backend data model.
 
 Protected pages live under `src/app/(protected)/` with a shared layout. `/login` is the only public page. There is no auth middleware: a `401` from any API call redirects to `/login` (axios interceptor), and the login page redirects logged-in users to `/dashboard`. The only auth cookie is the backend's HttpOnly session cookie (no frontend hint cookie). Post-login redirect lands on `/dashboard`.
 

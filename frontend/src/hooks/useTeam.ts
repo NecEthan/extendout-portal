@@ -1,12 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { NewUser, UserRole } from "@/interfaces";
+import type { NewUser, TeamMemberUpdate, UserRole } from "@/interfaces";
 import {
   addProjectMember,
   createUser,
+  deleteTeamMember,
   listProjectMembers,
   listTeam,
   removeProjectMember,
   updateRole,
+  updateTeamMember,
 } from "@/lib/api/team";
 
 export function useTeam({ enabled = true }: { enabled?: boolean } = {}) {
@@ -20,7 +22,7 @@ export function useProjectMembers(projectId: number) {
   });
 }
 
-/** Membership and role changes affect the team list, project member lists and
+/** Membership, role and account changes affect the team list, project member lists and
  * which projects people can see — refresh all of them. */
 function useInvalidateTeam() {
   const queryClient = useQueryClient();
@@ -28,6 +30,8 @@ function useInvalidateTeam() {
     queryClient.invalidateQueries({ queryKey: ["team"] });
     queryClient.invalidateQueries({ queryKey: ["project-members"] });
     queryClient.invalidateQueries({ queryKey: ["projects"] });
+    // An admin may have edited their own name or email.
+    queryClient.invalidateQueries({ queryKey: ["user"] });
   };
 }
 
@@ -72,6 +76,28 @@ export function useCreateUser() {
   const invalidate = useInvalidateTeam();
   return useMutation({
     mutationFn: (body: NewUser) => createUser(body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateTeamMember() {
+  const invalidate = useInvalidateTeam();
+  return useMutation({
+    mutationFn: ({
+      userId,
+      body,
+    }: {
+      userId: string;
+      body: TeamMemberUpdate;
+    }) => updateTeamMember(userId, body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteTeamMember() {
+  const invalidate = useInvalidateTeam();
+  return useMutation({
+    mutationFn: (userId: string) => deleteTeamMember(userId),
     onSuccess: invalidate,
   });
 }

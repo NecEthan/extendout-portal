@@ -1,6 +1,7 @@
 import axios from "axios";
 import { navigateTo } from "@/lib/navigation";
 import { applicationRoutes } from "@/utils/applicationRoutes";
+import { apiRoutes } from "./apiRoutes";
 import { ApiError, extractErrorDetail } from "./apiError";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -21,7 +22,7 @@ export const api = axios.create({
 
 // Endpoints where a 401 is a normal answer (e.g. wrong password), not an
 // expired session, so the caller handles it instead of being redirected.
-const AUTH_ENDPOINTS = ["/auth/login", "/auth/logout"];
+const AUTH_ENDPOINTS = [apiRoutes.login, apiRoutes.logout];
 
 /**
  * Not logged in, or the session expired. This is how protected pages send

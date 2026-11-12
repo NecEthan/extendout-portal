@@ -20,3 +20,12 @@ export interface NewUser {
   role: UserRole;
   name?: string;
 }
+
+/** Body for PATCH /team/{id} (admin only). Only the fields sent change;
+ * `password` resets their password and signs them out. */
+export interface TeamMemberUpdate {
+  email?: string;
+  name?: string;
+  role?: UserRole;
+  password?: string;
+}

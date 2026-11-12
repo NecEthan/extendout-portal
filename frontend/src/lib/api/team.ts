@@ -1,14 +1,21 @@
-import type { Member, NewUser, TeamMember, UserRole } from "@/interfaces";
+import type {
+  Member,
+  NewUser,
+  TeamMember,
+  TeamMemberUpdate,
+  UserRole,
+} from "@/interfaces";
+import { apiRoutes } from "./apiRoutes";
 import { api } from "./axiosClient";
 
 /** All team endpoints are admin only. */
 export async function listTeam(): Promise<TeamMember[]> {
-  const { data } = await api.get<TeamMember[]>("/team");
+  const { data } = await api.get<TeamMember[]>(apiRoutes.team);
   return data;
 }
 
 export async function createUser(body: NewUser): Promise<TeamMember> {
-  const { data } = await api.post<TeamMember>("/team", body);
+  const { data } = await api.post<TeamMember>(apiRoutes.team, body);
   return data;
 }
 
@@ -16,14 +23,29 @@ export async function updateRole(
   userId: string,
   role: UserRole
 ): Promise<TeamMember> {
-  const { data } = await api.patch<TeamMember>(`/team/${userId}`, { role });
+  const { data } = await api.patch<TeamMember>(apiRoutes.teamMember(userId), {
+    role,
+  });
   return data;
 }
 
-export async function listProjectMembers(projectId: number): Promise<Member[]> {
-  const { data } = await api.get<Member[]>(
-    `/projects/${encodeURIComponent(projectId)}/members`
+export async function updateTeamMember(
+  userId: string,
+  body: TeamMemberUpdate
+): Promise<TeamMember> {
+  const { data } = await api.patch<TeamMember>(
+    apiRoutes.teamMember(userId),
+    body
   );
+  return data;
+}
+
+export async function deleteTeamMember(userId: string): Promise<void> {
+  await api.delete(apiRoutes.teamMember(userId));
+}
+
+export async function listProjectMembers(projectId: number): Promise<Member[]> {
+  const { data } = await api.get<Member[]>(apiRoutes.projectMembers(projectId));
   return data;
 }
 
@@ -31,10 +53,9 @@ export async function addProjectMember(
   projectId: number,
   userId: string
 ): Promise<Member> {
-  const { data } = await api.post<Member>(
-    `/projects/${encodeURIComponent(projectId)}/members`,
-    { user_id: userId }
-  );
+  const { data } = await api.post<Member>(apiRoutes.projectMembers(projectId), {
+    user_id: userId,
+  });
   return data;
 }
 
@@ -42,7 +63,5 @@ export async function removeProjectMember(
   projectId: number,
   userId: string
 ): Promise<void> {
-  await api.delete(
-    `/projects/${encodeURIComponent(projectId)}/members/${userId}`
-  );
+  await api.delete(apiRoutes.projectMember(projectId, userId));
 }

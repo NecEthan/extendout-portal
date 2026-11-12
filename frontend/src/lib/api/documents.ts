@@ -5,6 +5,7 @@ import type {
   PaginatedDocuments,
   VersionUploadedResponse,
 } from "@/interfaces";
+import { apiRoutes } from "./apiRoutes";
 import { api } from "./axiosClient";
 
 export async function uploadDocument(
@@ -18,7 +19,10 @@ export async function uploadDocument(
   form.append("title", title);
   form.append("project_id", String(projectId));
 
-  const { data } = await api.post<DocumentUploadedResponse>("/documents", form);
+  const { data } = await api.post<DocumentUploadedResponse>(
+    apiRoutes.documents,
+    form
+  );
   return data;
 }
 
@@ -27,7 +31,7 @@ export async function listDocuments(
   offset: number,
   projectId?: number
 ): Promise<PaginatedDocuments> {
-  const { data } = await api.get<PaginatedDocuments>("/documents", {
+  const { data } = await api.get<PaginatedDocuments>(apiRoutes.documents, {
     params: { limit, offset, project_id: projectId },
   });
   return data;
@@ -41,7 +45,7 @@ export async function uploadDocumentVersion(
   form.append("file", file);
 
   const { data } = await api.post<VersionUploadedResponse>(
-    `/documents/${documentId}/versions`,
+    apiRoutes.documentVersions(documentId),
     form
   );
   return data;
@@ -53,7 +57,7 @@ export async function listDocumentVersions(
   offset: number
 ): Promise<PaginatedDocumentVersions> {
   const { data } = await api.get<PaginatedDocumentVersions>(
-    `/documents/${documentId}/versions`,
+    apiRoutes.documentVersions(documentId),
     { params: { limit, offset } }
   );
   return data;
@@ -64,13 +68,13 @@ export async function activateDocumentVersion(
   versionId: string
 ): Promise<DocumentVersion> {
   const { data } = await api.patch<DocumentVersion>(
-    `/documents/${documentId}/versions/${versionId}/activate`
+    apiRoutes.activateDocumentVersion(documentId, versionId)
   );
   return data;
 }
 
 export async function deleteDocument(id: string): Promise<void> {
-  await api.delete(`/documents/${id}`);
+  await api.delete(apiRoutes.document(id));
 }
 
 /** URL that downloads the document's current (ACTIVE) file. Used as a plain
@@ -78,5 +82,5 @@ export async function deleteDocument(id: string): Promise<void> {
  * answers with `Content-Disposition: attachment`, so the file is saved rather
  * than opened in the app. */
 export function documentDownloadUrl(documentId: string): string {
-  return `${api.defaults.baseURL}/documents/${encodeURIComponent(documentId)}/download`;
+  return `${api.defaults.baseURL}${apiRoutes.documentDownload(documentId)}`;
 }

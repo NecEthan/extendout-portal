@@ -3,9 +3,9 @@
 import uuid
 
 import pytest
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 
-from app.models.base import ProjectMember, User
+from app.models.base import Document, ProjectMember, User
 from app.services.auth import hash_password
 from tests.fixtures.auth import TEST_PROJECT_ID, UNKNOWN_PROJECT_ID
 
@@ -242,3 +242,121 @@ async def test_non_admin_cannot_create_user(auth_client):
         json={"email": "x@example.com", "password": "Password1", "role": "admin"},
     )
     assert response.status_code == 403
+
+
+# ── PATCH /team/{user_id} (edit details) ──────────────────────────────────────
+
+
+async def test_admin_edits_name_and_email(admin_client, make_user):
+    user = await make_user("client")
+    new_email = f"edited+{uuid.uuid4().hex[:8]}@example.com"
+    response = await admin_client.patch(
+        f"/team/{user.id}", json={"name": "  New Name ", "email": f" {new_email} "}
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["name"] == "New Name"
+    assert body["email"] == new_email
+    assert body["role"] == "client"
+
+
+async def test_admin_clears_name(admin_client, make_user):
+    user = await make_user("client")
+    response = await admin_client.patch(f"/team/{user.id}", json={"name": ""})
+    assert response.status_code == 200
+    assert response.json()["name"] is None
+
+
+async def test_edit_email_taken(admin_client, make_user, test_user):
+    user = await make_user("client")
+    response = await admin_client.patch(
+        f"/team/{user.id}", json={"email": test_user.email}
+    )
+    assert response.status_code == 409
+
+
+async def test_admin_can_edit_own_details_but_not_role(admin_client, admin_user):
+    response = await admin_client.patch(
+        f"/team/{admin_user.id}", json={"name": "Boss", "role": "admin"}
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == "Boss"
+
+
+async def test_password_reset_signs_user_out(admin_client, client, make_user):
+    user = await make_user("client")
+    login = await client.post(
+        "/auth/login", json={"email": user.email, "password": "password"}
+    )
+    assert login.status_code == 200
+    assert (await client.get("/auth/user")).status_code == 200
+
+    response = await admin_client.patch(
+        f"/team/{user.id}", json={"password": "NewPassword1"}
+    )
+    assert response.status_code == 200
+    assert (await client.get("/auth/user")).status_code == 401
+
+    relogin = await client.post(
+        "/auth/login", json={"email": user.email, "password": "NewPassword1"}
+    )
+    assert relogin.status_code == 200
+
+
+async def test_password_reset_validation(admin_client, make_user):
+    user = await make_user("client")
+    response = await admin_client.patch(f"/team/{user.id}", json={"password": "weak"})
+    assert response.status_code == 422
+
+
+async def test_non_admin_cannot_edit(auth_client, make_user):
+    user = await make_user("client")
+    response = await auth_client.patch(f"/team/{user.id}", json={"name": "x"})
+    assert response.status_code == 403
+
+
+# ── DELETE /team/{user_id} ────────────────────────────────────────────────────
+
+
+async def test_admin_deletes_user(admin_client, db, make_user, make_project):
+    project_id = await make_project(member=None)
+    user = await make_user("builder", projects=(project_id,))
+    document = Document(
+        title="Kept", owner_id=user.id, source_type="upload", project_id=project_id
+    )
+    db.add(document)
+    await db.commit()
+    document_id, user_id = document.id, user.id
+
+    response = await admin_client.delete(f"/team/{user_id}")
+    assert response.status_code == 204
+
+    db.expire_all()
+    assert await db.scalar(select(User.id).where(User.id == user_id)) is None
+    assert (
+        await db.scalar(
+            select(ProjectMember.user_id).where(ProjectMember.user_id == user_id)
+        )
+        is None
+    )
+    # Their documents stay in the project, without an owner.
+    kept = await db.get(Document, document_id)
+    assert kept is not None and kept.owner_id is None
+    listed = [m["id"] for m in (await admin_client.get("/team")).json()]
+    assert str(user_id) not in listed
+
+    await db.delete(kept)
+    await db.commit()
+
+
+async def test_admin_cannot_delete_self(admin_client, admin_user):
+    assert (await admin_client.delete(f"/team/{admin_user.id}")).status_code == 400
+
+
+async def test_delete_unknown_user(admin_client):
+    assert (await admin_client.delete(f"/team/{uuid.uuid4()}")).status_code == 404
+
+
+async def test_non_admin_cannot_delete(auth_client, make_user):
+    user = await make_user("client")
+    assert (await auth_client.delete(f"/team/{user.id}")).status_code == 403
