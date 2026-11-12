@@ -9,7 +9,10 @@ const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL ?? "test@gmail.com";
 const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? "password";
 
 async function ok(res: Awaited<ReturnType<APIRequestContext["get"]>>, what: string) {
-  if (!res.ok()) throw new Error(`${what} failed: ${res.status()} ${await res.text()}`);
+  if (!res.ok()) {
+    const body = await res.text();
+    throw new Error(`${what} failed: ${res.status()} ${body}`);
+  }
   return res.json();
 }
 

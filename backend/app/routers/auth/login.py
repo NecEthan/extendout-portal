@@ -37,7 +37,10 @@ async def login(
 
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
-    if user is None or not await verify_password(body.password, user.password_hash):
+    password_ok = False
+    if user is not None:
+        password_ok = await verify_password(body.password, user.password_hash)
+    if not password_ok:
         await redis.incr(lockout_key)
         await redis.expire(lockout_key, settings.login_lockout_seconds)
         raise HTTPException(status_code=401, detail="Invalid credentials")

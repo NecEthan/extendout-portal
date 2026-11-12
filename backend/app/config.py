@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     # Per IP, across all emails. Kept above login_max_attempts so the per-email
     # lock (and its message) is reached before this limit.
     login_rate_limit: str = "20/minute"
-    login_max_attempts: int = 5
+    login_max_attempts: int = 7
     login_lockout_seconds: int = 900
     query_rate_limit: str = "20/minute"  # per user
     upload_rate_limit: str = "30/minute"  # per user, documents + versions combined

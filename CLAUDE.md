@@ -159,7 +159,7 @@ Run worker: `uv run arq app.workers.main.WorkerSettings` (or via Docker: `worker
 1. Embed question via `app/services/embedder.py`.
 2. Parallel vector search (`app/services/vector_search.py`) + FTS (`app/services/fts_search.py`).
 3. Fuse results via RRF (`app/services/rrf.py`), filtered to permitted documents via `build_permitted_doc_ids` (`app/services/permissions.py`). Both searches only include `ACTIVE` versions — there is no historical mode.
-4. Build context string (`app/services/context_builder.py`).
+4. Build context string (`app/services/context_builder.py`). The system prompt (`llm.py`) treats the context as data, never instructions, and asks the model to flag contradictions between sources (prompt-injection defence).
 5. Call LLM (`app/services/llm.py`) — `gpt-4o-mini` by default (`config.chat_model`).
 6. Return `QueryResponse` with citations.
 

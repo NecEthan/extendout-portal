@@ -2,7 +2,7 @@
 
 ## Per-Email Brute Force Protection
 
-IP rate limiting alone doesn't stop an attacker with rotating proxies targeting a specific account. After 5 failed login attempts for an email address, that email is locked for 15 minutes via a Redis counter (`login_fail:{email}`). Successful login clears the counter. Window and attempt count are config-driven (`login_max_attempts`, `login_lockout_seconds`). This can be abused to lock someone out on purpose; see _Login uses two counters_ under Rate Limiting: How It Works.
+IP rate limiting alone doesn't stop an attacker with rotating proxies targeting a specific account. After 7 failed login attempts for an email address (the 8th attempt is refused), that email is locked for 15 minutes via a Redis counter (`login_fail:{email}`). Successful login clears the counter. Window and attempt count are config-driven (`login_max_attempts`, `login_lockout_seconds`). This can be abused to lock someone out on purpose; see _Login uses two counters_ under Rate Limiting: How It Works.
 
 ## Password Strength
 
@@ -10,7 +10,7 @@ Minimum 8 characters enforced at the Pydantic schema level, plus at least one up
 
 ## Auth Rate Limiting
 
-`POST /auth/login` is capped at 20 requests/minute per IP, across all emails, to stop one machine trying many accounts. Window resets after 60 seconds, no permanent lockout. Configured by `login_rate_limit`. It was 5/minute at first, the same as the per-email lock threshold; because the IP check runs first, the 6th wrong password was answered by the IP limit instead of the lock. Keeping it above `login_max_attempts` means a user guessing one account gets the lock.
+`POST /auth/login` is capped at 20 requests/minute per IP, across all emails, to stop one machine trying many accounts. Window resets after 60 seconds, no permanent lockout. Configured by `login_rate_limit`. It was 5/minute at first, the same as the per-email lock threshold at the time (5, now 7); because the IP check runs first, the 6th wrong password was answered by the IP limit instead of the lock. Keeping it above `login_max_attempts` means a user guessing one account gets the lock.
 
 ## No Public Sign-Up
 
