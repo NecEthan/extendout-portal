@@ -76,11 +76,16 @@ def test_route_template(path, params, expected):
         ("GET", "/documents", 200, False),
         ("GET", "/projects/{project_id}/photos/{photo_id}/file", 200, False),
         ("HEAD", "/projects", 200, False),
+        # The frontend's "am I logged in?" check answering no: skipped.
+        ("GET", "/auth/user", 401, False),
         # Failed or denied reads: always (probing).
         ("GET", "/team", 403, True),
         ("GET", "/projects/{project_id}", 404, True),
         ("GET", "/wp-admin", 404, True),
         ("GET", "/team", 500, True),
+        # 401 anywhere else (e.g. an expired session), or a 500 on /auth/user.
+        ("GET", "/projects", 401, True),
+        ("GET", "/auth/user", 500, True),
     ],
 )
 def test_should_record(method, route, status, recorded):

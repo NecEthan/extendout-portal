@@ -3,8 +3,9 @@
 Recorded: every change (any method other than GET/HEAD), every failed or
 denied request (4xx/5xx, reads included), and successful opens of a specific
 document or version (RECORDED_READS). Skipped: other successful reads (page
-loads, lists, polling, photo thumbnails), which are noise for "who did what".
-See should_record.
+loads, lists, polling, photo thumbnails), which are noise for "who did what",
+and the 401 from GET /auth/user (the app checking "am I logged in?" on every
+visit to /login). See should_record.
 
 Plain ASGI (not BaseHTTPMiddleware) so it sees the real status code, including
 unhandled exceptions, which it records as 500 before re-raising. The entry is
@@ -48,9 +49,16 @@ RECORDED_READS = frozenset(
 )
 
 
+# "Not logged in" answers to the frontend's session check, not a security event.
+# Any other failed read (403, 404, 401 elsewhere) is still recorded.
+SESSION_CHECK_ROUTE = "/auth/user"
+
+
 def should_record(method: str, route: str, status_code: int) -> bool:
     if method not in READ_METHODS:
         return True  # changes, logins, logouts, searches
+    if route == SESSION_CHECK_ROUTE and status_code == 401:
+        return False
     if status_code >= 400:
         return True  # denied / failed reads: how probing shows up
     return route in RECORDED_READS
