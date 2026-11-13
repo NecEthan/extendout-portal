@@ -71,13 +71,17 @@ npm run test:headed     # Visible browser
 npm run test:ui         # Interactive Playwright UI
 ```
 
-Requires all services running (including the worker). `utils/auth.setup.ts` logs in as an admin (`E2E_ADMIN_EMAIL` / `E2E_ADMIN_PASSWORD`, default `test@gmail.com` / `password`, which CI seeds), creates the `e2e@example.com` builder and a fresh project for the run (id in `.auth/project.json`), and saves the builder's session to `.auth/user.json`. Specs drive that project's tabs (`/projects/{id}?tab=documents|search|photos`) through `pom/ProjectPage.ts`. Playwright projects: `unauthenticated` (auth specs), `authenticated` (documents + photos specs), `versions`, `search`. In CI the backend and worker run with `MOCK_LLM=true`, so no OpenAI calls.
+Requires all services running (including the worker). `utils/auth.setup.ts` logs in as an admin (`E2E_ADMIN_EMAIL`, default `test@gmail.com`, which CI seeds; there are no passwords: logins read the code from the backend's dev outbox, `utils/loginCode.ts`), creates the `e2e@example.com` builder and a fresh project for the run (id in `.auth/project.json`), and saves the builder's session to `.auth/user.json`. Specs drive that project's tabs (`/projects/{id}?tab=documents|search|photos`) through `pom/ProjectPage.ts`. Playwright projects: `unauthenticated` (auth specs), `authenticated` (documents + photos specs), `versions`, `search`. In CI the backend and worker run with `MOCK_LLM=true`, so no OpenAI calls.
 
 ## Backend Architecture
 
 ### Request lifecycle
 
 1. Cookie auth: `get_current_user()` in `app/dependencies.py` validates the `eo_session` cookie via `Session` table.
+
+### Login (passwordless email codes)
+
+There are no passwords. `POST /auth/request-code {email}` (`routers/auth/request_code.py`) emails a 6-digit code and always answers 202 with the same message (codes only go to emails in `users`); `POST /auth/verify-code {email, code}` (`verify_code.py`) checks it and starts a **400-day** session (`session_max_age_days`; DB `expires_at` + cookie `Max-Age`). Emails are matched lowercase (`normalise_email` in `schemas/auth.py`; stored lowercase). Codes live in Redis (`app/services/login_codes.py`): `login_code:<email>` (sha256 hash + attempts, 10 min, single use, replaced by a new request, cancelled after 5 wrong tries: `login_code_cancel_after_wrong_tries`), `login_code_requests:<email>` (3 per 15 min), and the `login_fail:<email>` lockout (7 wrong codes for the email → 429 for 15 min: `login_lockout_after_wrong_codes`, `login_lockout_seconds`). Both endpoints also have the per-IP `login_rate_limit`. Sending (`app/services/email.py`): `EMAIL_BACKEND=emailjs` calls the EmailJS REST API with `EMAILJS_SERVICE_ID/TEMPLATE_ID/PUBLIC_KEY/PRIVATE_KEY` (template params `to_email`, `to_name`, `code`, `expires_minutes`); `outbox` (default, local Docker and CI) sends nothing, logs the code and serves it at `GET /dev/outbox/{email}` (`routers/dev.py`, only mounted with `outbox`). `main.py` refuses to start if `APP_ENV != development` and `EMAIL_BACKEND != emailjs`. Docker/CI set `LOGIN_CODE_REQUESTS_PER_WINDOW=100` so repeated E2E runs aren't throttled.
 2. DB session: `get_db()` yields an `AsyncSession` per request.
 3. ARQ pool: `get_arq_pool()` reads `app.state.arq_pool` (set at startup via lifespan in `main.py`).
 
@@ -124,7 +128,7 @@ Access is decided by **role + project membership** — document ownership has no
 
 Builders and clients have identical document permissions. Rules live in `app/services/permissions.py`: `document_access_filters(user)` (WHERE clauses for all document routes), `ensure_project_access(db, user, project_id)` (404 unknown project / 403 non-member), `build_permitted_doc_ids(user, project_id)` (RAG). Documents with `project_id IS NULL` (legacy, pre-projects) are admin-only.
 
-There is no public sign-up. Admins create accounts with `POST /team` (`email`, `password`, `role`: `admin|builder|client`, optional `name`; role enforced by `ck_users_role`).
+There is no public sign-up. Admins create accounts with `POST /team` (`email`, `role`: `admin|builder|client`, optional `name`; role enforced by `ck_users_role`); no password, people log in with an emailed code.
 
 **Site photos** (`app/routers/project_photos.py`): `GET/POST /projects/{id}/photos` (multipart `file` + optional `description`, ≤500 chars) `DELETE /projects/{id}/photos/{photo_id}` (admins: any photo; builders/clients: only their own, `can_delete_photo` in `app/services/permissions.py`; responses include `can_delete` for the current user), and `GET /projects/{id}/photos/{photo_id}/file`, which streams the image from MinIO (`photos/<uuid>`) after the project-access check, since the bucket is private. Same access rules as documents; uploads share the per-user upload rate limit. Type is detected from bytes (JPEG/PNG/WebP/HEIC; HEIC is converted to JPEG via `pillow-heif`, since most browsers can't show it), max `max_photo_size_mb` (20) and `max_photo_pixels` (100 MP). On upload `strip_metadata` (`app/services/photos.py`) rotates the photo upright and re-saves it without EXIF (GPS, camera, time); the file response sets `X-Content-Type-Options: nosniff` and a sandboxing `Content-Security-Policy`.
 
@@ -132,8 +136,8 @@ There is no public sign-up. Admins create accounts with `POST /team` (`email`, `
 
 Team management is **admin only** (`app/routers/team.py`, `app/routers/project_members.py`, all guarded by `require_admin` in `app/dependencies.py`). The sidebar shows sections by role (`roles` on each section in `navConfig.ts`): admins see Admin (Dashboard, Projects, Team); builders and clients see Client view (Overview, Progress Photos, Projects — only their member projects). Each project's Team and Settings tabs (edit/delete project) are admin only.
 - `GET /team` — every user with their `project_ids`.
-- `POST /team` `{email, password, role, name?}` — create an account (the only way accounts are made).
-- `PATCH /team/{user_id}` `{email?, name?, role?, password?}` — edit an account; only fields sent change. 409 if the email is taken; admins can't change their own role. A password reset ends the user's sessions.
+- `POST /team` `{email, role, name?}` — create an account (the only way accounts are made). Email stored lowercase; 409 if taken (case-insensitive).
+- `PATCH /team/{user_id}` `{email?, name?, role?}` — edit an account; only fields sent change. 409 if the email is taken; admins can't change their own role.
 - `DELETE /team/{user_id}` — delete an account (not yourself). Sessions and memberships cascade; their documents/versions/photos stay, with `owner_id`/`created_by`/uploader set to NULL.
 - `GET /projects/{id}/members`, `POST /projects/{id}/members` `{user_id}`, `DELETE /projects/{id}/members/{user_id}`.
 
@@ -165,7 +169,7 @@ Run worker: `uv run arq app.workers.main.WorkerSettings` (or via Docker: `worker
 
 ## Frontend Architecture
 
-Next.js 14 App Router. All pages under `src/app/`. Paths are never written by hand: backend endpoints come from `apiRoutes` (`src/lib/api/apiRoutes.ts`), frontend pages from `applicationRoutes` (`src/utils/applicationRoutes.ts`); both encode ids. API calls go through the shared axios instance `api` in `src/lib/api/axiosClient.ts` (`withCredentials: true` for session cookie passthrough). Its response interceptor turns non-2xx responses into `ApiError` (`src/lib/api/apiError.ts`) and redirects to `/login` on a 401 (except from `/auth/login` / `/auth/logout`). Jest tests stub the transport with `src/test-utils/mockApi.ts`. Types in `src/types/index.ts` mirror the backend data model.
+Next.js 14 App Router. All pages under `src/app/`. Paths are never written by hand: backend endpoints come from `apiRoutes` (`src/lib/api/apiRoutes.ts`), frontend pages from `applicationRoutes` (`src/utils/applicationRoutes.ts`); both encode ids. API calls go through the shared axios instance `api` in `src/lib/api/axiosClient.ts` (`withCredentials: true` for session cookie passthrough). Its response interceptor turns non-2xx responses into `ApiError` (`src/lib/api/apiError.ts`) and redirects to `/login` on a 401 (except from `/auth/request-code`, `/auth/verify-code` and `/auth/logout`). The login page (`components/auth/AuthForm.tsx`) has two steps: email → "Send code", then the 6-digit code → "Sign in". Jest tests stub the transport with `src/test-utils/mockApi.ts`. Types in `src/types/index.ts` mirror the backend data model.
 
 Protected pages live under `src/app/(protected)/` with a shared layout. `/login` is the only public page. There is no auth middleware: a `401` from any API call redirects to `/login` (axios interceptor), and the login page redirects logged-in users to `/dashboard`. The only auth cookie is the backend's HttpOnly session cookie (no frontend hint cookie). Post-login redirect lands on `/dashboard`.
 

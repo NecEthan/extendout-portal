@@ -9,13 +9,13 @@ What the portal does today. Screens that still show sample data are listed in [o
 
 ## Authentication
 
-1. There is no public sign-up. Admins create accounts on the Team page (`POST /team`) with email, starting password, role (`admin`, `builder` or `client`) and an optional name.
-2. Passwords need at least 8 characters, one uppercase letter and one digit, and are stored as bcrypt hashes.
+1. There is no public sign-up. Admins create accounts on the Team page (`POST /team`) with email, role (`admin`, `builder` or `client`) and an optional name. There are no passwords.
+2. Users log in by entering their email and then a 6-digit code emailed to them (valid 10 minutes, single use, 5 wrong tries per code, 3 codes per email per 15 minutes). The response is the same whether or not the email has an account.
 3. Logging in creates a server-side session. The session id is sent as an `HttpOnly` cookie (`Secure` + `SameSite=None` in production, `SameSite=Lax` in development).
-4. Sessions expire 24 hours after login (fixed, not sliding) and can be invalidated server-side at any time.
+4. Sessions expire 400 days after login (fixed, not sliding) and can be invalidated server-side at any time.
 5. Logging out invalidates the session immediately.
 6. Users can fetch their own profile (`GET /auth/user`).
-7. After 5 failed logins for an email, that email is locked for 15 minutes, independent of per-IP rate limiting.
+7. After 7 wrong codes for an email, that email is locked for 15 minutes, independent of per-IP rate limiting.
 
 ---
 
@@ -104,7 +104,7 @@ What the portal does today. Screens that still show sample data are listed in [o
 
 ## Security
 
-51. Rate limits (slowapi + Redis): `/auth/login` 20/minute **per IP** (plus the per-email lock after 5 wrong passwords); `/query` 20/minute **per user**; uploads (new documents and new versions combined) 30/minute **per user**; every other route a 300/minute **per session** backstop. `/health` is never limited. Over the limit returns `429`.
+51. Rate limits (slowapi + Redis): `/auth/request-code` and `/auth/verify-code` 20/minute **per IP** (plus the per-email lock after 7 wrong codes); `/query` 20/minute **per user**; uploads (new documents and new versions combined) 30/minute **per user**; every other route a 300/minute **per session** backstop. `/health` is never limited. Over the limit returns `429`.
 52. API keys and credentials come from environment variables, never the frontend or source control.
 53. Changes that touch several related rows happen in a single transaction.
 
@@ -138,7 +138,8 @@ What the portal does today. Screens that still show sample data are listed in [o
 ## API
 
 ```
-POST   /auth/login
+POST   /auth/request-code
+POST   /auth/verify-code
 POST   /auth/logout
 GET    /auth/user
 

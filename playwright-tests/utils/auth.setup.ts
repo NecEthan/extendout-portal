@@ -1,12 +1,13 @@
 import { test as setup, expect, type APIRequestContext } from "@playwright/test";
 import fs from "fs";
-import { API, E2E_EMAIL, E2E_PASSWORD, PROJECT_FILE } from "./env";
+import { API, E2E_EMAIL, PROJECT_FILE } from "./env";
+import { latestLoginCode, loginByApi } from "./loginCode";
 
 // There is no public sign-up: an admin creates the E2E user and a project
-// through the API. Point these at an existing admin in the database under test
-// (CI creates test@gmail.com / password in .github/workflows/ci.yml).
+// through the API. Point this at an existing admin in the database under test
+// (CI creates test@gmail.com in .github/workflows/ci.yml). Logins use the
+// code from the backend's dev outbox (EMAIL_BACKEND=outbox).
 const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL ?? "test@gmail.com";
-const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? "password";
 
 async function ok(res: Awaited<ReturnType<APIRequestContext["get"]>>, what: string) {
   if (!res.ok()) {
@@ -17,16 +18,11 @@ async function ok(res: Awaited<ReturnType<APIRequestContext["get"]>>, what: stri
 }
 
 setup("seed and authenticate", async ({ page, request }) => {
-  await ok(
-    await request.post(`${API}/auth/login`, {
-      data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
-    }),
-    "admin login"
-  );
+  await loginByApi(request, ADMIN_EMAIL);
 
   // The E2E builder (created once; 409 means it already exists).
   const created = await request.post(`${API}/team`, {
-    data: { email: E2E_EMAIL, password: E2E_PASSWORD, role: "builder", name: "E2E Builder" },
+    data: { email: E2E_EMAIL, role: "builder", name: "E2E Builder" },
   });
   if (!created.ok() && created.status() !== 409) {
     throw new Error(`create user failed: ${created.status()}`);
@@ -56,8 +52,10 @@ setup("seed and authenticate", async ({ page, request }) => {
   // Sign the builder in through the UI and save the session for the specs.
   await page.goto("/login");
   await page.getByLabel("Email").fill(E2E_EMAIL);
-  await page.getByLabel("Password", { exact: true }).fill(E2E_PASSWORD);
-  await page.getByRole("button", { name: /sign in/i }).click();
+  await page.getByRole("button", { name: "Send code" }).click();
+  await expect(page.getByLabel("Code")).toBeVisible();
+  await page.getByLabel("Code").fill(await latestLoginCode(request, E2E_EMAIL));
+  await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/dashboard/);
 
   fs.mkdirSync(".auth", { recursive: true });

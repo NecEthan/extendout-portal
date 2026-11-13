@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy import delete, select
 
 from app.models.base import Document, ProjectMember, User
-from app.services.auth import hash_password
+from app.services.email import outbox_key
 from tests.fixtures.auth import TEST_PROJECT_ID, UNKNOWN_PROJECT_ID
 
 
@@ -19,7 +19,6 @@ async def make_user(db):
         user = User(
             email=f"team+{uuid.uuid4().hex[:8]}@example.com",
             name=f"Team {role}",
-            password_hash=await hash_password("password"),
             role=role,
         )
         db.add(user)
@@ -171,7 +170,7 @@ async def test_non_admin_cannot_manage_members(auth_client, make_user):
 async def test_public_registration_removed(client):
     response = await client.post(
         "/auth/register",
-        json={"email": "x@example.com", "password": "Password1", "role": "admin"},
+        json={"email": "x@example.com", "role": "admin"},
     )
     assert response.status_code == 404
 
@@ -189,17 +188,15 @@ async def created_emails(db):
         await db.commit()
 
 
-async def test_admin_creates_user_who_can_log_in(admin_client, client, created_emails):
+async def test_admin_creates_user_who_can_log_in(
+    admin_client, client, created_emails, redis
+):
     email = f"new+{uuid.uuid4().hex[:8]}@example.com"
     created_emails.append(email)
     response = await admin_client.post(
         "/team",
-        json={
-            "email": email,
-            "password": "Password1",
-            "role": "builder",
-            "name": " Bob ",
-        },
+        # No password: they log in with an emailed code. Email is stored lowercase.
+        json={"email": f" {email.upper()} ", "role": "builder", "name": " Bob "},
     )
     assert response.status_code == 201
     body = response.json()
@@ -211,16 +208,18 @@ async def test_admin_creates_user_who_can_log_in(admin_client, client, created_e
     listed = [m["email"] for m in (await admin_client.get("/team")).json()]
     assert email in listed
 
-    login = await client.post(
-        "/auth/login", json={"email": email, "password": "Password1"}
-    )
+    sent = await client.post("/auth/request-code", json={"email": email})
+    assert sent.status_code == 202
+    code = (await redis.get(outbox_key(email))).decode()
+    login = await client.post("/auth/verify-code", json={"email": email, "code": code})
     assert login.status_code == 200
 
 
 async def test_create_user_duplicate_email(admin_client, test_user):
     response = await admin_client.post(
         "/team",
-        json={"email": test_user.email, "password": "Password1", "role": "client"},
+        # Matched case-insensitively.
+        json={"email": test_user.email.upper(), "role": "client"},
     )
     assert response.status_code == 409
 
@@ -228,9 +227,9 @@ async def test_create_user_duplicate_email(admin_client, test_user):
 async def test_create_user_validation(admin_client):
     email = f"bad+{uuid.uuid4().hex[:8]}@example.com"
     for bad in (
-        {"email": email, "password": "short", "role": "client"},
-        {"email": email, "password": "nouppercase1", "role": "client"},
-        {"email": email, "password": "Password1", "role": "owner"},
+        {"email": email, "role": "owner"},
+        {"email": "", "role": "client"},
+        {"role": "client"},
     ):
         response = await admin_client.post("/team", json=bad)
         assert response.status_code == 422, bad
@@ -239,7 +238,7 @@ async def test_create_user_validation(admin_client):
 async def test_non_admin_cannot_create_user(auth_client):
     response = await auth_client.post(
         "/team",
-        json={"email": "x@example.com", "password": "Password1", "role": "admin"},
+        json={"email": "x@example.com", "role": "admin"},
     )
     assert response.status_code == 403
 
@@ -283,30 +282,28 @@ async def test_admin_can_edit_own_details_but_not_role(admin_client, admin_user)
     assert response.json()["name"] == "Boss"
 
 
-async def test_password_reset_signs_user_out(admin_client, client, make_user):
+async def test_edit_email_is_stored_lowercase_and_checked_case_insensitively(
+    admin_client, make_user, test_user
+):
     user = await make_user("client")
-    login = await client.post(
-        "/auth/login", json={"email": user.email, "password": "password"}
+    taken = await admin_client.patch(
+        f"/team/{user.id}", json={"email": test_user.email.upper()}
     )
-    assert login.status_code == 200
-    assert (await client.get("/auth/user")).status_code == 200
+    assert taken.status_code == 409
 
+    new_email = f"Mixed+{uuid.uuid4().hex[:8]}@Example.com"
+    response = await admin_client.patch(f"/team/{user.id}", json={"email": new_email})
+    assert response.status_code == 200
+    assert response.json()["email"] == new_email.lower()
+
+
+async def test_password_field_is_ignored(admin_client, make_user):
+    user = await make_user("client")
     response = await admin_client.patch(
         f"/team/{user.id}", json={"password": "NewPassword1"}
     )
     assert response.status_code == 200
-    assert (await client.get("/auth/user")).status_code == 401
-
-    relogin = await client.post(
-        "/auth/login", json={"email": user.email, "password": "NewPassword1"}
-    )
-    assert relogin.status_code == 200
-
-
-async def test_password_reset_validation(admin_client, make_user):
-    user = await make_user("client")
-    response = await admin_client.patch(f"/team/{user.id}", json={"password": "weak"})
-    assert response.status_code == 422
+    assert "password" not in response.json()
 
 
 async def test_non_admin_cannot_edit(auth_client, make_user):

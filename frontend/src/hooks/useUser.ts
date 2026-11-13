@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getUser, login, logout } from "@/lib/api/auth";
+import { getUser, logout, requestCode, verifyCode } from "@/lib/api/auth";
 
 export function useUser() {
   return useQuery({
@@ -8,11 +8,17 @@ export function useUser() {
   });
 }
 
-export function useLogin() {
+export function useRequestCode() {
+  return useMutation({
+    mutationFn: (email: string) => requestCode(email),
+  });
+}
+
+export function useVerifyCode() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ email, password }: { email: string; password: string }) =>
-      login(email, password),
+    mutationFn: ({ email, code }: { email: string; code: string }) =>
+      verifyCode(email, code),
     onSuccess: (user) => {
       queryClient.setQueryData(["user"], user);
     },

@@ -14,12 +14,20 @@ from app.limiter import global_rate_limit, limiter
 from app.logging_config import configure_logging
 from app.middleware import RequestLoggingMiddleware
 from app.poller import run_poller
-from app.routers import auth, documents, health, projects, query, team
+from app.routers import auth, dev, documents, health, projects, query, team
 from app.services import storage
 
 # Configure structured logging before the app object is created so that
 # any module-level loggers (e.g. in routers) pick up the configuration.
 configure_logging(settings.app_env)
+
+# The outbox email backend logs login codes and serves them at /dev/outbox;
+# it must never run anywhere real users log in.
+if settings.app_env != "development" and settings.email_backend != "emailjs":
+    raise RuntimeError(
+        "EMAIL_BACKEND must be 'emailjs' outside development "
+        f"(APP_ENV={settings.app_env!r}, EMAIL_BACKEND={settings.email_backend!r})"
+    )
 
 
 @asynccontextmanager
@@ -82,3 +90,5 @@ app.include_router(documents.router, prefix="/documents")
 app.include_router(query.router)
 app.include_router(projects.router, prefix="/projects")
 app.include_router(team.router, prefix="/team")
+if settings.email_backend == "outbox":
+    app.include_router(dev.router, prefix="/dev")

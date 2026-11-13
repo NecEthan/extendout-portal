@@ -2,11 +2,13 @@
 
 from fastapi import APIRouter
 
-from .login import router as _login_router
 from .logout import router as _logout_router
+from .request_code import router as _request_code_router
 from .user import router as _user_router
+from .verify_code import router as _verify_code_router
 
 router = APIRouter()
-router.routes.extend(_login_router.routes)
+router.routes.extend(_request_code_router.routes)
+router.routes.extend(_verify_code_router.routes)
 router.routes.extend(_logout_router.routes)
 router.routes.extend(_user_router.routes)

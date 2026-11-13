@@ -20,7 +20,6 @@ from app.models.base import (
     Session,
     User,
 )
-from app.services.auth import hash_password
 
 # Shared project that test_user is a member of. Upload test documents here.
 # A fixed id far above real ones (inserted explicitly; the identity is BY DEFAULT).
@@ -66,7 +65,6 @@ async def _delete_test_project_if_unused(db) -> None:
 async def test_user(db):
     user = User(
         email=f"test+{uuid.uuid4().hex[:8]}@example.com",
-        password_hash=await hash_password("password"),
         role="builder",
     )
     db.add(user)
@@ -94,7 +92,6 @@ async def test_user(db):
 async def admin_user(db):
     user = User(
         email=f"admin+{uuid.uuid4().hex[:8]}@example.com",
-        password_hash=await hash_password("password"),
         role="admin",
     )
     db.add(user)

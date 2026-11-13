@@ -101,16 +101,27 @@ async def test_query_limit_is_per_user(
 # ── Login: still per IP ───────────────────────────────────────────────────────
 
 
-async def test_login_limit_is_per_ip_across_emails(client):
+async def test_login_code_requests_are_limited_per_ip_across_emails(client):
     def attempt():
         return client.post(
-            "/auth/login",
-            json={"email": f"{uuid.uuid4().hex}@example.com", "password": "Wrong1234"},
+            "/auth/request-code", json={"email": f"{uuid.uuid4().hex}@example.com"}
+        )
+
+    assert (await attempt()).status_code == 202
+    assert (await attempt()).status_code == 202
+    # Different email again, same IP: blocked.
+    assert (await attempt()).status_code == 429
+
+
+async def test_code_checks_are_limited_per_ip_across_emails(client):
+    def attempt():
+        return client.post(
+            "/auth/verify-code",
+            json={"email": f"{uuid.uuid4().hex}@example.com", "code": "123456"},
         )
 
     assert (await attempt()).status_code == 401
     assert (await attempt()).status_code == 401
-    # Different email again, same IP: blocked.
     assert (await attempt()).status_code == 429
 
 

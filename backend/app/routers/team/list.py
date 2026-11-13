@@ -2,7 +2,7 @@
 There is no public sign-up; this is the only way accounts are made."""
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_db, require_admin
@@ -11,7 +11,6 @@ from app.schemas.team import (
     CreateTeamMemberRequest,
     TeamMemberResponse,
 )
-from app.services.auth import hash_password
 from app.services.team import get_memberships, to_team_member_response
 
 router = APIRouter(tags=["team"])
@@ -38,15 +37,18 @@ async def create_team_member(
     db: AsyncSession = Depends(get_db),
     _admin: User = Depends(require_admin),
 ) -> TeamMemberResponse:
-    """Admin creates an account. There is no public sign-up."""
+    """Admin creates an account. There is no public sign-up, and no password:
+    they log in with a code emailed to them."""
     request.state.audit_details = {"email": body.email, "role": body.role}
-    existing = await db.scalar(select(User).where(User.email == body.email))
+    # body.email is already trimmed and lowercased by the schema.
+    existing = await db.scalar(
+        select(User.id).where(func.lower(User.email) == body.email)
+    )
     if existing is not None:
         raise HTTPException(status_code=409, detail="Email already registered")
     user = User(
         email=body.email,
         name=(body.name or "").strip() or None,
-        password_hash=await hash_password(body.password),
         role=body.role,
     )
     db.add(user)

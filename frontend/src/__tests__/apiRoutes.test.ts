@@ -2,7 +2,8 @@ import { apiRoutes } from "@/lib/api/apiRoutes";
 
 describe("apiRoutes", () => {
   it("builds nested endpoint paths", () => {
-    expect(apiRoutes.auth.login).toBe("/auth/login");
+    expect(apiRoutes.auth.requestCode).toBe("/auth/request-code");
+    expect(apiRoutes.auth.verifyCode).toBe("/auth/verify-code");
     expect(apiRoutes.team.member("u-1")).toBe("/team/u-1");
     expect(apiRoutes.projects.project(7)).toBe("/projects/7");
     expect(apiRoutes.projects.member(7, "u-1")).toBe("/projects/7/members/u-1");

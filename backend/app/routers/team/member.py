@@ -5,16 +5,15 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_db, require_admin
-from app.models.base import Document, DocumentVersion, Session, User
+from app.models.base import Document, DocumentVersion, User
 from app.schemas.team import (
     TeamMemberResponse,
     TeamMemberUpdateRequest,
 )
-from app.services.auth import hash_password
 from app.services.team import get_memberships, to_team_member_response
 
 router = APIRouter(tags=["team"])
@@ -28,7 +27,7 @@ async def update_team_member(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ) -> TeamMemberResponse:
-    """Edit a user's name, email, role and/or password. Only fields sent change."""
+    """Edit a user's name, email and/or role. Only fields sent change."""
     user = await db.get(User, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -38,10 +37,12 @@ async def update_team_member(
 
     changes: dict[str, object] = {}
     if body.email is not None:
-        email = body.email.strip()
+        email = body.email  # already trimmed and lowercased by the schema
         if email != user.email:
             taken = await db.scalar(
-                select(User.id).where(User.email == email, User.id != user.id)
+                select(User.id).where(
+                    func.lower(User.email) == email, User.id != user.id
+                )
             )
             if taken is not None:
                 raise HTTPException(status_code=409, detail="Email already registered")
@@ -55,12 +56,6 @@ async def update_team_member(
     if body.role is not None and body.role != user.role:
         changes["role"] = {"old": user.role, "new": body.role}
         user.role = body.role
-    if body.password is not None:
-        changes["password"] = "reset"
-        user.password_hash = await hash_password(body.password)
-        if user.id != admin.id:
-            # Sign them out everywhere so the old password's sessions end.
-            await db.execute(delete(Session).where(Session.user_id == user.id))
     request.state.audit_details = {"changes": changes}
 
     await db.commit()

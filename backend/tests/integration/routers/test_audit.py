@@ -17,6 +17,7 @@ from app.audit import writers
 from app.audit.middleware import route_template, should_record
 from app.main import app
 from app.models.base import AuditEvent
+from app.services.login_codes import issue_code
 from tests.fixtures.auth import TEST_PROJECT_ID, UNKNOWN_PROJECT_ID
 from tests.helpers.processing import upload_doc
 
@@ -45,7 +46,7 @@ async def _events(db, **filters) -> list[AuditEvent]:
             {"document_id": "ab12", "version_id": "cd34"},
             "/documents/{document_id}/versions/{version_id}/activate",
         ),
-        ("/auth/login", {}, "/auth/login"),
+        ("/auth/verify-code", {}, "/auth/verify-code"),
         # Matched no route: no params, so the raw path is kept.
         ("/wp-admin", {}, "/wp-admin"),
     ],
@@ -63,7 +64,7 @@ def test_route_template(path, params, expected):
         # Changes, logins and searches: always.
         ("POST", "/documents", 202, True),
         ("DELETE", "/projects/{project_id}/photos/{photo_id}", 204, True),
-        ("POST", "/auth/login", 200, True),
+        ("POST", "/auth/verify-code", 200, True),
         ("POST", "/query", 200, True),
         # Opening a specific document or version: recorded.
         ("GET", "/documents/{document_id}", 200, True),
@@ -149,28 +150,29 @@ async def test_not_found_is_recorded_as_denied(auth_client, db, test_user):
     assert event.project_id == UNKNOWN_PROJECT_ID
 
 
-async def test_failed_login_records_email_but_not_password(client, db):
+async def test_failed_login_records_email_but_not_code(client, db):
     email = f"nobody+{uuid.uuid4().hex[:8]}@example.com"
     resp = await client.post(
-        "/auth/login", json={"email": email, "password": "secret-pw"}
+        "/auth/verify-code", json={"email": email, "code": "482913"}
     )
     assert resp.status_code == 401
 
-    events = await _events(db, route="/auth/login", outcome="denied")
+    events = await _events(db, route="/auth/verify-code", outcome="denied")
     [event] = [e for e in events if e.details.get("email") == email]
     assert event.details == {"email": email}
     assert event.actor_user_id is None
-    assert "secret-pw" not in str(event.details)
+    assert "482913" not in str(event.details)
 
 
-async def test_successful_login_records_the_user(client, db, test_user):
+async def test_successful_login_records_the_user(client, db, test_user, redis):
     user_id = test_user.id
+    code = await issue_code(redis, test_user.email)
     resp = await client.post(
-        "/auth/login", json={"email": test_user.email, "password": "password"}
+        "/auth/verify-code", json={"email": test_user.email, "code": code}
     )
     assert resp.status_code == 200
 
-    [event] = await _events(db, actor_user_id=user_id, route="/auth/login")
+    [event] = await _events(db, actor_user_id=user_id, route="/auth/verify-code")
     assert event.outcome == "success"
     assert event.actor_role == "builder"
 
@@ -219,7 +221,6 @@ async def test_role_change_records_old_and_new_role(admin_client, db, admin_user
             "/team",
             json={
                 "email": f"role+{uuid.uuid4().hex[:8]}@example.com",
-                "password": "Password123!",
                 "role": "client",
             },
         )

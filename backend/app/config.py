@@ -30,7 +30,21 @@ class Settings(BaseSettings):
     chat_model: str = "gpt-4o-mini"
 
     session_cookie_name: str = "eo_session"
-    session_max_age_hours: int = 24
+    # Login sessions last 400 days (Chrome's maximum cookie lifetime).
+    session_max_age_days: int = 400
+
+    # Login codes. "outbox" (local/CI) logs the code and keeps it in Redis for
+    # GET /dev/outbox/{email}; production must use "emailjs" (checked at startup).
+    email_backend: Literal["outbox", "emailjs"] = "outbox"
+    emailjs_service_id: str = ""
+    emailjs_template_id: str = ""
+    emailjs_public_key: str = ""
+    emailjs_private_key: str = ""
+    login_code_ttl_seconds: int = 600
+    # Wrong tries on one code before that code is cancelled (request a new one).
+    login_code_cancel_after_wrong_tries: int = 5
+    login_code_requests_per_window: int = 3  # codes per email per window
+    login_code_window_seconds: int = 900
 
     # Full drawing sets and scanned calc packs can be 50-100 MB.
     max_upload_size_mb: int = 100
@@ -45,11 +59,13 @@ class Settings(BaseSettings):
     llm_input_cost_per_1m_tokens: float = 0.150
     llm_output_cost_per_1m_tokens: float = 0.600
 
-    bcrypt_executor_workers: int = 50
-    # Per IP, across all emails. Kept above login_max_attempts so the per-email
-    # lock (and its message) is reached before this limit.
+    # Per IP, across all emails, for requesting and for verifying login codes.
+    # Kept above login_lockout_after_wrong_codes so the per-email lock (and its
+    # message) is reached before this limit.
     login_rate_limit: str = "20/minute"
-    login_max_attempts: int = 7
+    # Wrong codes for an email (across any codes) before that email is locked
+    # for login_lockout_seconds: no codes sent or accepted.
+    login_lockout_after_wrong_codes: int = 5
     login_lockout_seconds: int = 900
     query_rate_limit: str = "20/minute"  # per user
     upload_rate_limit: str = "30/minute"  # per user, documents + versions combined

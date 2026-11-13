@@ -184,12 +184,11 @@ jobs:
           import asyncio
           from app.database import AsyncSessionLocal
           from app.models.base import User
-          from app.services.auth import hash_password
 
           async def main():
               async with AsyncSessionLocal() as db:
-                  db.add(User(email="test@gmail.com", name="E2E Admin", role="admin",
-                              password_hash=await hash_password("password")))
+                  # No password: the E2E setup logs in with a code from the dev outbox.
+                  db.add(User(email="test@gmail.com", name="E2E Admin", role="admin"))
                   await db.commit()
 
           asyncio.run(main())
@@ -222,6 +221,9 @@ jobs:
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
           # Fake embeddings and answers: E2E never calls OpenAI.
           MOCK_LLM: "true"
+          # Login codes go to the dev outbox (read by utils/auth.setup.ts), not email.
+          EMAIL_BACKEND: outbox
+          LOGIN_CODE_REQUESTS_PER_WINDOW: "100"
       - name: Start ARQ worker
         working-directory: backend
         run: uv run arq app.workers.main.WorkerSettings &

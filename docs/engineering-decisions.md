@@ -2,15 +2,15 @@
 
 ## Per-Email Brute Force Protection
 
-IP rate limiting alone doesn't stop an attacker with rotating proxies targeting a specific account. After 7 failed login attempts for an email address (the 8th attempt is refused), that email is locked for 15 minutes via a Redis counter (`login_fail:{email}`). Successful login clears the counter. Window and attempt count are config-driven (`login_max_attempts`, `login_lockout_seconds`). This can be abused to lock someone out on purpose; see _Login uses two counters_ under Rate Limiting: How It Works.
+IP rate limiting alone doesn't stop an attacker with rotating proxies targeting a specific account. After 7 wrong login codes for an email address (the 8th attempt is refused, and no new codes are sent), that email is locked for 15 minutes via a Redis counter (`login_fail:{email}`). Successful login clears the counter. Each code also allows only 5 wrong tries, and an email can request 3 codes per 15 minutes. Window and attempt count are config-driven (`login_lockout_after_wrong_codes`, `login_lockout_seconds`). This can be abused to lock someone out on purpose; see _Login uses two counters_ under Rate Limiting: How It Works.
 
-## Password Strength
+## Passwordless Login
 
-Minimum 8 characters enforced at the Pydantic schema level, plus at least one uppercase letter and one digit, when an admin creates an account (`POST /team`). Validation happens before the bcrypt hash is computed — no wasted CPU on weak passwords.
+Builders and clients log in rarely, so passwords were forgotten and admins had to reset them. Login is now a 6-digit code emailed to the user (`POST /auth/request-code`, then `POST /auth/verify-code`), and the session lasts 400 days (Chrome's maximum cookie lifetime; Safari caps it at 7 days while the frontend and API are on different hosts' IPs). No passwords are stored. Security rests on the user's email inbox, as with any "forgot password" flow. Codes are sent from the backend through EmailJS's REST API with the private key, never from the browser.
 
 ## Auth Rate Limiting
 
-`POST /auth/login` is capped at 20 requests/minute per IP, across all emails, to stop one machine trying many accounts. Window resets after 60 seconds, no permanent lockout. Configured by `login_rate_limit`. It was 5/minute at first, the same as the per-email lock threshold at the time (5, now 7); because the IP check runs first, the 6th wrong password was answered by the IP limit instead of the lock. Keeping it above `login_max_attempts` means a user guessing one account gets the lock.
+`POST /auth/request-code` and `POST /auth/verify-code` are each capped at 20 requests/minute per IP, across all emails, to stop one machine trying many accounts. Window resets after 60 seconds, no permanent lockout. Configured by `login_rate_limit`. It was 5/minute at first, the same as the per-email lock threshold at the time (5, now 7); because the IP check runs first, the 6th wrong attempt was answered by the IP limit instead of the lock. Keeping it above `login_lockout_after_wrong_codes` means a user guessing one account gets the lock.
 
 ## No Public Sign-Up
 
@@ -176,7 +176,7 @@ Each limit is a counter in Redis. The **key** is the counter's name, and it deci
 - `user:805b9b6a-…`: search and uploads
 - `session:ba7816bf…`: the backstop (a hash of the session cookie, so raw tokens never become Redis keys)
 
-Every request adds 1 to its counter **before** the endpoint runs, so rejected requests (wrong file type, duplicate file, wrong password) still count. Over the limit returns `429`. Each counter expires at the end of its window, so Redis deletes it automatically and nothing needs cleaning up.
+Every request adds 1 to its counter **before** the endpoint runs, so rejected requests (wrong file type, duplicate file, wrong login code) still count. Over the limit returns `429`. Each counter expires at the end of its window, so Redis deletes it automatically and nothing needs cleaning up.
 
 Counters live in Redis rather than in the API's memory because the API runs 2 uvicorn processes. With in-memory counts, each process would count separately and every user would effectively get double their limit.
 
@@ -193,12 +193,12 @@ One shared counter for the whole app would let a single misbehaving client use u
 | Counter                                         | Goes up on               | Limit              | Resets                                                      |
 | ----------------------------------------------- | ------------------------ | ------------------ | ----------------------------------------------------------- |
 | Rate limit, per IP                              | Every attempt, any email | 20/min → `429`     | After 1 minute                                              |
-| Failure count, per email (`login_fail:{email}`) | Wrong password only      | 5 → locked (`429`) | 15 minutes after the last failure, or on a successful login |
+| Failure count, per email (`login_fail:{email}`) | Wrong code only          | 7 → locked (`429`) | 15 minutes after the last failure, or on a successful login |
 
 Trade-offs, accepted while accounts are invited by an admin:
 
 - **Shared IP.** People on the same office Wi-Fi share the 20/min login budget, so one person repeatedly mistyping briefly slows the others.
-- **Lockout abuse.** Anyone who knows an email can type 5 wrong passwords and lock that account for 15 minutes. If this becomes a problem: shorten the lockout, add a CAPTCHA after a few failures, or don't count failures from IPs that have logged into that account before.
+- **Lockout abuse.** Anyone who knows an email can enter 7 wrong codes and lock that account for 15 minutes. If this becomes a problem: shorten the lockout, add a CAPTCHA after a few failures, or don't count failures from IPs that have logged into that account before.
 
 ## The backstop isn't DDoS protection
 
@@ -222,7 +222,7 @@ For production, set a memory cap (e.g. `maxmemory 256mb` with `maxmemory-policy 
 
 ## Uvicorn Workers (HTTP)
 
-The backend runs with `--workers 2`, meaning two separate Python processes each with their own asyncio event loop. A single worker handles I/O-bound work (DB queries, Redis, MinIO) efficiently via async, but bcrypt password hashing is CPU-bound and blocks the event loop while it runs. A second worker means bcrypt on one process does not delay unrelated requests on the other. Two workers were chosen rather than four because each worker holds its own DB connection pool, and the total connection count across all workers must stay within PostgreSQL's `max_connections` limit.
+The backend runs with `--workers 2`, meaning two separate Python processes each with their own asyncio event loop. A single worker handles I/O-bound work (DB queries, Redis, MinIO) efficiently via async, but CPU-bound work in a request (e.g. stripping photo metadata, checking uploaded files) blocks its event loop while it runs. A second worker means that work on one process does not delay unrelated requests on the other. (Originally this was bcrypt password hashing, removed with passwordless login.) Two workers were chosen rather than four because each worker holds its own DB connection pool, and the total connection count across all workers must stay within PostgreSQL's `max_connections` limit.
 
 ## ARQ Worker (Background Jobs)
 

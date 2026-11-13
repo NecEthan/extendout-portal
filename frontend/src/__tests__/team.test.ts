@@ -14,14 +14,14 @@ describe("team API", () => {
   it("sends only the changed fields when editing someone", async () => {
     respond(200, member);
     await expect(
-      updateTeamMember("u-1", { name: "Sam", password: "Password1" })
+      updateTeamMember("u-1", { name: "Sam", role: "client" })
     ).resolves.toEqual(member);
     const req = lastRequest();
     expect(req.method).toBe("patch");
     expect(req.url).toBe("/team/u-1");
     expect(JSON.parse(req.data)).toEqual({
       name: "Sam",
-      password: "Password1",
+      role: "client",
     });
   });
 

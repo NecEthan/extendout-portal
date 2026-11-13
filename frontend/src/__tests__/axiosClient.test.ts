@@ -1,12 +1,12 @@
 import { ApiError } from "@/lib/api/apiError";
-import { getUser, login } from "@/lib/api/auth";
+import { getUser, requestCode, verifyCode } from "@/lib/api/auth";
 import { navigateTo } from "@/lib/navigation";
 import { createUser } from "@/lib/api/team";
 import { lastRequest, networkError, respond } from "@/test-utils/mockApi";
 
 jest.mock("@/lib/navigation", () => ({ navigateTo: jest.fn() }));
 
-const newUser = { email: "a@b.com", password: "pw", role: "builder" as const };
+const newUser = { email: "a@b.com", role: "builder" as const };
 
 describe("axios client", () => {
   it("returns parsed JSON on success", async () => {
@@ -38,15 +38,15 @@ describe("axios client", () => {
       detail: [
         { loc: ["body", "email"], msg: "field required", type: "missing" },
         {
-          loc: ["body", "password"],
-          msg: "string too short",
+          loc: ["body", "role"],
+          msg: "invalid role",
           type: "value_error",
         },
       ],
     });
     await expect(createUser(newUser)).rejects.toMatchObject({
       status: 422,
-      message: "field required, string too short",
+      message: "field required, invalid role",
     });
   });
 
@@ -97,14 +97,35 @@ describe("expired session (401)", () => {
     expect(settled).toBe(false);
   });
 
-  it("does not redirect on a failed login (wrong password)", async () => {
-    window.history.pushState({}, "", "/login");
-    respond(401, { detail: "Invalid credentials" });
-    await expect(login("a@b.com", "wrong")).rejects.toMatchObject({
+  it("does not redirect on a wrong login code", async () => {
+    // Even off /login: a 401 from the code endpoints is an answer, not an
+    // expired session.
+    respond(401, { detail: "That code is wrong or has expired." });
+    await expect(verifyCode("a@b.com", "000000")).rejects.toMatchObject({
       status: 401,
-      message: "Invalid credentials",
+      message: "That code is wrong or has expired.",
     });
+    respond(401, { detail: "Not allowed" });
+    await expect(requestCode("a@b.com")).rejects.toBeInstanceOf(ApiError);
     expect(navigateTo).not.toHaveBeenCalled();
+  });
+
+  it("sends the email and code to the login endpoints", async () => {
+    respond(202, { detail: "sent" });
+    await requestCode("a@b.com");
+    expect(lastRequest().url).toBe("/auth/request-code");
+    expect(JSON.parse(lastRequest().data)).toEqual({ email: "a@b.com" });
+
+    respond(200, { id: "1", email: "a@b.com" });
+    await expect(verifyCode("a@b.com", "482913")).resolves.toEqual({
+      id: "1",
+      email: "a@b.com",
+    });
+    expect(lastRequest().url).toBe("/auth/verify-code");
+    expect(JSON.parse(lastRequest().data)).toEqual({
+      email: "a@b.com",
+      code: "482913",
+    });
   });
 
   it("rejects instead of redirecting when already on /login", async () => {

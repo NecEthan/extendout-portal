@@ -1,4 +1,4 @@
-import { type Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 
 export class LoginPage {
   constructor(private readonly page: Page) {}
@@ -7,10 +7,17 @@ export class LoginPage {
     await this.page.goto("/login");
   }
 
-  async login(email: string, password: string) {
-    await this.page.getByLabel("Email").fill(email);
-    await this.page.getByLabel("Password", { exact: true }).fill(password);
-    await this.page.getByRole("button", { name: /sign in/i }).click();
+  /** Step 1: enter the email and ask for a code. */
+  async requestCode(email: string) {
+    await this.emailInput().fill(email);
+    await this.sendCodeButton().click();
+    await expect(this.codeInput()).toBeVisible();
+  }
+
+  /** Step 2: enter the emailed code and sign in. */
+  async enterCode(code: string) {
+    await this.codeInput().fill(code);
+    await this.signInButton().click();
   }
 
   async signOut() {
@@ -21,11 +28,15 @@ export class LoginPage {
     return this.page.getByLabel("Email");
   }
 
-  passwordInput() {
-    return this.page.getByLabel("Password", { exact: true });
+  sendCodeButton() {
+    return this.page.getByRole("button", { name: "Send code" });
+  }
+
+  codeInput() {
+    return this.page.getByLabel("Code");
   }
 
   signInButton() {
-    return this.page.getByRole("button", { name: /sign in/i });
+    return this.page.getByRole("button", { name: "Sign in" });
   }
 }

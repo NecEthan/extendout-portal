@@ -2,9 +2,9 @@ import fs from "fs";
 
 export const API = "http://localhost:8000";
 
-/** The builder every authenticated spec runs as (created by auth.setup.ts). */
+/** The builder every authenticated spec runs as (created by auth.setup.ts).
+ * There are no passwords: specs log in with the code from the dev outbox. */
 export const E2E_EMAIL = "e2e@example.com";
-export const E2E_PASSWORD = "Password123";
 
 /** Written by auth.setup.ts: the project created for this run. */
 export const PROJECT_FILE = ".auth/project.json";

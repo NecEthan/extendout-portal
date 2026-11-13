@@ -20,9 +20,13 @@ export const api = axios.create({
   withCredentials: true,
 });
 
-// Endpoints where a 401 is a normal answer (e.g. wrong password), not an
+// Endpoints where a 401 is a normal answer (e.g. a wrong login code), not an
 // expired session, so the caller handles it instead of being redirected.
-const AUTH_ENDPOINTS = [apiRoutes.auth.login, apiRoutes.auth.logout];
+const AUTH_ENDPOINTS = [
+  apiRoutes.auth.requestCode,
+  apiRoutes.auth.verifyCode,
+  apiRoutes.auth.logout,
+];
 
 /**
  * Not logged in, or the session expired. This is how protected pages send

@@ -1,33 +1,13 @@
-import asyncio
 import secrets
 import uuid
-from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 
-import bcrypt
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config import settings
 from app.models.base import Session
-
-_bcrypt_executor = ThreadPoolExecutor(max_workers=settings.bcrypt_executor_workers)
-
-
-async def hash_password(password: str) -> str:
-    loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(
-        _bcrypt_executor,
-        lambda: bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode(),
-    )
-
-
-async def verify_password(plain: str, hashed: str) -> bool:
-    loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(
-        _bcrypt_executor, lambda: bcrypt.checkpw(plain.encode(), hashed.encode())
-    )
 
 
 async def create_session(db: AsyncSession, user_id: uuid.UUID) -> Session:
@@ -36,7 +16,7 @@ async def create_session(db: AsyncSession, user_id: uuid.UUID) -> Session:
     session = Session(
         session_token=token,
         user_id=user_id,
-        expires_at=now + timedelta(hours=settings.session_max_age_hours),
+        expires_at=now + timedelta(days=settings.session_max_age_days),
     )
     db.add(session)
     return session

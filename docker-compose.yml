@@ -83,6 +83,15 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       MOCK_LLM: ${MOCK_LLM:-false}
       LOGIN_RATE_LIMIT: ${LOGIN_RATE_LIMIT:-20/minute}
+      # Login codes: "outbox" logs them and serves them at GET /dev/outbox/{email}
+      # (no email sent). Set EMAIL_BACKEND=emailjs + EMAILJS_* to send real ones.
+      EMAIL_BACKEND: ${EMAIL_BACKEND:-outbox}
+      EMAILJS_SERVICE_ID: ${EMAILJS_SERVICE_ID:-}
+      EMAILJS_TEMPLATE_ID: ${EMAILJS_TEMPLATE_ID:-}
+      EMAILJS_PUBLIC_KEY: ${EMAILJS_PUBLIC_KEY:-}
+      EMAILJS_PRIVATE_KEY: ${EMAILJS_PRIVATE_KEY:-}
+      # E2E requests codes for the same emails every run; production keeps 3/15 min.
+      LOGIN_CODE_REQUESTS_PER_WINDOW: ${LOGIN_CODE_REQUESTS_PER_WINDOW:-100}
       # Local dev: audit log goes to /tmp/extendout-portal-audit.log in the
       # container (docker compose exec backend tail -f /tmp/extendout-portal-audit.log)
       AUDIT_BACKEND: file

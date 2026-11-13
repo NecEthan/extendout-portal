@@ -3,7 +3,8 @@ const enc = (id: Id) => encodeURIComponent(id);
 
 export const apiRoutes = {
   auth: {
-    login: "/auth/login",
+    requestCode: "/auth/request-code",
+    verifyCode: "/auth/verify-code",
     logout: "/auth/logout",
     user: "/auth/user",
   },

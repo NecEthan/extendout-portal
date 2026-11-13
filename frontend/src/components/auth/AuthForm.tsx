@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { applicationRoutes } from "@/utils/applicationRoutes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import {
   Card,
@@ -16,28 +15,63 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ErrorAlert } from "@/components/ui/error-alert";
-import { useLogin, useUser } from "@/hooks/useUser";
+import { useRequestCode, useUser, useVerifyCode } from "@/hooks/useUser";
 import { getErrorMessage } from "@/lib/errorMessage";
 
+/** Passwordless sign-in: enter your email, get a 6-digit code by email, enter
+ * it. The session then lasts 400 days on this browser. */
 export function AuthForm() {
   const router = useRouter();
+  const [step, setStep] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const loginMutation = useLogin();
+  const [code, setCode] = useState("");
+  const [resent, setResent] = useState(false);
+  const requestCode = useRequestCode();
+  const verifyCode = useVerifyCode();
   const currentUser = useUser();
   useEffect(() => {
     if (currentUser.data) router.replace(applicationRoutes.dashboard);
   }, [currentUser.data, router]);
 
-  function handleSubmit(e: React.FormEvent) {
+  function sendCode(e: React.FormEvent) {
     e.preventDefault();
-    loginMutation.mutate(
-      { email, password },
+    requestCode.mutate(email.trim(), {
+      onSuccess: () => {
+        setStep("code");
+        setCode("");
+      },
+    });
+  }
+
+  function resendCode() {
+    verifyCode.reset();
+    requestCode.mutate(email.trim(), {
+      onSuccess: () => {
+        setCode("");
+        setResent(true);
+      },
+    });
+  }
+
+  function changeEmail() {
+    setStep("email");
+    setCode("");
+    setResent(false);
+    requestCode.reset();
+    verifyCode.reset();
+  }
+
+  function signIn(e: React.FormEvent) {
+    e.preventDefault();
+    verifyCode.mutate(
+      { email: email.trim(), code },
       { onSuccess: () => router.push(applicationRoutes.dashboard) }
     );
   }
 
-  const error = getErrorMessage(loginMutation, "An unexpected error occurred.");
+  const error =
+    getErrorMessage(verifyCode, "Couldn't sign in. Try again.") ??
+    getErrorMessage(requestCode, "Couldn't send the code. Try again.");
 
   return (
     <main className="grid min-h-screen lg:grid-cols-2">
@@ -85,50 +119,108 @@ export function AuthForm() {
         />
         <Card className="w-full max-w-sm">
           <CardHeader>
-            <CardTitle className="font-heading text-xl">Sign in</CardTitle>
+            <CardTitle className="font-heading text-xl">
+              {step === "email" ? "Sign in" : "Check your email"}
+            </CardTitle>
             <p className="text-sm text-muted-foreground">
-              Welcome back to the ExtendOut Portal.
+              {step === "email" ? (
+                "Enter your email and we'll send you a sign-in code."
+              ) : (
+                <>
+                  We sent a 6-digit code to{" "}
+                  <span className="font-medium text-foreground">
+                    {email.trim()}
+                  </span>
+                  . It expires in 10 minutes.
+                </>
+              )}
             </p>
           </CardHeader>
 
-          <form onSubmit={handleSubmit}>
-            <CardContent className="flex flex-col gap-4">
-              <ErrorAlert message={error} />
-
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="password">Password</Label>
-                <PasswordInput
-                  id="password"
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-            </CardContent>
-
-            <CardFooter>
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={loginMutation.isPending}
-              >
-                Sign in
-              </Button>
-            </CardFooter>
-          </form>
+          {step === "email" ? (
+            <form onSubmit={sendCode}>
+              <CardContent className="flex flex-col gap-4">
+                <ErrorAlert message={error} />
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    autoFocus
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={!email.trim() || requestCode.isPending}
+                >
+                  {requestCode.isPending ? "Sending…" : "Send code"}
+                </Button>
+              </CardFooter>
+            </form>
+          ) : (
+            <form onSubmit={signIn}>
+              <CardContent className="flex flex-col gap-4">
+                <ErrorAlert message={error} />
+                {resent && !error && (
+                  <p role="status" className="text-sm text-muted-foreground">
+                    New code sent. Use the latest email.
+                  </p>
+                )}
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="code">Code</Label>
+                  <Input
+                    id="code"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    pattern="[0-9]{6}"
+                    maxLength={6}
+                    required
+                    autoFocus
+                    className="text-center text-lg tracking-[0.5em]"
+                    value={code}
+                    onChange={(e) =>
+                      setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+                    }
+                  />
+                </div>
+              </CardContent>
+              <CardFooter className="flex flex-col gap-2">
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={code.length !== 6 || verifyCode.isPending}
+                >
+                  {verifyCode.isPending ? "Signing in…" : "Sign in"}
+                </Button>
+                <div className="flex w-full justify-between">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={changeEmail}
+                  >
+                    Use a different email
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={requestCode.isPending}
+                    onClick={resendCode}
+                  >
+                    {requestCode.isPending ? "Sending…" : "Send a new code"}
+                  </Button>
+                </div>
+              </CardFooter>
+            </form>
+          )}
         </Card>
       </div>
     </main>

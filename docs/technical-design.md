@@ -109,7 +109,7 @@ Limits live in `app/limiter.py` (slowapi + Redis), each keyed to fit the route:
 
 | Route | Limit | Key | Why |
 |---|---|---|---|
-| `POST /auth/login` | 20/min | IP | Credential attacks. Nobody is signed in yet, so IP is the only key. Failed logins also lock the email for 15 minutes after 5 attempts. |
+| `POST /auth/request-code`, `POST /auth/verify-code` | 20/min each | IP | Code guessing and email spam. Nobody is signed in yet, so IP is the only key. Wrong codes also lock the email for 15 minutes after 7 attempts. |
 | `POST /query` | 20/min | User | Each query costs two OpenAI calls. |
 | `POST /documents` + `POST /documents/{id}/versions` | 30/min combined | User | The most expensive action: up to 100 MB stored, then OCR and hundreds of embedding calls in the worker. |
 | Everything else | 300/min | Session | Backstop for a client stuck in a loop. Well above normal use (the documents tab polls ~20/min). `/health` is exempt. |
@@ -126,7 +126,7 @@ Structured logs (`structlog`) to stdout: request logs with `request_id`, status 
 
 ### Audit log
 
-`AuditMiddleware` (`app/audit/middleware.py`) records every change, every failed or denied request, and every successful document or version open (`should_record`), skipping other successful reads, `/health` and `OPTIONS`. Each entry has who (user id, email, name and role, from `request.state`, set by `get_current_user`), method and route template (e.g. `DELETE /projects/{project_id}/photos/{photo_id}`, rebuilt from the URL and its path parameters), status code and outcome (`success` / `denied` for 4xx / `error` for 5xx), project and entity from the path parameters, IP, user agent, duration, and `details` an endpoint adds (`request.state.audit_details`, never passwords, file contents or search text). It's plain ASGI so unhandled exceptions are recorded as 500s, and it writes after the endpoint finishes; a failed write is logged (`audit_write_failed`) without affecting the response. Each entry is also logged as an `audit_event` line.
+`AuditMiddleware` (`app/audit/middleware.py`) records every change, every failed or denied request, and every successful document or version open (`should_record`), skipping other successful reads, `/health` and `OPTIONS`. Each entry has who (user id, email, name and role, from `request.state`, set by `get_current_user`), method and route template (e.g. `DELETE /projects/{project_id}/photos/{photo_id}`, rebuilt from the URL and its path parameters), status code and outcome (`success` / `denied` for 4xx / `error` for 5xx), project and entity from the path parameters, IP, user agent, duration, and `details` an endpoint adds (`request.state.audit_details`, never login codes, file contents or search text). It's plain ASGI so unhandled exceptions are recorded as 500s, and it writes after the endpoint finishes; a failed write is logged (`audit_write_failed`) without affecting the response. Each entry is also logged as an `audit_event` line.
 
 Where entries go depends on `AUDIT_BACKEND`: `file` (local development, set in `docker-compose.yml` and `backend/.env`) appends JSON lines to `<temp dir>/extendout-portal-audit.log`; `db` (default; production and tests) inserts into `audit_events`, which a trigger keeps append-only. The log isn't exposed in the app (no page or API); read the table with a database client. Details in `docs/audit-logging-plan.md`.
 

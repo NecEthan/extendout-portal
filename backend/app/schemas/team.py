@@ -2,7 +2,7 @@ import uuid
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.schemas.auth import UserRole
+from app.schemas.auth import UserRole, normalise_email
 
 
 class MemberResponse(BaseModel):
@@ -22,41 +22,31 @@ class TeamMemberResponse(MemberResponse):
     project_ids: list[int]
 
 
-def _check_password_strength(v: str) -> str:
-    if not any(c.isupper() for c in v):
-        raise ValueError("Password must contain at least one uppercase letter")
-    if not any(c.isdigit() for c in v):
-        raise ValueError("Password must contain at least one digit")
-    return v
-
-
 class CreateTeamMemberRequest(BaseModel):
-    """Admin creates an account. This is the only way accounts are created."""
+    """Admin creates an account. This is the only way accounts are created.
+    People log in with a code emailed to them, so there's no password."""
 
-    email: str
-    password: str = Field(min_length=8)
+    email: str = Field(min_length=3, max_length=320)
     role: UserRole
     name: str | None = Field(default=None, max_length=200)
 
-    @field_validator("password")
+    @field_validator("email")
     @classmethod
-    def password_strength(cls, v: str) -> str:
-        return _check_password_strength(v)
+    def _normalise(cls, v: str) -> str:
+        return normalise_email(v)
 
 
 class TeamMemberUpdateRequest(BaseModel):
-    """Admin edits an account. Every field is optional; only those sent change.
-    `password` resets the user's password (and signs them out everywhere)."""
+    """Admin edits an account. Every field is optional; only those sent change."""
 
-    email: str | None = Field(default=None, min_length=3)
+    email: str | None = Field(default=None, min_length=3, max_length=320)
     name: str | None = Field(default=None, max_length=200)
     role: UserRole | None = None
-    password: str | None = Field(default=None, min_length=8)
 
-    @field_validator("password")
+    @field_validator("email")
     @classmethod
-    def password_strength(cls, v: str | None) -> str | None:
-        return None if v is None else _check_password_strength(v)
+    def _normalise(cls, v: str | None) -> str | None:
+        return None if v is None else normalise_email(v)
 
 
 class AddMemberRequest(BaseModel):

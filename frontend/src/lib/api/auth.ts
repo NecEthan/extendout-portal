@@ -3,11 +3,18 @@ import { ApiError } from "./apiError";
 import { apiRoutes } from "./apiRoutes";
 import { api } from "./axiosClient";
 
-export async function login(email: string, password: string): Promise<User> {
-  // The backend sets the HttpOnly session cookie; nothing to store here.
-  const { data: user } = await api.post<User>(apiRoutes.auth.login, {
+/** Emails a 6-digit login code. The answer is the same whether or not the
+ * email has an account. */
+export async function requestCode(email: string): Promise<void> {
+  await api.post(apiRoutes.auth.requestCode, { email });
+}
+
+/** Logs in with the emailed code. The backend sets the HttpOnly session
+ * cookie (400 days); nothing to store here. */
+export async function verifyCode(email: string, code: string): Promise<User> {
+  const { data: user } = await api.post<User>(apiRoutes.auth.verifyCode, {
     email,
-    password,
+    code,
   });
   return user;
 }

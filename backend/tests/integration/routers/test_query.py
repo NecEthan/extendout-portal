@@ -17,7 +17,6 @@ from app.models.base import (
     DocumentVersion,
     User,
 )
-from app.services.auth import hash_password
 from tests.fixtures.auth import TEST_PROJECT_ID
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -341,7 +340,6 @@ async def test_restricted_document_not_visible_to_other_user(auth_client, db, te
     # Create User B and their document.
     user_b = User(
         email=f"userb+{uuid.uuid4().hex[:8]}@example.com",
-        password_hash=await hash_password("password"),
         role="builder",
     )
     db.add(user_b)
