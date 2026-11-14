@@ -6,7 +6,7 @@ IP rate limiting alone doesn't stop an attacker with rotating proxies targeting 
 
 ## Passwordless Login
 
-Builders and clients log in rarely, so passwords were forgotten and admins had to reset them. Login is now a 6-digit code emailed to the user (`POST /auth/request-code`, then `POST /auth/verify-code`), and the session lasts 400 days (Chrome's maximum cookie lifetime; Safari caps it at 7 days while the frontend and API are on different hosts' IPs). No passwords are stored. Security rests on the user's email inbox, as with any "forgot password" flow. Codes are sent from the backend through EmailJS's REST API with the private key, never from the browser.
+Builders and clients log in rarely, so passwords were forgotten and admins had to reset them. Login is now a 6-digit code emailed to the user (`POST /auth/request-code`, then `POST /auth/verify-code`), and the session lasts 400 days (Chrome's maximum cookie lifetime; Safari caps it at 7 days while the frontend and API are on different hosts' IPs). No passwords are stored. Security rests on the user's email inbox, as with any "forgot password" flow. Codes are sent from the backend through Resend's API, from an address on ExtendOut's own verified domain, never from the browser. (EmailJS via a Gmail account was tried first and dropped: Google revokes those Gmail connections without warning, which stops all logins.)
 
 ## Auth Rate Limiting
 

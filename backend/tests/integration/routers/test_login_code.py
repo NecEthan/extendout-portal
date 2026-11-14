@@ -124,13 +124,13 @@ async def test_wrong_code_is_refused(client, test_user, redis):
     assert "wrong or has expired" in response.json()["detail"]
 
 
-async def test_code_is_cancelled_after_five_wrong_tries(client, test_user, redis):
+async def test_code_is_cancelled_after_too_many_wrong_tries(client, test_user, redis):
     await _request_code(client, test_user.email)
-    right = await _sent_code(redis, test_user.email)
     wrong = await _wrong_code(redis, test_user.email)
     for _ in range(settings.login_code_cancel_after_wrong_tries):
-        assert (await _verify(client, test_user.email, wrong)).status_code == 401
-    assert (await _verify(client, test_user.email, right)).status_code == 401
+        await _verify(client, test_user.email, wrong)
+    # The code itself is gone, whatever the email lockout says.
+    assert f"login_code:{test_user.email}" not in redis.hashes
 
 
 async def test_new_code_replaces_the_old_one(client, test_user, redis):
@@ -159,9 +159,9 @@ async def test_code_must_be_six_digits(client, test_user):
 # ── Lockout ───────────────────────────────────────────────────────────────────
 
 
-async def test_locks_after_seven_wrong_codes(client, test_user, redis):
-    assert settings.login_lockout_after_wrong_codes == 7
-    for _ in range(7):
+async def test_locks_after_too_many_wrong_codes(client, test_user, redis):
+    limit = settings.login_lockout_after_wrong_codes
+    for _ in range(limit):
         assert (await _verify(client, test_user.email, "000000")).status_code == 401
     assert redis.ttl_seconds[f"login_fail:{test_user.email}"] == 900
 
@@ -174,7 +174,7 @@ async def test_locks_after_seven_wrong_codes(client, test_user, redis):
 
 
 async def test_successful_login_resets_the_wrong_code_count(client, test_user, redis):
-    for _ in range(6):
+    for _ in range(settings.login_lockout_after_wrong_codes - 1):
         await _verify(client, test_user.email, "000000")
     await _request_code(client, test_user.email)
     code = await _sent_code(redis, test_user.email)

@@ -34,12 +34,12 @@ class Settings(BaseSettings):
     session_max_age_days: int = 400
 
     # Login codes. "outbox" (local/CI) logs the code and keeps it in Redis for
-    # GET /dev/outbox/{email}; production must use "emailjs" (checked at startup).
-    email_backend: Literal["outbox", "emailjs"] = "outbox"
-    emailjs_service_id: str = ""
-    emailjs_template_id: str = ""
-    emailjs_public_key: str = ""
-    emailjs_private_key: str = ""
+    # GET /dev/outbox/{email}; production must use "resend" (checked at startup).
+    email_backend: Literal["outbox", "resend"] = "outbox"
+    resend_api_key: str = ""
+    # Sender shown in the inbox; the address must be on the domain verified in
+    # Resend, e.g. "ExtendOut Portal <portal@mail.extendout.co.uk>".
+    email_from: str = ""
     login_code_ttl_seconds: int = 600
     # Wrong tries on one code before that code is cancelled (request a new one).
     login_code_cancel_after_wrong_tries: int = 5

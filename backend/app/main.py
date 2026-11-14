@@ -23,11 +23,16 @@ configure_logging(settings.app_env)
 
 # The outbox email backend logs login codes and serves them at /dev/outbox;
 # it must never run anywhere real users log in.
-if settings.app_env != "development" and settings.email_backend != "emailjs":
-    raise RuntimeError(
-        "EMAIL_BACKEND must be 'emailjs' outside development "
-        f"(APP_ENV={settings.app_env!r}, EMAIL_BACKEND={settings.email_backend!r})"
-    )
+if settings.app_env != "development":
+    if settings.email_backend != "resend":
+        raise RuntimeError(
+            "EMAIL_BACKEND must be 'resend' outside development "
+            f"(APP_ENV={settings.app_env!r}, EMAIL_BACKEND={settings.email_backend!r})"
+        )
+    if not settings.resend_api_key or not settings.email_from:
+        raise RuntimeError(
+            "RESEND_API_KEY and EMAIL_FROM must be set outside development"
+        )
 
 
 @asynccontextmanager
