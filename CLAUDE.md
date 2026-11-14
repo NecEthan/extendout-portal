@@ -14,7 +14,7 @@ extendout-portal/
 ├── frontend/         Next.js 14 app (TypeScript, npm)
 ├── playwright-tests/ E2E tests (Playwright, npm)
 ├── docs/             Design docs
-└── docker-compose.yml  Infrastructure: PostgreSQL, Redis, MinIO
+└── docker-compose.yml  Infrastructure: PostgreSQL, Redis, MinIO (local file storage)
 ```
 
 ## Commands
@@ -85,13 +85,17 @@ There are no passwords. `POST /auth/request-code {email}` (`routers/auth/request
 2. DB session: `get_db()` yields an `AsyncSession` per request.
 3. ARQ pool: `get_arq_pool()` reads `app.state.arq_pool` (set at startup via lifespan in `main.py`).
 
+### File storage
+
+Files (documents, photos) go through `app/services/storage.py` (`upload_bytes`, `download_bytes`, `delete_object`) using the `minio` S3 client: MinIO in local Docker and CI, a private **Railway Storage Bucket** in production. Settings: `STORAGE_ENDPOINT/ACCESS_KEY/SECRET_KEY/BUCKET`, plus `STORAGE_REGION` (`auto` on Railway) and `STORAGE_VIRTUAL_STYLE` (`true` on new Railway buckets: bucket name in the host name). Railway buckets have no versioning, backups or lifecycle rules, so `app/backup_bucket.py` (`uv run python -m app.backup_bucket`, a nightly Railway cron service) copies new files to a second Railway bucket (`BACKUP_STORAGE_*`), keeps files deleted in the app for `BACKUP_KEEP_DELETED_DAYS` (30) and then removes them; deleted-file dates are in `_backup/deleted.json` in the backup bucket.
+
 ### Document upload flow (transactional outbox pattern)
 
 `POST /documents` in `app/routers/documents/documents.py`. The `documents/` router is a package split into `documents.py` (list/upload), `document.py` (get/patch/delete by id), `download.py` (original file download), `versions.py` (version endpoints), combined in `__init__.py` via `router.routes.extend()`.
 
 1. Check project access (`ensure_project_access`) — `project_id` is required; 404 unknown project, 403 if a non-admin isn't a member.
 2. Validate file type by content (allowed: pdf, docx, xlsx — docx/xlsx told apart by their zip contents; macro-enabled files, i.e. any zip containing `vbaProject.bin`, are rejected as unsupported).
-3. Upload bytes to MinIO.
+3. Upload bytes to storage (`app/services/storage.py`).
 4. Insert `Document`, `DocumentVersion` (status=PROCESSING), `ProcessingJob` (status=QUEUED) — all in one DB transaction.
 5. Best-effort enqueue to Redis via arq with deterministic `_job_id = f"process_document:{version.id}"`.
 6. If enqueue succeeds → set job status to DISPATCHED and commit.

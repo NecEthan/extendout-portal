@@ -236,9 +236,9 @@ Deleting a document is a hard delete, in one transaction and in foreign-key orde
 
 An older version can be re-activated, and keeping its chunks means it's searchable again instantly, without re-processing. Search excludes them with a status filter rather than deleting them.
 
-### Why MinIO for files?
+### Why object storage for files?
 
-Postgres isn't built for large binary files. Object storage keeps the database small and file reads off the database connection pool.
+Postgres isn't built for large binary files. Object storage keeps the database small and file reads off the database connection pool. Production uses a Railway Storage Bucket and local development uses MinIO; both speak S3 (see *File storage* in `docs/engineering-decisions.md`).
 
 ### Why pgvector rather than a vector database?
 

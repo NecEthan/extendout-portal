@@ -30,9 +30,9 @@ PostgreSQL also supports vector storage and search through the `pgvector` extens
 
 ---
 
-### File Storage — MinIO
+### File Storage — S3 object storage (Railway Bucket in production, MinIO locally)
 
-MinIO is designed to store binary files such as PDFs, images, and Word documents. Keeping file storage separate from PostgreSQL means the database is not handling large binary reads and writes. MinIO retrieves large files more efficiently than a relational database would.
+Production uses a Railway Storage Bucket; local development and CI use MinIO in Docker. Both speak the S3 API, so the same code (the `minio` Python client) talks to either. MinIO is designed to store binary files such as PDFs, images, and Word documents. Keeping file storage separate from PostgreSQL means the database is not handling large binary reads and writes. MinIO retrieves large files more efficiently than a relational database would.
 
 ---
 

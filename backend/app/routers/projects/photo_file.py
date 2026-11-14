@@ -1,4 +1,4 @@
-"""GET /projects/{project_id}/photos/{photo_id}/file — stream the image from MinIO
+"""GET /projects/{project_id}/photos/{photo_id}/file — stream the image from storage
 after the project-access check (`apiRoutes.projects.photoFile`)."""
 
 import asyncio

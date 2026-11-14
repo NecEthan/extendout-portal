@@ -27,32 +27,33 @@ The session ID in the `eo_session` cookie is stored as-is in `sessions.session_t
 
 ## Replace MinIO in production with a Railway Storage Bucket
 
-Production files (documents, drawings, site photos) are stored by a self-hosted MinIO service on Railway (`Bucket` service + `Console`), on a single volume with no backups, a 5 GB Hobby default size, and public domains it doesn't need. Decision: move to Railway's built-in **Storage Buckets** (S3-compatible, $0.015/GB-month on Pro, unlimited capacity, one bill, private access from the backend). Spending is controlled by the workspace **Hard Usage Limit**. Local development keeps MinIO in Docker.
+Production files (documents, drawings, site photos) were stored by a self-hosted MinIO service on Railway (`Bucket` service + `Console`), on a single volume with no backups. Decision: move to Railway's built-in **Storage Buckets** (S3-compatible, private, encrypted at rest, $0.015/GB-month; 1 TB cap on Hobby, unlimited on Pro). Local development and CI keep MinIO in Docker. Existing production files are **not** copied over: the current documents and photos aren't needed, so the production database is reset instead.
 
-**Before switching, confirm:**
-- [ ] Backups / versioning: does a Railway Bucket keep old versions or support backups? If not, add a separate nightly copy elsewhere, because a deleted or overwritten file would otherwise be lost.
-- [ ] Region: the bucket must be in the EU (services run in `europe-west4`) for UK GDPR.
-- [ ] What the two existing buckets are (`customizable-flask`, `functional-packetcase`): reuse one or delete them.
+**Code (done):** `STORAGE_REGION` and `STORAGE_VIRTUAL_STYLE` settings; the old lifecycle-rule startup call removed (Railway buckets don't support lifecycle rules); nightly backup `app/backup_bucket.py`. See *File storage* in `docs/engineering-decisions.md`.
 
-**Switch:**
-- [ ] Create (or reuse) a private bucket in the production environment.
-- [ ] Point the backend (`loving-luck`) and worker (`knowledgeguard`) at it: `STORAGE_ENDPOINT`, `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`, `STORAGE_BUCKET`. The code uses the S3 API through the `minio` Python client, so no code change should be needed. Test uploads, downloads and deletes on a staging environment first.
-- [ ] Copy existing files from MinIO, keeping the same object keys (`documents/<uuid>`, `photos/<uuid>`), since `storage_key` in the database points at them. Spot-check that old documents and photos still open.
-- [ ] Turn on encryption at rest if Railway Buckets offer it (see *Storage is not encrypted at rest* in `docs/engineering-decisions.md`).
+**Switch (Railway dashboard):**
+- [ ] Create a private bucket in the production environment, in the EU region. Delete the unused buckets (`customizable-flask`, `functional-packetcase`) if they aren't needed.
+- [ ] Set on the backend (`loving-luck`) and worker (`knowledgeguard`), as variable references to the bucket: `STORAGE_ENDPOINT=${{Bucket.ENDPOINT}}`, `STORAGE_BUCKET=${{Bucket.BUCKET}}`, `STORAGE_ACCESS_KEY=${{Bucket.ACCESS_KEY_ID}}`, `STORAGE_SECRET_KEY=${{Bucket.SECRET_ACCESS_KEY}}`, `STORAGE_REGION=${{Bucket.REGION}}`, and `STORAGE_VIRTUAL_STYLE=true` (or `false` if the bucket's Credentials tab says path-style).
+- [ ] Reset the production database (`uv run alembic downgrade base && uv run alembic upgrade head`) and re-create the admin account.
+- [ ] Test: upload a document (it reaches ACTIVE), download it, search it; upload, view and delete a photo.
+- [ ] Remove the MinIO `Bucket` and `Console` services, with their volume and public domains.
+
+**Backups:**
+- [ ] Create a second bucket in the production environment (e.g. `Backups`), in the EU region.
+- [ ] Add a cron service from the backend repo: start command `uv run python -m app.backup_bucket`, schedule `0 2 * * *` (02:00 UTC). Give it the same `STORAGE_*` variables as the backend plus the backup bucket as variable references: `BACKUP_STORAGE_ENDPOINT=${{Backups.ENDPOINT}}`, `BACKUP_STORAGE_BUCKET=${{Backups.BUCKET}}`, `BACKUP_STORAGE_ACCESS_KEY=${{Backups.ACCESS_KEY_ID}}`, `BACKUP_STORAGE_SECRET_KEY=${{Backups.SECRET_ACCESS_KEY}}`, `BACKUP_STORAGE_REGION=${{Backups.REGION}}`, `BACKUP_STORAGE_VIRTUAL_STYLE=true`. `APP_ENV=production` for JSON logs. It needs no database, Redis or email settings.
+- [ ] Check the first run's log shows `backup_finished ... ok=True`, and that a failed run shows as failed in Railway.
+- [ ] Turn on scheduled backups for the Postgres volume (daily + weekly). Test restoring a file and the database once.
 
 **Spending limit:**
 - [ ] Set the workspace Hard Usage Limit well above normal monthly spend, with a usage alert at a lower amount. Hitting it suspends everything in the workspace (backend, database, storage), not just storage, so it should only trigger in an emergency.
+- [ ] Upgrade to Pro before the Postgres volume nears Hobby's 5 GB cap (extracted text and embeddings grow with every document).
 
-**After switching:**
-- [ ] Remove the MinIO `Bucket` and `Console` services (and their public domains and volume) once the copy is verified.
-- [ ] Back up Postgres too (Railway backups or a scheduled `pg_dump`), so files and the database rows that point at them can be restored together. Test a restore once.
-
-## Orphaned MinIO files
+## Orphaned files in storage
 
 Orphan tagging (orphan tag + lifecycle rule) was removed because it could delete real files; see *Orphaned files in MinIO* in `docs/engineering-decisions.md`. Rare orphans (a crash between saving the file and saving its database row) are accepted for now.
 
 - [ ] **Optional: safe clean-up job.** Only if orphans ever matter. Periodically list objects older than a day and delete those that **no database row references** (`document_versions.storage_key`, `project_photos.storage_key`). Fails safe: when unsure, keep the file. Could start as a one-off script run by hand.
-- [ ] **Remove the startup clean-up call.** `remove_orphan_lifecycle_rule()` (called in `main.py`'s lifespan) deletes the old `expire-orphan-uploads` rule from the bucket. Once it has run against every environment's bucket, delete the function and the call.
+- [x] **Remove the startup clean-up call.** `remove_orphan_lifecycle_rule()` was deleted with the move to a Railway bucket (no lifecycle rules there).
 
 ## Audit logging
 

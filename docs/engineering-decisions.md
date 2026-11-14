@@ -77,7 +77,7 @@ A file is uploaded to MinIO _before_ its database row is committed, because the 
 
 The first version tagged each new object as an orphan, removed the tag after the commit, and had a MinIO lifecycle rule delete anything still tagged after a day. It was removed because it failed in the wrong direction: if the tag removal was missed (a crash or MinIO hiccup right after a successful commit), the rule deleted a **real** photo or document a day later, leaving a broken record. Losing client data is far worse than wasting a little storage.
 
-For this app's scale (around a dozen customers), orphans need a crash in a window of milliseconds during an upload, so they should be rare to non-existent, and each one only costs storage. The old lifecycle rule is removed from the bucket at startup (`remove_orphan_lifecycle_rule` in `app/services/storage.py`), since rules live in MinIO and would otherwise keep deleting tagged files.
+For this app's scale (around a dozen customers), orphans need a crash in a window of milliseconds during an upload, so they should be rare to non-existent, and each one only costs storage. (The startup call that removed the old lifecycle rule from the bucket was deleted when production moved to a Railway Storage Bucket, which doesn't support lifecycle rules.)
 
 If orphans ever matter, the safe fix is a clean-up job that lists objects older than a day and deletes only those **no database row references** (`document_versions.storage_key`, `project_photos.storage_key`). That fails safe: when unsure, it keeps the file.
 
@@ -112,9 +112,18 @@ Access is by project membership: `ensure_project_access` returns `404` for an un
 
 New documents and new versions share one 30/minute per-user limit, because each upload can trigger OCR and hundreds of embedding calls. See _LLM Rate Limiting_.
 
-## Storage is not encrypted at rest
+## Storage encryption
 
-Documents are protected by access control in the app, not by encryption. Files sit unencrypted in MinIO and their text in Postgres, so anyone with direct access to the storage or its backups can read them. For production, enable MinIO server-side encryption and encrypted Postgres volumes/backups, and serve everything over HTTPS. Encryption doesn't stop an app user who _has_ access from reading a document; that's what access control is for.
+Documents are protected by access control in the app, not by encryption. In production files are in a Railway Storage Bucket, which Railway encrypts at rest; the app adds no encryption of its own, so anyone with the bucket credentials can read them. Locally files sit unencrypted in MinIO. Encryption doesn't stop an app user who _has_ access from reading a document; that's what access control is for.
+
+## File storage: Railway Storage Bucket, MinIO locally
+
+Production files (documents, photos) are in a private Railway Storage Bucket; local development and CI use MinIO in Docker. Both speak the S3 API, so `app/services/storage.py` is the same code and only the `STORAGE_*` settings differ. New Railway buckets need the bucket name in the host name (`STORAGE_VIRTUAL_STYLE=true`) and `STORAGE_REGION=auto`; MinIO needs neither.
+
+Railway buckets have no versioning, backups or lifecycle rules, and are reached over the public internet (Railway's private network isn't supported for buckets). So:
+
+- **Nightly backup** (`app/backup_bucket.py`, a Railway cron service) copies new files to a **second Railway bucket** (`BACKUP_STORAGE_*`), so a file deleted by mistake or by a bug can be restored. Keeping the backup on Railway is simpler (one account, one bill) but doesn't protect against losing the Railway account or a Railway-wide outage; for that, point `BACKUP_STORAGE_*` at a bucket elsewhere (e.g. Cloudflare R2), with no code change. A file deleted in the app is kept in the backup for `BACKUP_KEEP_DELETED_DAYS` (30) so a mistaken delete can be undone, then removed, since deleted client data shouldn't be kept forever (UK GDPR). If the source lists no files while the backup has some, the run fails and marks nothing deleted, so a misconfigured source can't empty the backup.
+- Postgres is backed up separately with Railway's scheduled volume backups. Restore both from the same night so files and the rows pointing at them match.
 
 # Site Photos
 

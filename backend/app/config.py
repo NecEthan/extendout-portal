@@ -22,7 +22,25 @@ class Settings(BaseSettings):
     storage_endpoint: str = "http://localhost:9000"
     storage_access_key: str = "minioadmin"
     storage_secret_key: str = "minioadmin"
-    storage_bucket: str = "knowledgeguard"
+    storage_bucket: str = "extendout-portal-bucket"
+    # Railway Buckets: REGION is "auto" and new buckets need the bucket name
+    # in the host name (virtual-hosted style). Local MinIO needs neither.
+    storage_region: str = ""
+    storage_virtual_style: bool = False
+
+    # Nightly bucket backup (app/backup_bucket.py), run as a Railway cron
+    # service. In production the backup is a second Railway bucket; any S3
+    # bucket works (e.g. Cloudflare R2, to survive losing the Railway account).
+    backup_storage_endpoint: str = ""
+    backup_storage_access_key: str = ""
+    backup_storage_secret_key: str = ""
+    backup_storage_bucket: str = ""
+    backup_storage_region: str = ""
+    backup_storage_virtual_style: bool = False
+    # A file deleted in the app stays in the backup this many days, so a
+    # mistaken delete can be undone; after that it's removed (UK GDPR:
+    # deleted client data shouldn't be kept indefinitely).
+    backup_keep_deleted_days: int = 30
 
     redis_url: str = "redis://localhost:6379/0"
 

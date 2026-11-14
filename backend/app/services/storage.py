@@ -1,27 +1,57 @@
+"""File storage over the S3 API.
+
+MinIO in local development and CI, a Railway Storage Bucket in production.
+Both speak S3, so only the settings differ (see STORAGE_* in app/config.py).
+"""
+
 import io
-import logging
 from urllib.parse import urlparse
 
 from minio import Minio
 from minio.error import S3Error
-from minio.lifecycleconfig import LifecycleConfig
 
 from app.config import settings
 
-logger = logging.getLogger(__name__)
-
 _client_instance: Minio | None = None
+
+
+def make_client(
+    endpoint: str,
+    access_key: str,
+    secret_key: str,
+    region: str | None = None,
+    virtual_style: bool = False,
+) -> Minio:
+    """Build an S3 client.
+
+    `endpoint` is a URL such as http://localhost:9000 or
+    https://t3.storageapi.dev. `virtual_style` puts the bucket name in the
+    host name (<bucket>.t3.storageapi.dev), which new Railway buckets
+    require; MinIO uses the path (localhost:9000/<bucket>). Passing `region`
+    skips the client's bucket-location lookup (Railway's region is "auto").
+    """
+    parsed = urlparse(endpoint)
+    client = Minio(
+        parsed.netloc,
+        access_key=access_key,
+        secret_key=secret_key,
+        secure=parsed.scheme == "https",
+        region=region or None,
+    )
+    if virtual_style:
+        client.enable_virtual_style_endpoint()
+    return client
 
 
 def _client() -> Minio:
     global _client_instance
     if _client_instance is None:
-        parsed = urlparse(settings.storage_endpoint)
-        _client_instance = Minio(
-            parsed.netloc,
-            access_key=settings.storage_access_key,
-            secret_key=settings.storage_secret_key,
-            secure=parsed.scheme == "https",
+        _client_instance = make_client(
+            settings.storage_endpoint,
+            settings.storage_access_key,
+            settings.storage_secret_key,
+            region=settings.storage_region,
+            virtual_style=settings.storage_virtual_style,
         )
     return _client_instance
 
@@ -50,40 +80,3 @@ def delete_object(key: str) -> None:
         _client().remove_object(settings.storage_bucket, key)
     except S3Error:
         pass
-
-
-# A lifecycle rule this app used to create. It deleted uploads still tagged
-# as orphans after a day, which could also delete a real file if the tag
-# removal after a successful upload was missed. Removed; see
-# "Orphaned files in MinIO" in docs/engineering-decisions.md.
-_OLD_ORPHAN_RULE_ID = "expire-orphan-uploads"
-
-
-def remove_orphan_lifecycle_rule() -> None:
-    """Remove the old orphan-expiry rule from the bucket, if it's still there.
-
-    The rule lives in MinIO, not in this code, so it keeps deleting tagged
-    files until it's removed. Other lifecycle rules on the bucket are kept.
-    Called at startup; idempotent and best-effort (failure is logged).
-    """
-    try:
-        client = _client()
-        config = client.get_bucket_lifecycle(settings.storage_bucket)
-        if config is None:
-            return
-        remaining = [r for r in config.rules if r.rule_id != _OLD_ORPHAN_RULE_ID]
-        if len(remaining) == len(config.rules):
-            return
-        if remaining:
-            client.set_bucket_lifecycle(
-                settings.storage_bucket, LifecycleConfig(remaining)
-            )
-        else:
-            client.delete_bucket_lifecycle(settings.storage_bucket)
-        logger.info(
-            "Removed lifecycle rule %s from bucket %s",
-            _OLD_ORPHAN_RULE_ID,
-            settings.storage_bucket,
-        )
-    except Exception:
-        logger.warning("remove_orphan_lifecycle_rule failed", exc_info=True)

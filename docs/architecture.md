@@ -48,7 +48,7 @@ Session (server-side login sessions)
 
 - **Version status:** `PROCESSING | ACTIVE | SUPERSEDED | DELETED | REVIEW_REQUIRED | FAILED`. A partial unique index allows only one `ACTIVE` version per document.
 - **Documents without a project** (`project_id IS NULL`, from before projects existed) are visible to admins only.
-- **Storage:** Postgres holds metadata, chunks and embeddings; MinIO holds the original uploaded files; Redis holds the job queue and rate-limit counters.
+- **Storage:** Postgres holds metadata, chunks and embeddings; object storage (MinIO locally, a Railway Storage Bucket in production) holds the original uploaded files; Redis holds the job queue and rate-limit counters.
 
 ## Access control
 
