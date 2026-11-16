@@ -47,7 +47,7 @@ async def generate_answer(question: str, context_text: str) -> LLMAnswer:
     if settings.mock_llm:
         logger.info("llm_call_mocked", model=settings.chat_model)
         return LLMAnswer(
-            answer="[MOCK] This is a load-test placeholder answer.",
+            answer="[MOCK] This is a placeholder answer.",
             citations=[],
         )
 
