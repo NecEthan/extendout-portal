@@ -31,8 +31,12 @@ export function ProjectMemberships({
     <>
       <div className="flex flex-wrap items-center gap-1.5">
         {member.project_ids.map((projectId) => (
-          <Badge key={projectId} variant="outline" className="gap-1">
-            {projectName(projectId)}
+          <Badge
+            key={projectId}
+            variant="outline"
+            className="max-w-full min-w-0 gap-1"
+          >
+            <span className="truncate">{projectName(projectId)}</span>
             <button
               type="button"
               aria-label={`Remove from ${projectName(projectId)}`}

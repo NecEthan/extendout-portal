@@ -25,7 +25,7 @@ export function MemberActions({
   return (
     <>
       {confirming ? (
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex flex-wrap items-center gap-2 xl:justify-end">
           <span className="text-sm">Delete {displayName(member)}?</span>
           <Button
             size="sm"
@@ -47,7 +47,7 @@ export function MemberActions({
           </Button>
         </div>
       ) : (
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex flex-wrap items-center gap-2 xl:justify-end">
           <Button
             size="sm"
             variant="outline"

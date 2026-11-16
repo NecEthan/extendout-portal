@@ -25,6 +25,13 @@ import { MemberActions } from "./components/MemberActions";
 import { ProjectMemberships } from "./components/ProjectMemberships";
 import { RoleSelect } from "./components/RoleSelect";
 
+// Below xl the full table doesn't fit beside the sidebar, so it turns into
+// one stacked card per person (no sideways scrolling) and the column
+// headings become small labels.
+const stackedCell = "max-xl:block max-xl:p-0";
+const mobileLabel =
+  "mb-1 block text-xs font-medium tracking-wide text-muted-foreground uppercase xl:hidden";
+
 export default function TeamPage() {
   const user = useUser();
   const isAdmin = user.data?.role === "admin";
@@ -80,8 +87,8 @@ export default function TeamPage() {
               No one to show yet.
             </p>
           ) : (
-            <Table>
-              <TableHeader>
+            <Table className="max-xl:block">
+              <TableHeader className="max-xl:hidden">
                 <TableRow>
                   <TableHead>Person</TableHead>
                   <TableHead>Role</TableHead>
@@ -89,24 +96,31 @@ export default function TeamPage() {
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
+              <TableBody className="max-xl:block">
                 {team.data?.map((member) => {
                   const isYou = member.id === currentUserId;
                   return (
-                    <TableRow key={member.id}>
-                      <TableCell>
+                    <TableRow
+                      key={member.id}
+                      className="max-xl:flex max-xl:flex-col max-xl:gap-3 max-xl:py-4"
+                    >
+                      <TableCell className={stackedCell}>
                         <Person person={member} isYou={isYou} />
                       </TableCell>
-                      <TableCell>
+                      <TableCell className={stackedCell}>
+                        <span className={mobileLabel}>Role</span>
                         <RoleSelect member={member} isYou={isYou} />
                       </TableCell>
-                      <TableCell>
+                      <TableCell className={stackedCell}>
+                        <span className={mobileLabel}>Projects</span>
                         <ProjectMemberships
                           member={member}
                           projects={projects.data ?? []}
                         />
                       </TableCell>
-                      <TableCell className="w-px whitespace-nowrap">
+                      <TableCell
+                        className={`${stackedCell} xl:w-px xl:whitespace-nowrap`}
+                      >
                         <MemberActions
                           member={member}
                           isYou={isYou}

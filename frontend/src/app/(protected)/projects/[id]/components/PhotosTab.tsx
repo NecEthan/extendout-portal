@@ -38,7 +38,7 @@ export function PhotosTab({ projectId }: { projectId: number }) {
         </Card>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
         {photos.data?.map((photo, i) => (
           <figure
             key={photo.id}
@@ -61,7 +61,9 @@ export function PhotosTab({ projectId }: { projectId: number }) {
             </button>
             <figcaption className="flex flex-col gap-0.5 p-3 wrap-anywhere">
               {photo.description && (
-                <span className="text-sm font-medium">{photo.description}</span>
+                <span className="line-clamp-3 text-sm font-medium">
+                  {photo.description}
+                </span>
               )}
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs text-muted-foreground">
@@ -73,7 +75,7 @@ export function PhotosTab({ projectId }: { projectId: number }) {
                     type="button"
                     aria-label={`Delete ${photo.description ?? "photo"}`}
                     title="Delete photo"
-                    className="shrink-0 rounded-sm p-1 text-muted-foreground hover:text-destructive disabled:opacity-50"
+                    className="-m-1 shrink-0 rounded-sm p-2 text-muted-foreground md:m-0 md:p-1 hover:text-destructive disabled:opacity-50"
                     disabled={deletePhoto.isPending}
                     onClick={() => handleDelete(photo.id)}
                   >

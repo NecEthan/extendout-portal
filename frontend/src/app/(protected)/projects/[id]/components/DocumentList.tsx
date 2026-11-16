@@ -33,15 +33,17 @@ export function DocumentList({ documents }: DocumentListProps) {
         <div
           key={doc.id}
           data-testid="document-row"
-          className="flex items-center justify-between rounded-lg border px-4 py-3"
+          className="flex flex-col gap-3 rounded-lg border px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
         >
-          <div className="flex flex-col gap-0.5">
-            <div className="flex items-center gap-2">
-              <span className="font-medium">{doc.title}</span>
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="font-medium break-words [overflow-wrap:anywhere]">
+                {doc.title}
+              </span>
               {doc.latest_version_status && (
                 <span
                   data-testid="document-status"
-                  className={`text-xs font-semibold rounded px-2 py-0.5 ${
+                  className={`shrink-0 text-xs font-semibold rounded px-2 py-0.5 ${
                     STATUS_STYLES[doc.latest_version_status] ??
                     "bg-gray-100 text-gray-600"
                   }`}
@@ -54,7 +56,7 @@ export function DocumentList({ documents }: DocumentListProps) {
               {new Date(doc.created_at).toLocaleDateString()}
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
             {doc.has_active_version && (
               <a
                 href={documentDownloadUrl(doc.id)}

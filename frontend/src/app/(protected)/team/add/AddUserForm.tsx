@@ -63,7 +63,7 @@ export function AddUserForm({ onDone }: { onDone: () => void }) {
               <Label htmlFor="user-role">Role</Label>
               <select
                 id="user-role"
-                className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
+                className="h-10 rounded-lg border border-input bg-transparent px-2.5 text-base md:h-8 md:text-sm"
                 value={role}
                 onChange={(e) => setRole(e.target.value as UserRole)}
               >

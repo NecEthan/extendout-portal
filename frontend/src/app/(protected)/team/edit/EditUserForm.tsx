@@ -75,7 +75,7 @@ export function EditUserForm({
               <Label htmlFor="edit-user-role">Role</Label>
               <select
                 id="edit-user-role"
-                className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm disabled:opacity-50"
+                className="h-10 rounded-lg border border-input bg-transparent px-2.5 text-base md:h-8 md:text-sm disabled:opacity-50"
                 value={role}
                 disabled={isYou}
                 onChange={(e) => setRole(e.target.value as UserRole)}
