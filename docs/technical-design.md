@@ -89,7 +89,7 @@ Each upload's SHA-256 hash is stored. It blocks re-uploading an identical file a
 
 ### Asynchronous processing and reliability
 
-Processing runs in a separate worker so slow OCR and embedding work never holds an HTTP request open. Transient failures retry with backoff (60 s for OpenAI rate limits) up to `MAX_TRIES`; permanent failures (bad input, OpenAI auth/validation errors) fail immediately. Worker concurrency is capped at 5 jobs to stay within OpenAI rate limits.
+Processing runs in a separate worker so slow OCR and embedding work never holds an HTTP request open. Chunk embeddings are cached in Redis for a day as each batch returns, so a retry only embeds the chunks still missing. Transient failures retry with backoff (60 s for OpenAI rate limits) up to `MAX_TRIES`; permanent failures (bad input, OpenAI auth/validation errors) fail immediately. Worker concurrency is capped at 5 jobs to stay within OpenAI rate limits.
 
 ### Database transactions
 
@@ -97,7 +97,7 @@ Changes spanning several rows (upload, version activation, deletion) use one tra
 
 ### AI responses
 
-The LLM is treated as unreliable: its JSON output is validated against a Pydantic schema, and OpenAI failures return `503`.
+The LLM is treated as unreliable: its JSON output is validated against a Pydantic schema, and OpenAI failures return `503`. Questions are capped at 1,000 characters and answers at 800 tokens (`max_answer_tokens`) to bound the cost of each search; see *Keeping OpenAI Costs Low* in `docs/engineering-decisions.md`.
 
 ### Secrets
 

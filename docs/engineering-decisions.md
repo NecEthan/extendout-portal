@@ -173,6 +173,21 @@ Single API key means all users share one OpenAI RPM/TPM quota. Three controls pr
 
 **Worker 429 retry** — Generic transient retry delay is 10s, too short for OpenAI's 60s rate limit window. Explicit `openai.RateLimitError` branch defers retry by 60s. `MAX_TRIES` raised 3→4 to allow three retries (up to 3 min total) before permanent failure. Worker SDK `max_retries` also raised 2→4 — these are silent client-level retries before ARQ sees the error, safe to increase since worker jobs are not user-facing.
 
+# Keeping OpenAI Costs Low
+
+OpenAI is called twice: once per upload to embed the document's chunks, and once per search (embed the question, then write the answer). Both are kept small:
+
+- **Cheap models.** `gpt-4o-mini` for answers (`chat_model`) and `text-embedding-3-small` for embeddings, the cheapest of each that's good enough for this. A search costs a fraction of a cent; embedding a 100-page PDF well under a cent.
+- **Documents are embedded once.** Chunk embeddings are stored in Postgres; a search only embeds the question. Retrieval (vector + keyword search) runs in Postgres for free, and only the top 10 chunks (~5,000 tokens) are sent to the model, never whole documents. No matching chunks → "I don't have enough information" without calling the model.
+- **Questions are capped at 1,000 characters** (`MAX_QUESTION_CHARS` in `schemas/query.py`; longer → 422 before any OpenAI call). Real questions are a sentence or two; without a cap someone could paste a huge block of text into every search. The search box has the same `maxLength`, so normal users never see the error.
+- **Answers are capped at 800 tokens** (`max_answer_tokens`, sent as `max_tokens`). Normal answers use well under 300; the cap is a hard ceiling on the cost of a single call. An answer that hits it is cut off, fails JSON validation and returns 503, which is acceptable for something that shouldn't happen.
+- **Retries don't pay twice for embeddings.** Each batch of 100 chunk embeddings is saved in Redis as soon as OpenAI returns it (`embedding:<sha256 of model + chunk text>`, raw float32 bytes, ~6 KB each, 24 h TTL). A worker retry after a failure part-way through a big document reads the finished batches back and only embeds what's missing. Because the key is the chunk text, a new version of a document with mostly unchanged text also only pays for the changed chunks. Redis is only a cache here: if it's down or an entry is unreadable, the chunk is simply embedded again, so it can never break processing. One day is long enough to cover every retry (they finish within minutes) without Redis holding embeddings for long.
+- **Rate limits** (above) cap searches and uploads per user, and only signed-in users can use either.
+- **Costs are visible.** Every answer logs an `llm_call` line with token counts and `estimated_cost_usd`.
+- **CI is free.** `MOCK_LLM=true` returns placeholder answers and fake embeddings, so tests make no OpenAI calls.
+
+Still to do outside the code: set a monthly budget and alert on the OpenAI project, the only safety net against a bug or a leaked key.
+
 # Rate Limiting: How It Works
 
 What's limited and why is in `docs/technical-design.md` → Rate limiting. This section explains the mechanics and the trade-offs.
