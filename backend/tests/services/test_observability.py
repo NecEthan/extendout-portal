@@ -71,6 +71,8 @@ async def test_generate_answer_logs_llm_call_event():
             result = await generate_answer("What is 6 × 7?", "Context: 6 × 7 = 42.")
 
     assert result.answer == "42"
+    kwargs = instance.chat.completions.create.call_args.kwargs
+    assert kwargs["max_tokens"] == settings.max_answer_tokens
 
     llm_events = [e for e in logs if e.get("event") == "llm_call"]
     assert len(llm_events) == 1, f"Expected 1 llm_call event, got: {logs}"

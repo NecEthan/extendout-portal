@@ -2,9 +2,12 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+# Longest question accepted. Keeps each search's prompt (and OpenAI cost) small.
+MAX_QUESTION_CHARS = 1000
+
 
 class QueryRequest(BaseModel):
-    question: str = Field(..., min_length=1)
+    question: str = Field(..., min_length=1, max_length=MAX_QUESTION_CHARS)
     project_id: int | None = None
 
 

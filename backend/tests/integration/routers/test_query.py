@@ -130,6 +130,24 @@ async def test_query_whitespace_question_handled(auth_client):
     assert response.status_code == 200
 
 
+async def test_query_too_long_question_rejected_without_openai(auth_client):
+    mock_emb = _mock_embedding_call()
+    mock_chat = _mock_chat_call(answer="unused")
+    with _openai_ctx(mock_emb, mock_chat):
+        response = await auth_client.post("/query", json={"question": "a" * 1001})
+    assert response.status_code == 422
+    mock_emb.assert_not_called()
+    mock_chat.assert_not_called()
+
+
+async def test_query_question_at_the_limit_accepted(auth_client):
+    mock_emb = _mock_embedding_call()
+    mock_chat = _mock_chat_call(answer="ok")
+    with _openai_ctx(mock_emb, mock_chat):
+        response = await auth_client.post("/query", json={"question": "a" * 1000})
+    assert response.status_code == 200
+
+
 # ── Successful query ──────────────────────────────────────────────────────────
 
 

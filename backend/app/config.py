@@ -46,6 +46,9 @@ class Settings(BaseSettings):
 
     openai_api_key: str = ""
     chat_model: str = "gpt-4o-mini"
+    # Hard ceiling on each answer's length (output tokens), so no single search
+    # can cost much. Normal answers use well under 300.
+    max_answer_tokens: int = 800
 
     session_cookie_name: str = "eo_session"
     # Login sessions last 400 days (Chrome's maximum cookie lifetime).

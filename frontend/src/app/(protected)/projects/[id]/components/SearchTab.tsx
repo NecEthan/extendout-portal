@@ -54,6 +54,7 @@ export function SearchTab({ projectId }: { projectId: number }) {
                 id="question"
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
+                maxLength={1000}
                 placeholder="What U-value is specified for the rooflights?"
               />
             </div>

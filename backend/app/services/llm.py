@@ -63,6 +63,7 @@ async def generate_answer(question: str, context_text: str) -> LLMAnswer:
             ],
             response_format={"type": "json_object"},
             temperature=0,
+            max_tokens=settings.max_answer_tokens,
         )
     except openai.OpenAIError as exc:
         logger.warning("openai_error", error=str(exc))
