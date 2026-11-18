@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { ErrorAlert } from "@/components/ui/error-alert";
 import { useSearchQuery } from "@/hooks/useSearchQuery";
 import { getErrorMessage } from "@/lib/errorMessage";
+import { INPUT_LIMITS } from "@/lib/inputLimits";
 
 /** Ask questions answered only from this project's documents. */
 export function SearchTab({ projectId }: { projectId: number }) {
@@ -54,7 +55,7 @@ export function SearchTab({ projectId }: { projectId: number }) {
                 id="question"
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
-                maxLength={1000}
+                maxLength={INPUT_LIMITS.question}
                 placeholder="What U-value is specified for the rooflights?"
               />
             </div>

@@ -1,7 +1,11 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+# Longest document title accepted (upload and rename). Titles come from file
+# names, which are at most 255 characters on most systems.
+MAX_TITLE_LENGTH = 255
 
 
 class DocumentVersionResponse(BaseModel):
@@ -58,7 +62,7 @@ class PaginatedDocumentVersionsResponse(BaseModel):
 
 
 class DocumentUpdateRequest(BaseModel):
-    title: str
+    title: str = Field(min_length=1, max_length=MAX_TITLE_LENGTH)
 
 
 class DocumentUploadedResponse(BaseModel):

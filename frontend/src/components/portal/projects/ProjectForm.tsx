@@ -8,6 +8,7 @@ import { ErrorAlert } from "@/components/ui/error-alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Project } from "@/interfaces";
+import { INPUT_LIMITS } from "@/lib/inputLimits";
 
 export interface ProjectFormValues {
   name: string;
@@ -63,6 +64,7 @@ export function ProjectForm({
               <Label htmlFor="project-name">Name</Label>
               <Input
                 id="project-name"
+                maxLength={INPUT_LIMITS.projectName}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 disabled={locked}
@@ -75,6 +77,7 @@ export function ProjectForm({
               <Label htmlFor="project-client">Client</Label>
               <Input
                 id="project-client"
+                maxLength={INPUT_LIMITS.projectClient}
                 value={client}
                 onChange={(e) => setClient(e.target.value)}
                 disabled={locked}
@@ -84,6 +87,7 @@ export function ProjectForm({
               <Label htmlFor="project-address">Address</Label>
               <Input
                 id="project-address"
+                maxLength={INPUT_LIMITS.projectAddress}
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 disabled={locked}

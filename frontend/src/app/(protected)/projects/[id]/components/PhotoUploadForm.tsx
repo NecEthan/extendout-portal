@@ -8,8 +8,7 @@ import { Label } from "@/components/ui/label";
 import { ErrorAlert } from "@/components/ui/error-alert";
 import { useUploadPhoto } from "@/hooks/usePhotos";
 import { getErrorMessage, UPLOAD_RATE_LIMITED } from "@/lib/errorMessage";
-
-const MAX_DESCRIPTION_LENGTH = 500;
+import { INPUT_LIMITS } from "@/lib/inputLimits";
 
 export function PhotoUploadForm({ projectId }: { projectId: number }) {
   const [file, setFile] = useState<File | null>(null);
@@ -61,7 +60,7 @@ export function PhotoUploadForm({ projectId }: { projectId: number }) {
           <Input
             id="photo-description"
             type="text"
-            maxLength={MAX_DESCRIPTION_LENGTH}
+            maxLength={INPUT_LIMITS.photoDescription}
             placeholder="e.g. Steel beam installed over kitchen opening"
             value={description}
             onChange={(e) => setDescription(e.target.value)}

@@ -408,3 +408,48 @@ async def test_same_content_allowed_in_different_projects(
     assert first.status_code == 202
     assert other.status_code == 202
     assert same.status_code == 409
+
+
+# ── Title length ──────────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize("title", ["", "a" * 256])
+async def test_upload_rejects_empty_or_too_long_title(auth_client, title):
+    with patch("app.services.storage.upload_bytes") as upload:
+        response = await auth_client.post(
+            "/documents",
+            files=_docx_file(),
+            data={"title": title, "project_id": TEST_PROJECT_ID},
+        )
+    assert response.status_code == 422
+    upload.assert_not_called()
+
+
+async def test_upload_accepts_title_at_the_limit(auth_client):
+    with (
+        patch("app.services.storage.upload_bytes"),
+        patch("arq.connections.ArqRedis.enqueue_job"),
+    ):
+        response = await auth_client.post(
+            "/documents",
+            files=_docx_file(),
+            data={"title": "a" * 255, "project_id": TEST_PROJECT_ID},
+        )
+    assert response.status_code == 202
+
+
+@pytest.mark.parametrize("title", ["", "a" * 256])
+async def test_rename_rejects_empty_or_too_long_title(auth_client, title):
+    with (
+        patch("app.services.storage.upload_bytes"),
+        patch("arq.connections.ArqRedis.enqueue_job"),
+    ):
+        upload = await auth_client.post(
+            "/documents",
+            files=_docx_file("rename.docx"),
+            data={"title": "Rename me", "project_id": TEST_PROJECT_ID},
+        )
+    doc_id = upload.json()["id"]
+
+    response = await auth_client.patch(f"/documents/{doc_id}", json={"title": title})
+    assert response.status_code == 422

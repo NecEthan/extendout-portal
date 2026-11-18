@@ -1,4 +1,5 @@
 import { titleFromFilename } from "@/lib/format";
+import { INPUT_LIMITS } from "@/lib/inputLimits";
 
 describe("titleFromFilename", () => {
   it("strips the extension", () => {
@@ -16,5 +17,10 @@ describe("titleFromFilename", () => {
 
   it("falls back to the full name when only an extension is left", () => {
     expect(titleFromFilename(".pdf")).toBe(".pdf");
+  });
+
+  it("cuts very long names to the backend's title limit", () => {
+    const title = titleFromFilename(`${"a".repeat(300)}.pdf`);
+    expect(title).toBe("a".repeat(INPUT_LIMITS.documentTitle));
   });
 });

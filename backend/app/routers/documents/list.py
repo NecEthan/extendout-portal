@@ -14,6 +14,7 @@ from app.dependencies import get_arq_pool, get_current_user, get_db
 from app.limiter import upload_limit
 from app.models.base import Document, DocumentVersion, User
 from app.schemas.documents import (
+    MAX_TITLE_LENGTH,
     DocumentResponse,
     DocumentUploadedResponse,
     PaginatedDocumentsResponse,
@@ -41,7 +42,7 @@ logger = structlog.get_logger(__name__)
 async def upload_document(
     request: Request,
     file: UploadFile,
-    title: str = Form(),
+    title: str = Form(min_length=1, max_length=MAX_TITLE_LENGTH),
     project_id: int = Form(),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),

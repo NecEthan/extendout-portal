@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { ROLES, roleLabel } from "@/components/team/Person";
 import { useCreateUser } from "@/hooks/useTeam";
 import { getErrorMessage } from "@/lib/errorMessage";
+import { INPUT_LIMITS } from "@/lib/inputLimits";
 import type { UserRole } from "@/interfaces";
 
 /** Admin only: create an account. There's no password: they log in with a
@@ -41,6 +42,7 @@ export function AddUserForm({ onDone }: { onDone: () => void }) {
               <Label htmlFor="user-name">Name</Label>
               <Input
                 id="user-name"
+                maxLength={INPUT_LIMITS.personName}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 autoFocus
@@ -50,6 +52,7 @@ export function AddUserForm({ onDone }: { onDone: () => void }) {
               <Label htmlFor="user-email">Email</Label>
               <Input
                 id="user-email"
+                maxLength={INPUT_LIMITS.email}
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}

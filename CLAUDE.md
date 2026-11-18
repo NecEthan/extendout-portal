@@ -177,7 +177,7 @@ Next.js 14 App Router. All pages under `src/app/`. Paths are never written by ha
 
 Protected pages live under `src/app/(protected)/` with a shared layout. `/login` is the only public page. There is no auth middleware: a `401` from any API call redirects to `/login` (axios interceptor), and the login page redirects logged-in users to `/dashboard`. The only auth cookie is the backend's HttpOnly session cookie (no frontend hint cookie). Post-login redirect lands on `/dashboard`.
 
-UI components are shadcn/ui (in `src/components/ui/`). Navigation is `src/components/nav/Sidebar.tsx`.
+Text inputs set `maxLength` from `INPUT_LIMITS` (`src/lib/inputLimits.ts`), which must match the backend schemas' `max_length` (the backend is the real check: longer values get 422). UI components are shadcn/ui (in `src/components/ui/`). Navigation is `src/components/nav/Sidebar.tsx`.
 
 ## Test Patterns
 

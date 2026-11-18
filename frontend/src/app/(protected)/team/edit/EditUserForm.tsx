@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { displayName, ROLES, roleLabel } from "@/components/team/Person";
 import { useUpdateTeamMember } from "@/hooks/useTeam";
 import { getErrorMessage } from "@/lib/errorMessage";
+import { INPUT_LIMITS } from "@/lib/inputLimits";
 import type { TeamMember, TeamMemberUpdate, UserRole } from "@/interfaces";
 
 /** Admin only: edit someone's name, email and role. Admins can't change their
@@ -56,6 +57,7 @@ export function EditUserForm({
               <Label htmlFor="edit-user-name">Name</Label>
               <Input
                 id="edit-user-name"
+                maxLength={INPUT_LIMITS.personName}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 autoFocus
@@ -65,6 +67,7 @@ export function EditUserForm({
               <Label htmlFor="edit-user-email">Email</Label>
               <Input
                 id="edit-user-email"
+                maxLength={INPUT_LIMITS.email}
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}

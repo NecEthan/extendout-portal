@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useDeleteProject } from "@/hooks/useProjects";
 import { getErrorMessage } from "@/lib/errorMessage";
+import { INPUT_LIMITS } from "@/lib/inputLimits";
 import { applicationRoutes } from "@/utils/applicationRoutes";
 import type { Project } from "@/interfaces";
 
@@ -98,6 +99,7 @@ export function DeleteProject({ project }: { project: Project }) {
               </Label>
               <Input
                 id="confirm-project-name"
+                maxLength={INPUT_LIMITS.projectName}
                 value={typed}
                 onChange={(e) => setTyped(e.target.value)}
                 autoComplete="off"

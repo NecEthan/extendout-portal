@@ -17,6 +17,7 @@ import {
 import { ErrorAlert } from "@/components/ui/error-alert";
 import { useRequestCode, useUser, useVerifyCode } from "@/hooks/useUser";
 import { getErrorMessage } from "@/lib/errorMessage";
+import { INPUT_LIMITS } from "@/lib/inputLimits";
 
 /** Passwordless sign-in: enter your email, get a 6-digit code by email, enter
  * it. The session then lasts 400 days on this browser. */
@@ -145,6 +146,7 @@ export function AuthForm() {
                   <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
+                    maxLength={INPUT_LIMITS.email}
                     type="email"
                     autoComplete="email"
                     required
