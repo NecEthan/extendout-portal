@@ -1,9 +1,13 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { DocumentList } from "@/app/(protected)/projects/[id]/components/DocumentList";
 import type { Document } from "@/interfaces";
 import { api } from "@/lib/api/axiosClient";
 import "@/test-utils/mockApi";
+
+// The real loaders use import.meta (not available in Jest); the previews
+// themselves are tested in DocumentPreview.test.tsx.
+jest.mock("@/lib/documentLibraries", () => ({}));
 
 function doc(id: string, title: string, hasActive: boolean): Document {
   return {
@@ -43,6 +47,26 @@ describe("DocumentList download", () => {
 
     expect(
       screen.queryByRole("link", { name: "Download Still processing" })
+    ).toBeNull();
+  });
+});
+
+describe("DocumentList preview", () => {
+  it("opens a preview on the same page for documents with a ready version", () => {
+    renderList([doc("doc-3", "Drawings", true)]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Preview Drawings" }));
+
+    return screen
+      .findByRole("dialog", { name: "Preview of Drawings" })
+      .then((dialog) => expect(dialog).toBeVisible());
+  });
+
+  it("has no preview until a version is ready", () => {
+    renderList([doc("doc-4", "Still processing", false)]);
+
+    expect(
+      screen.queryByRole("button", { name: "Preview Still processing" })
     ).toBeNull();
   });
 });

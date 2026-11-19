@@ -68,4 +68,36 @@ describe("PhotoLightbox", () => {
       screen.getByRole("button", { name: "Next photo" })
     ).toBeInTheDocument();
   });
+
+  describe("swiping on a phone", () => {
+    function swipe(fromX: number, toX: number, toY = 300) {
+      const dialog = screen.getByRole("dialog");
+      fireEvent.touchStart(dialog, {
+        touches: [{ clientX: fromX, clientY: 300 }],
+      });
+      fireEvent.touchEnd(dialog, {
+        changedTouches: [{ clientX: toX, clientY: toY }],
+      });
+    }
+
+    it("swipe left shows the next photo, swipe right the previous", () => {
+      const { onIndexChange } = renderAt(1);
+      swipe(300, 100);
+      swipe(100, 300);
+      expect(onIndexChange.mock.calls).toEqual([[2], [0]]);
+    });
+
+    it("ignores short moves and mostly vertical ones", () => {
+      const { onIndexChange } = renderAt(1);
+      swipe(300, 270);
+      swipe(300, 200, 600);
+      expect(onIndexChange).not.toHaveBeenCalled();
+    });
+
+    it("doesn't go past the first or last photo", () => {
+      const { onIndexChange } = renderAt(2);
+      swipe(300, 100);
+      expect(onIndexChange).not.toHaveBeenCalled();
+    });
+  });
 });

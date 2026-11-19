@@ -16,13 +16,17 @@ api.defaults.adapter = adapter;
 
 beforeEach(() => adapter.mockReset());
 
-export function respond(status: number, data?: unknown): void {
+export function respond(
+  status: number,
+  data?: unknown,
+  headers: Record<string, string> = {}
+): void {
   adapter.mockImplementationOnce(async (config) => {
     const response: AxiosResponse = {
       data,
       status,
       statusText: "",
-      headers: {},
+      headers,
       config,
     };
     if (status >= 200 && status < 300) return response;

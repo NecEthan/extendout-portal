@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   deleteDocument,
+  fetchDocumentFile,
   listDocuments,
   uploadDocument,
 } from "@/lib/api/documents";
@@ -37,5 +38,16 @@ export function useDeleteDocument() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["documents"] });
     },
+  });
+}
+
+/** The current file's bytes for the in-app viewer. Not kept once the viewer
+ * closes (gcTime 0): files can be large, and may be replaced or deleted. */
+export function useDocumentFile(id: string) {
+  return useQuery({
+    queryKey: ["document-file", id],
+    queryFn: () => fetchDocumentFile(id),
+    gcTime: 0,
+    retry: false,
   });
 }

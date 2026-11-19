@@ -1,13 +1,17 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import type { ProjectPhoto } from "@/interfaces";
 import { photoFileUrl } from "@/lib/api/photos";
 import { formatDate } from "@/lib/format";
 
-/** Full-screen preview of one photo, with previous/next through the list.
- * Closes on ✕, Esc or a click on the dark backdrop. */
+// A horizontal swipe at least this long (px) moves to the next/previous photo.
+const SWIPE_DISTANCE = 50;
+
+/** Full-screen preview of one photo, with previous/next through the list
+ * (buttons, arrow keys, or swiping on a phone). Closes on ✕, Esc or a click
+ * on the dark backdrop. */
 export function PhotoLightbox({
   photos,
   index,
@@ -33,6 +37,27 @@ export function PhotoLightbox({
     return () => window.removeEventListener("keydown", onKey);
   }, [index, hasPrev, hasNext, onIndexChange, onClose]);
 
+  // Where the current touch started, to tell a swipe from a tap.
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+
+  function handleTouchStart(e: React.TouchEvent) {
+    const t = e.touches[0];
+    touchStart.current = { x: t.clientX, y: t.clientY };
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    const start = touchStart.current;
+    touchStart.current = null;
+    if (!start) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    // Mostly sideways, and far enough: a swipe, not a tap or a scroll.
+    if (Math.abs(dx) < SWIPE_DISTANCE || Math.abs(dx) < Math.abs(dy)) return;
+    if (dx < 0 && hasNext) onIndexChange(index + 1);
+    if (dx > 0 && hasPrev) onIndexChange(index - 1);
+  }
+
   if (!photo) return null;
 
   const navButton =
@@ -45,6 +70,8 @@ export function PhotoLightbox({
       aria-label={photo.description ?? "Site photo"}
       className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-black/90 p-4"
       onClick={onClose}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
       <button
         type="button"

@@ -57,6 +57,16 @@ There's no title field in the upload form. The title is the file name without it
 
 The title is **not** searchable yet: keyword search and embeddings only use the document's text, so naming a document in a question doesn't help find it. Adding the title to the `search_vector` with a higher weight is the planned fix.
 
+## Documents are previewed in the app
+
+Builders on site need to read drawings, specs and quotes on their phone, so every document (PDF, Word, Excel) has a Preview button that opens a pop-up on the Documents tab instead of only downloading. The pop-up fetches the file through the existing download endpoint (same access checks and audit entry) and draws it in the browser:
+
+- **PDF: pdf.js**, onto canvases. Opening the PDF in a browser tab was rejected: Android Chrome can't show PDFs itself and just downloads them, and serving the file inline from the API would mean dropping the download response's sandboxing CSP. pdf.js behaves the same on every device and never runs scripts inside the PDF. The legacy build supports older phones.
+- **Word: docx-preview**, as HTML pages. Close to Word's layout but not exact. On phones the text reflows to the screen width. Embedded HTML (altChunks) is turned off, and links from the file are limited to web, email, phone and in-document links.
+- **Excel: SheetJS**, shown as tables (one tab per visible sheet, values as Excel formats them, formulas show their saved result). Only the first 1000 rows and 50 columns are shown; the download has the rest. Installed from cdn.sheetjs.com because the npm package stopped at an old version with known security issues.
+
+Converting Word/Excel to PDF on the server (LibreOffice in the worker) was rejected: it adds ~500 MB to the worker image, a second stored copy of each file, and more attack surface from running LibreOffice on uploaded files. The libraries load only when someone previews that kind of file. The viewer is chosen from the download response's `Content-Type`, which the backend detects from the bytes, so no extra column is needed and older documents work too.
+
 ## Size limit
 
 Uploads are capped at 100 MB (`max_upload_size_mb`), raised from 50 MB because full drawing sets and scanned calc packs can exceed 50 MB. The backend reads at most limit + 1 bytes, so an oversized file is rejected with `413` without reading the whole thing into memory. The file is also checked for being empty (`422`).

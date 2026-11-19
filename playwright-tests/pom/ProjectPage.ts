@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 import { DOCX_MIME, makeDocx } from "../utils/docx";
+import { makePdf } from "../utils/pdf";
 import { TINY_PNG } from "../utils/png";
 
 type Tab = "overview" | "photos" | "documents" | "search";
@@ -8,7 +9,7 @@ type Tab = "overview" | "photos" | "documents" | "search";
 export class ProjectPage {
   constructor(
     private readonly page: Page,
-    private readonly projectId: number
+    private readonly projectId: number,
   ) {}
 
   async goto(tab: Tab) {
@@ -32,12 +33,42 @@ export class ProjectPage {
     await expect(this.documentRow(title)).toBeVisible();
   }
 
+  /** Upload `<title>.pdf` whose only page shows `content`. */
+  async uploadPdf(title: string, content: string) {
+    await this.page.getByLabel("File").setInputFiles({
+      name: `${title}.pdf`,
+      mimeType: "application/pdf",
+      buffer: makePdf(content),
+    });
+    await this.page.getByRole("button", { name: "Upload document" }).click();
+    await expect(this.documentRow(title)).toBeVisible();
+  }
+
+  /** Click Preview (shown once processing has finished; the list polls) and
+   * return the pop-up. */
+  async openPreview(title: string): Promise<Locator> {
+    const button = this.documentRow(title).getByRole("button", {
+      name: `Preview ${title}`,
+    });
+    await expect(button).toBeVisible({ timeout: 60_000 });
+    await button.click();
+    const dialog = this.page.getByRole("dialog", {
+      name: `Preview of ${title}`,
+    });
+    await expect(dialog).toBeVisible();
+    return dialog;
+  }
+
   async deleteDocument(title: string) {
-    await this.documentRow(title).getByRole("button", { name: "Delete" }).click();
+    await this.documentRow(title)
+      .getByRole("button", { name: "Delete" })
+      .click();
   }
 
   async openVersions(title: string) {
-    await this.documentRow(title).getByRole("button", { name: "Versions" }).click();
+    await this.documentRow(title)
+      .getByRole("button", { name: "Versions" })
+      .click();
   }
 
   // ── Search ─────────────────────────────────────────────────────────────────

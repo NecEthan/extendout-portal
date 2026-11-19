@@ -73,6 +73,23 @@ export async function activateDocumentVersion(
   return data;
 }
 
+export interface DocumentFile {
+  data: ArrayBuffer;
+  /** The type the backend detected from the bytes (PDF, Word or Excel). */
+  contentType: string;
+}
+
+/** The ACTIVE version's file as bytes, for previewing it in the app.
+ * Fetched with axios, so a 401 still sends the user to the login page. */
+export async function fetchDocumentFile(id: string): Promise<DocumentFile> {
+  const response = await api.get<ArrayBuffer>(
+    apiRoutes.documents.download(id),
+    { responseType: "arraybuffer" }
+  );
+  const contentType = String(response.headers["content-type"] ?? "");
+  return { data: response.data, contentType: contentType.split(";")[0] };
+}
+
 export async function deleteDocument(id: string): Promise<void> {
   await api.delete(apiRoutes.documents.document(id));
 }
