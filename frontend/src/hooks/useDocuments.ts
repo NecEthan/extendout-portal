@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   deleteDocument,
-  fetchDocumentFile,
+  getDocumentPreview,
   listDocuments,
   uploadDocument,
 } from "@/lib/api/documents";
@@ -41,12 +41,12 @@ export function useDeleteDocument() {
   });
 }
 
-/** The current file's bytes for the in-app viewer. Not kept once the viewer
- * closes (gcTime 0): files can be large, and may be replaced or deleted. */
-export function useDocumentFile(id: string) {
+/** The document prepared for the preview pop-up. Not kept once the pop-up
+ * closes (gcTime 0): documents may be replaced, deleted or access revoked. */
+export function useDocumentPreview(id: string) {
   return useQuery({
-    queryKey: ["document-file", id],
-    queryFn: () => fetchDocumentFile(id),
+    queryKey: ["document-preview", id],
+    queryFn: () => getDocumentPreview(id),
     gcTime: 0,
     retry: false,
   });

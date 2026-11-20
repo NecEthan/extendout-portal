@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -68,3 +69,35 @@ class DocumentUpdateRequest(BaseModel):
 class DocumentUploadedResponse(BaseModel):
     id: uuid.UUID
     status: str
+
+
+class PreviewPage(BaseModel):
+    """A PDF page's size in points, so the browser can lay out the page before
+    its image loads."""
+
+    width: float
+    height: float
+
+
+class PreviewCell(BaseModel):
+    text: str
+    numeric: bool
+
+
+class PreviewSheet(BaseModel):
+    name: str
+    rows: list[list[PreviewCell]]
+    # True if the sheet goes past the rows/columns sent (see services/previews.py).
+    cut_rows: bool
+    cut_columns: bool
+
+
+class DocumentPreviewResponse(BaseModel):
+    """What the browser needs to show the document. Only the field for
+    ``kind`` is set: PDF page sizes (images come from the pages endpoint),
+    cleaned Word HTML, or Excel sheets."""
+
+    kind: Literal["pdf", "docx", "xlsx"]
+    pages: list[PreviewPage] | None = None
+    html: str | None = None
+    sheets: list[PreviewSheet] | None = None

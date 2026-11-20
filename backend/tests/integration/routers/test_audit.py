@@ -70,11 +70,14 @@ def test_route_template(path, params, expected):
         ("GET", "/documents/{document_id}", 200, True),
         ("GET", "/documents/{document_id}/versions/{version_id}", 200, True),
         ("GET", "/documents/{document_id}/download", 200, True),
+        ("GET", "/documents/{document_id}/preview", 200, True),
         # Other successful reads: skipped (page loads, lists, polling, photos).
         ("GET", "/auth/user", 200, False),
         ("GET", "/projects", 200, False),
         ("GET", "/documents", 200, False),
         ("GET", "/projects/{project_id}/photos/{photo_id}/file", 200, False),
+        # Each PDF page image: the preview open above already records it.
+        ("GET", "/documents/{document_id}/preview/pages/{page_number}", 200, False),
         ("HEAD", "/projects", 200, False),
         # The frontend's "am I logged in?" check answering no: skipped.
         ("GET", "/auth/user", 401, False),

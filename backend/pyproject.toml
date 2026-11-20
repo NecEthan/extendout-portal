@@ -28,6 +28,8 @@ dependencies = [
     "slowapi>=0.1.9",
     "openpyxl>=3.1.0",
     "pillow-heif>=1.0",
+    "mammoth>=1.13.0",
+    "nh3>=0.3.8",
 ]
 
 [project.optional-dependencies]

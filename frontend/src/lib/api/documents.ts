@@ -1,4 +1,5 @@
 import type {
+  DocumentPreview,
   DocumentUploadedResponse,
   DocumentVersion,
   PaginatedDocumentVersions,
@@ -73,21 +74,25 @@ export async function activateDocumentVersion(
   return data;
 }
 
-export interface DocumentFile {
-  data: ArrayBuffer;
-  /** The type the backend detected from the bytes (PDF, Word or Excel). */
-  contentType: string;
+/** The ACTIVE version prepared for showing in the app (parsed on the server). */
+export async function getDocumentPreview(id: string): Promise<DocumentPreview> {
+  const { data } = await api.get<DocumentPreview>(
+    apiRoutes.documents.preview(id)
+  );
+  return data;
 }
 
-/** The ACTIVE version's file as bytes, for previewing it in the app.
- * Fetched with axios, so a 401 still sends the user to the login page. */
-export async function fetchDocumentFile(id: string): Promise<DocumentFile> {
-  const response = await api.get<ArrayBuffer>(
-    apiRoutes.documents.download(id),
-    { responseType: "arraybuffer" }
-  );
-  const contentType = String(response.headers["content-type"] ?? "");
-  return { data: response.data, contentType: contentType.split(";")[0] };
+/** Image URL of one PDF page, `width` pixels wide. Used as an `<img src>`:
+ * the browser sends the session cookie and the backend checks access. */
+export function documentPreviewPageUrl(
+  documentId: string,
+  pageNumber: number,
+  width: number
+): string {
+  return `${api.defaults.baseURL}${apiRoutes.documents.previewPage(
+    documentId,
+    pageNumber
+  )}?width=${width}`;
 }
 
 export async function deleteDocument(id: string): Promise<void> {

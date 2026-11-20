@@ -5,10 +5,6 @@ import type { Document } from "@/interfaces";
 import { api } from "@/lib/api/axiosClient";
 import "@/test-utils/mockApi";
 
-// The real loaders use import.meta (not available in Jest); the previews
-// themselves are tested in DocumentPreview.test.tsx.
-jest.mock("@/lib/documentLibraries", () => ({}));
-
 function doc(id: string, title: string, hasActive: boolean): Document {
   return {
     id,

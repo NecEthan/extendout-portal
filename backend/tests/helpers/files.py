@@ -56,3 +56,16 @@ def with_macros(office_file: bytes) -> bytes:
         folder = "word" if "word/document.xml" in src.namelist() else "xl"
         dst.writestr(f"{folder}/vbaProject.bin", b"\xd0\xcf\x11\xe0 fake macros")
     return buf.getvalue()
+
+
+def make_pdf(pages: list[str], size: tuple[float, float] = (595, 842)) -> bytes:
+    """A PDF with one page per string (A4 portrait by default)."""
+    import pymupdf
+
+    doc = pymupdf.open()
+    for text in pages:
+        page = doc.new_page(width=size[0], height=size[1])
+        page.insert_text((72, 72), text)
+    data = doc.tobytes()
+    doc.close()
+    return data

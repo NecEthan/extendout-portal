@@ -31,6 +31,9 @@ export const apiRoutes = {
     list: "/documents",
     document: (documentId: Id) => `/documents/${enc(documentId)}`,
     download: (documentId: Id) => `/documents/${enc(documentId)}/download`,
+    preview: (documentId: Id) => `/documents/${enc(documentId)}/preview`,
+    previewPage: (documentId: Id, pageNumber: number) =>
+      `/documents/${enc(documentId)}/preview/pages/${enc(pageNumber)}`,
     versions: (documentId: Id) => `/documents/${enc(documentId)}/versions`,
     version: (documentId: Id, versionId: Id) =>
       `/documents/${enc(documentId)}/versions/${enc(versionId)}`,

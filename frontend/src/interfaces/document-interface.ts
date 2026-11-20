@@ -58,3 +58,22 @@ export interface PaginatedDocumentVersions {
   limit: number;
   offset: number;
 }
+
+/** A document prepared by the backend for showing in the app
+ * (`GET /documents/{id}/preview`). Only the field for `kind` is set. */
+export interface DocumentPreview {
+  kind: "pdf" | "docx" | "xlsx";
+  /** PDF page sizes in points; images come from the pages endpoint. */
+  pages: { width: number; height: number }[] | null;
+  /** Word as HTML, already cleaned by the backend. */
+  html: string | null;
+  sheets: PreviewSheet[] | null;
+}
+
+export interface PreviewSheet {
+  name: string;
+  rows: { text: string; numeric: boolean }[][];
+  /** The sheet goes past the rows/columns sent. */
+  cut_rows: boolean;
+  cut_columns: boolean;
+}

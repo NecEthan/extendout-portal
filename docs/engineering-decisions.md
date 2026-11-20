@@ -57,15 +57,15 @@ There's no title field in the upload form. The title is the file name without it
 
 The title is **not** searchable yet: keyword search and embeddings only use the document's text, so naming a document in a question doesn't help find it. Adding the title to the `search_vector` with a higher weight is the planned fix.
 
-## Documents are previewed in the app
+## Documents are previewed in the app, prepared on the server
 
-Builders on site need to read drawings, specs and quotes on their phone, so every document (PDF, Word, Excel) has a Preview button that opens a pop-up on the Documents tab instead of only downloading. The pop-up fetches the file through the existing download endpoint (same access checks and audit entry) and draws it in the browser:
+Builders on site need to read drawings, specs and quotes on their phone, so every document (PDF, Word, Excel) has a Preview button that opens a pop-up on the Documents tab instead of only downloading. The backend parses the file and sends only what the browser needs to show; the browser has no file-parsing code:
 
-- **PDF: pdf.js**, onto canvases. Opening the PDF in a browser tab was rejected: Android Chrome can't show PDFs itself and just downloads them, and serving the file inline from the API would mean dropping the download response's sandboxing CSP. pdf.js behaves the same on every device and never runs scripts inside the PDF. The legacy build supports older phones.
-- **Word: docx-preview**, as HTML pages. Close to Word's layout but not exact. On phones the text reflows to the screen width. Embedded HTML (altChunks) is turned off, and links from the file are limited to web, email, phone and in-document links.
-- **Excel: SheetJS**, shown as tables (one tab per visible sheet, values as Excel formats them, formulas show their saved result). Only the first 1000 rows and 50 columns are shown; the download has the rest. Installed from cdn.sheetjs.com because the npm package stopped at an old version with known security issues.
+- **PDF:** page sizes, then each page as a PNG drawn by pymupdf at the width the screen needs (more pixels when zoomed). Images load as the user scrolls.
+- **Word:** converted to HTML with mammoth, then cleaned with nh3 to an allow-list of tags (headings, lists, tables, links, images). No scripts, styles, iframes or event handlers; links only to web, email, phone or within the document; images only the file's own PNG/JPEG/GIF (no SVG, no outside URLs). Reads well on a phone, but Word's page layout isn't kept.
+- **Excel:** the visible sheets as text rows (the values Excel last saved, formatted roughly as Excel shows them), first 1000 rows × 50 columns; the download has the rest.
 
-Converting Word/Excel to PDF on the server (LibreOffice in the worker) was rejected: it adds ~500 MB to the worker image, a second stored copy of each file, and more attack surface from running LibreOffice on uploaded files. The libraries load only when someone previews that kind of file. The viewer is chosen from the download response's `Content-Type`, which the backend detects from the bytes, so no extra column is needed and older documents work too.
+An earlier version drew the files in the browser (pdf.js, docx-preview, SheetJS). It was replaced to keep as little code in the browser as possible: three libraries (~1.5 MB) and an install from SheetJS's own site are gone, and the backend already had pymupdf, python-docx and openpyxl for text extraction. The cost is server work per preview (CPU and memory on Railway, mostly PDF page images) and a parser running on uploaded files in the API process, so parsing runs in a thread with a 30-second limit and size caps, and failures ask the user to download instead. Converting Word/Excel to PDF with LibreOffice was rejected: ~500 MB on the image and a second stored copy of each file.
 
 ## Size limit
 
