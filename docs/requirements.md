@@ -52,7 +52,7 @@ What the portal does today. Screens that still show sample data are listed in [o
 ## Documents
 
 23. Users can upload PDF, Word (.docx) or Excel (.xlsx) files (max 100 MB) to a project they can access. The backend checks file type and size independently of the frontend.
-24. Users can list a project's documents (paginated), view a document, rename it, and delete it.
+24. Users can list a project's documents (paginated), view a document, rename it, and delete it. They can download the current version's original file, or preview it in the app (PDF, Word, Excel) without downloading. Previews are prepared by the backend; a file that can't be previewed (unreadable, too large or too slow) asks the user to download it instead.
 25. Re-uploading an identical file (same SHA-256 hash) is rejected as a duplicate.
 
 ---

@@ -58,6 +58,12 @@ Some documents arrive as scanned images rather than machine-readable text. An OC
 
 ---
 
+### Document Previews — PyMuPDF, mammoth, nh3, openpyxl
+
+Documents are previewed in the app by preparing them on the server, so the browser carries no file-parsing code. PyMuPDF and openpyxl were already used to extract text for search; PyMuPDF also draws PDF pages as images, and openpyxl reads Excel cells and their number formats. mammoth turns Word files into simple HTML (headings, lists, tables, images), which suits phones better than imitating Word's page layout. nh3 (a Python binding of the Rust `ammonia` HTML sanitiser) then strips anything unsafe from that HTML before it reaches the browser.
+
+---
+
 ### Authentication and Authorisation
 
 Authentication verifies who the user is. Authorisation controls what they are allowed to access. Both matter here because each project's documents (drawings, calcs, quotes, the homeowner's details) must only be visible to the people on that project. Permission filtering happens in the database query before any content is sent to the LLM, so documents from other projects never enter the retrieval context.

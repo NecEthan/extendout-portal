@@ -28,6 +28,7 @@ Access is decided by **role + project membership**. Builders and clients only ev
 ### Documents and versions
 
 - Upload PDF, Word (.docx) or Excel (.xlsx) files (up to 100 MB) to a project.
+- **Preview** any document in a pop-up on the Documents tab (works on phones): PDFs as pages with zoom, Word as readable text with headings, lists, tables and images, Excel as tables with a tab per sheet. **Download** gets the original file.
 - Uploading a new version of a document keeps the history:
 
 ```text

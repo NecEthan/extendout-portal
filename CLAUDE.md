@@ -11,7 +11,7 @@ The ExtendOut Portal (repo name `extendout-portal`) is the project workspace for
 ```
 extendout-portal/
 ├── backend/          FastAPI service (Python, uv)
-├── frontend/         Next.js 14 app (TypeScript, npm)
+├── frontend/         Next.js 16 app (TypeScript, npm)
 ├── playwright-tests/ E2E tests (Playwright, npm)
 ├── docs/             Design docs
 └── docker-compose.yml  Infrastructure: PostgreSQL, Redis, MinIO (local file storage)
@@ -39,7 +39,7 @@ uv run pytest tests/integration/routers/test_documents.py -v                    
 uv run pytest tests/integration/routers/test_documents.py::test_upload_creates_db_records -v               # Single test
 ```
 
-**Integration tests** require postgres running (`docker compose up -d postgres`). MinIO and Redis are mocked. Tests connect to `postgresql+asyncpg://postgres:postgres@localhost:5434/knowledgeguard`.
+**Integration tests** require postgres running (`docker compose up -d postgres`). MinIO and Redis are mocked. Tests use `DATABASE_URL` from `backend/.env` (locally `postgresql+asyncpg://postgres:...@localhost:5434/extendout_portal`); they run against that database.
 
 **Alembic** (run from `backend/` with postgres running):
 
@@ -91,7 +91,7 @@ Files (documents, photos) go through `app/services/storage.py` (`upload_bytes`, 
 
 ### Document upload flow (transactional outbox pattern)
 
-`POST /documents` in `app/routers/documents/documents.py`. The `documents/` router is a package split into `documents.py` (list/upload), `document.py` (get/patch/delete by id), `download.py` (original file download), `preview.py` (in-app preview), `versions.py` (version endpoints), combined in `__init__.py` via `router.routes.extend()`.
+`POST /documents` in `app/routers/documents/list.py`. The `documents/` router is a package with one file per `apiRoutes.documents.*` key: `list.py` (list/upload), `document.py` (get/patch/delete by id), `download.py` (original file download), `preview.py` (in-app preview and PDF page images), `versions.py` (version history/upload), `version.py` (one version), `activate_version.py` (re-activate a version), combined in `__init__.py` via `router.routes.extend()`.
 
 1. Check project access (`ensure_project_access`) — `project_id` is required; 404 unknown project, 403 if a non-admin isn't a member.
 2. Validate file type by content (allowed: pdf, docx, xlsx — docx/xlsx told apart by their zip contents; macro-enabled files, i.e. any zip containing `vbaProject.bin`, are rejected as unsupported).
@@ -175,7 +175,7 @@ Run worker: `uv run arq app.workers.main.WorkerSettings` (or via Docker: `worker
 
 ## Frontend Architecture
 
-Next.js 14 App Router. All pages under `src/app/`. Paths are never written by hand: backend endpoints come from `apiRoutes` (`src/lib/api/apiRoutes.ts`), frontend pages from `applicationRoutes` (`src/utils/applicationRoutes.ts`); both encode ids. API calls go through the shared axios instance `api` in `src/lib/api/axiosClient.ts` (`withCredentials: true` for session cookie passthrough). Its response interceptor turns non-2xx responses into `ApiError` (`src/lib/api/apiError.ts`) and redirects to `/login` on a 401 (except from `/auth/request-code`, `/auth/verify-code` and `/auth/logout`). The login page (`components/auth/AuthForm.tsx`) has two steps: email → "Send code", then the 6-digit code → "Sign in". Jest tests stub the transport with `src/test-utils/mockApi.ts`. Types in `src/types/index.ts` mirror the backend data model.
+Next.js 16 App Router. All pages under `src/app/`. Paths are never written by hand: backend endpoints come from `apiRoutes` (`src/lib/api/apiRoutes.ts`), frontend pages from `applicationRoutes` (`src/utils/applicationRoutes.ts`); both encode ids. API calls go through the shared axios instance `api` in `src/lib/api/axiosClient.ts` (`withCredentials: true` for session cookie passthrough). Its response interceptor turns non-2xx responses into `ApiError` (`src/lib/api/apiError.ts`) and redirects to `/login` on a 401 (except from `/auth/request-code`, `/auth/verify-code` and `/auth/logout`). The login page (`components/auth/AuthForm.tsx`) has two steps: email → "Send code", then the 6-digit code → "Sign in". Jest tests stub the transport with `src/test-utils/mockApi.ts`. Types in `src/interfaces/` (re-exported from `src/interfaces/index.ts`) mirror the backend data model.
 
 Protected pages live under `src/app/(protected)/` with a shared layout. `/login` is the only public page. There is no auth middleware: a `401` from any API call redirects to `/login` (axios interceptor), and the login page redirects logged-in users to `/dashboard`. The only auth cookie is the backend's HttpOnly session cookie (no frontend hint cookie). Post-login redirect lands on `/dashboard`.
 

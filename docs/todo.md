@@ -15,7 +15,7 @@
 
 - [ ] Set `EMAIL_BACKEND=resend`, `RESEND_API_KEY` and `EMAIL_FROM` on the backend (`loving-luck`) and remove the old `EMAILJS_*` variables.
 - [ ] Reset the production database (`uv run alembic downgrade base && uv run alembic upgrade head`) and re-create the admin account.
-- [ ] Test: upload a document (it reaches ACTIVE), download it, search it; upload, view and delete a photo.
+- [ ] Test: upload a PDF, a Word and an Excel file (each reaches ACTIVE), preview and download each, search them; upload, view and delete a photo.
 - [ ] Remove the MinIO `Bucket` and `Console` services, with their volume and public domains.
 - [ ] Delete the unused buckets (`customizable-flask`, `functional-packetcase`) if they aren't needed.
 - [ ] Add a backup cron service from the backend repo: start command `uv run python -m app.backup_bucket`, schedule `0 2 * * *`. Variables: the same `STORAGE_*` as the backend, plus `BACKUP_STORAGE_ENDPOINT=${{backups.ENDPOINT}}`, `BACKUP_STORAGE_BUCKET=${{backups.BUCKET}}`, `BACKUP_STORAGE_ACCESS_KEY=${{backups.ACCESS_KEY_ID}}`, `BACKUP_STORAGE_SECRET_KEY=${{backups.SECRET_ACCESS_KEY}}`, `BACKUP_STORAGE_REGION=${{backups.REGION}}`, `BACKUP_STORAGE_VIRTUAL_STYLE=true`, `APP_ENV=production`.

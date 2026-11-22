@@ -31,6 +31,10 @@ In production the cookie is `Secure` and `SameSite=None` (the frontend and API a
 
 The upload form limits file type and size for quick feedback. The backend re-validates everything, since the form can be bypassed.
 
+### Document previews
+
+The Preview pop-up only displays what the backend prepared (PDF page images, cleaned Word HTML, Excel rows); there is no file-parsing code in the browser. PDF page images load as they're scrolled to, at the width the screen needs (more pixels on high-density screens and when zoomed). The Word HTML is inserted as-is, which is safe only because the backend cleans it.
+
 ### Processing state
 
 Processing is asynchronous, so the UI reads each version's status from the backend and polls every 3 seconds while anything is still processing, stopping once all versions settle.
@@ -86,6 +90,12 @@ The job row is committed to Postgres before enqueueing to Redis. If the process 
 ### Document integrity
 
 Each upload's SHA-256 hash is stored. It blocks re-uploading an identical file and detects concurrent duplicate uploads.
+
+### Downloads and previews
+
+Both use `load_active_file` (`app/services/document_files.py`): the same access rules as reading the document (`404` outside your projects), only the `ACTIVE` version (`409` otherwise), and the file type re-checked from the bytes so a file stored before an upload rule existed is refused. Downloads are sent as attachments with a sandboxing CSP and `no-store`.
+
+`GET /documents/{id}/preview` (`app/routers/documents/preview.py`, logic in `app/services/previews.py`) parses the file on the server: PDF page sizes (pymupdf), Word as HTML (mammoth) cleaned by nh3 to an allow-list of tags with only web/email/phone/in-document links and the file's own raster images, or Excel's visible sheets as text rows (openpyxl, saved formula results, first 1000 rows × 50 columns). PDF pages come from `GET /documents/{id}/preview/pages/{n}?width=` as PNGs (200–2400 px wide, capped at 16 MP). Parsing an uploaded file runs in a thread with a 30-second limit; failures, oversized output and timeouts return `409` asking the user to download instead. Opening a preview is recorded in the audit log; individual page images are not.
 
 ### Asynchronous processing and reliability
 
@@ -211,6 +221,7 @@ Deleting a document is a hard delete, in one transaction and in foreign-key orde
 | Not a member of the project / not an admin | `403` |
 | Unknown project or document (or document outside your projects) | `404` |
 | Duplicate file | `409` |
+| Download or preview with no `ACTIVE` version, or a file that can't be previewed | `409`, the preview asks the user to download instead |
 | File too large | `413` |
 | Unsupported file type | `415` |
 | Invalid input | `422` |
@@ -225,8 +236,8 @@ Deleting a document is a hard delete, in one transaction and in foreign-key orde
 
 - **Backend unit tests (pytest):** auth helpers, chunking, document validation, text extraction, RRF, logging.
 - **Backend integration tests (pytest, real Postgres):** routers (auth, projects, team, documents, versions, query) and the processing pipeline, including access isolation between projects and exclusion of superseded versions from search.
-- **Frontend (Jest):** API client and helpers.
-- **End-to-end (Playwright):** auth, document upload and versions, and search against the running stack.
+- **Frontend (Jest):** API client, helpers and components (e.g. the document preview pop-up).
+- **End-to-end (Playwright):** auth, document upload, preview (PDF and Word) and versions, photos, and search against the running stack.
 
 ---
 

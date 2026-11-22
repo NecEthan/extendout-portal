@@ -5,7 +5,7 @@
 ```
 ┌──────────────────────────────────────┐
 │               Browser                │
-│   Next.js 14 (App Router, client)    │
+│   Next.js 16 (App Router, client)    │
 └──────────────────┬───────────────────┘
                    │ HTTP / REST (cookies: credentials: "include")
                    ▼
@@ -106,6 +106,25 @@ POST /documents (multipart: file, title, project_id)
 
 **Reaper** (same 30 s loop): resets jobs stuck in `PROCESSING` for 10+ minutes back to `QUEUED` (worker crash recovery). Once retries are exhausted it marks the job `FAILED` and deletes the MinIO object.
 
+## Download and preview
+
+```
+GET /documents/{id}/download            GET /documents/{id}/preview
+          │                                        │
+          └──────────► load_active_file ◄──────────┘
+             access check (404) → ACTIVE version (409)
+             → bytes from MinIO → type re-checked from bytes
+          │                                        │
+          ▼                                        ▼
+  original file as an                PDF  → page sizes; pages as PNGs from
+  attachment                                /preview/pages/{n}?width= (pymupdf)
+                                     Word → HTML (mammoth) cleaned by nh3
+                                     Excel → visible sheets as text rows (openpyxl)
+                                     (in a thread, 30 s limit; failure → 409)
+```
+
+The browser never parses files: the Preview pop-up only shows the images, HTML or rows it's given.
+
 ## AI search (query flow)
 
 ```
@@ -139,7 +158,7 @@ Search only ever uses **current** versions. Superseded versions keep their chunk
 
 - **Pages** live in `frontend/src/app/`. Protected pages are under `(protected)/` with a shared layout (sidebar + top bar). `/login` is public.
 - **Route guard:** no middleware. Every protected page loads the current user (`useUser`); a `401` makes the axios interceptor redirect to `/login`. The login page sends an already-logged-in user to `/dashboard`. The backend checks the session on every request; the frontend redirects are only convenience.
-- **Server state:** TanStack Query hooks in `src/hooks/`. API calls go through `src/lib/api/client.ts` with `credentials: "include"`.
+- **Server state:** TanStack Query hooks in `src/hooks/`. API calls go through the axios instance in `src/lib/api/axiosClient.ts` (`withCredentials: true`).
 - **Errors:** a 401 anywhere redirects to `/login` (handled once in `QueryProvider`); other errors show inline with `ErrorAlert`.
 - **Feature code** sits next to the page that uses it, e.g. `projects/add/`, `projects/edit/`, `projects/[id]/components/`.
 
