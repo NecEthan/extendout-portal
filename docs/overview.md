@@ -69,7 +69,6 @@ The portal is being built out in stages. These features use **real data** from t
 
 These screens currently show **sample data** (from `frontend/src/mocks/`) while the features are built:
 
-- Project milestones
 - Client view: Overview and Progress Photos
 
 ## Example journey
