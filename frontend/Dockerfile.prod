@@ -6,8 +6,12 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
-# Copy source and build
+# Copy source and build. NEXT_PUBLIC_* values are fixed into the browser code
+# at build time, so the API address must be passed in as a build argument
+# (Railway passes service variables to ARGs of the same name).
 COPY . .
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN npm run build
 
 EXPOSE 3000
