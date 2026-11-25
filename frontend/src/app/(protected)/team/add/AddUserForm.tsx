@@ -11,6 +11,7 @@ import { useCreateUser } from "@/hooks/useTeam";
 import { getErrorMessage } from "@/lib/errorMessage";
 import { INPUT_LIMITS } from "@/lib/inputLimits";
 import type { UserRole } from "@/interfaces";
+import { NativeSelect } from "@/components/ui/native-select";
 
 /** Admin only: create an account. There's no password: they log in with a
  * code emailed to them. Add them to projects from the team list. */
@@ -64,7 +65,7 @@ export function AddUserForm({ onDone }: { onDone: () => void }) {
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="user-role">Role</Label>
-              <select
+              <NativeSelect
                 id="user-role"
                 className="h-10 rounded-lg border border-input bg-transparent px-2.5 text-base md:h-8 md:text-sm"
                 value={role}
@@ -75,7 +76,7 @@ export function AddUserForm({ onDone }: { onDone: () => void }) {
                     {roleLabel(r)}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
             </div>
           </div>
           <div className="flex justify-end gap-2">

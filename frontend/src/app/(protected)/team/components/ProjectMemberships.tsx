@@ -6,6 +6,7 @@ import { useAddProjectMember, useRemoveProjectMember } from "@/hooks/useTeam";
 import type { Project, TeamMember } from "@/interfaces";
 import { RowError } from "./RowError";
 import { rowSelectClass } from "./styles";
+import { NativeSelect } from "@/components/ui/native-select";
 
 /** The projects someone belongs to, with remove (×) and add-to-project. */
 export function ProjectMemberships({
@@ -29,7 +30,7 @@ export function ProjectMemberships({
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5 max-lg:contents">
         {member.project_ids.map((projectId) => (
           <Badge
             key={projectId}
@@ -51,9 +52,9 @@ export function ProjectMemberships({
           </Badge>
         ))}
         {available.length > 0 && (
-          <select
+          <NativeSelect
             aria-label={`Add ${member.email} to a project`}
-            className={rowSelectClass}
+            className={`${rowSelectClass} w-48 md:w-40`}
             value=""
             disabled={addMember.isPending}
             onChange={(e) =>
@@ -70,7 +71,7 @@ export function ProjectMemberships({
                 {p.name}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         )}
       </div>
       <RowError

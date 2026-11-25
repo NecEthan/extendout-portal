@@ -11,6 +11,7 @@ import { useUpdateTeamMember } from "@/hooks/useTeam";
 import { getErrorMessage } from "@/lib/errorMessage";
 import { INPUT_LIMITS } from "@/lib/inputLimits";
 import type { TeamMember, TeamMemberUpdate, UserRole } from "@/interfaces";
+import { NativeSelect } from "@/components/ui/native-select";
 
 /** Admin only: edit someone's name, email and role. Admins can't change their
  * own role (the backend refuses it too). */
@@ -76,7 +77,7 @@ export function EditUserForm({
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="edit-user-role">Role</Label>
-              <select
+              <NativeSelect
                 id="edit-user-role"
                 className="h-10 rounded-lg border border-input bg-transparent px-2.5 text-base md:h-8 md:text-sm disabled:opacity-50"
                 value={role}
@@ -88,7 +89,7 @@ export function EditUserForm({
                     {roleLabel(r)}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
               {isYou && (
                 <span className="text-xs text-muted-foreground">
                   You can&apos;t change your own role.

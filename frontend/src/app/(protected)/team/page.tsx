@@ -5,14 +5,6 @@ import { UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ErrorAlert } from "@/components/ui/error-alert";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { Person } from "@/components/team/Person";
 import { useUser } from "@/hooks/useUser";
@@ -25,12 +17,12 @@ import { MemberActions } from "./components/MemberActions";
 import { ProjectMemberships } from "./components/ProjectMemberships";
 import { RoleSelect } from "./components/RoleSelect";
 
-// Below xl the full table doesn't fit beside the sidebar, so it turns into
-// one stacked card per person (no sideways scrolling) and the column
-// headings become small labels.
-const stackedCell = "max-xl:block max-xl:p-0";
-const mobileLabel =
-  "mb-1 block text-xs font-medium tracking-wide text-muted-foreground uppercase xl:hidden";
+// One line per person on wide screens. Narrower, two lines: the person and
+// the Edit/Delete buttons, then role and projects side by side.
+const columns =
+  "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 lg:grid-cols-[minmax(0,15rem)_7rem_minmax(0,1fr)_auto]";
+const heading =
+  "text-xs font-medium tracking-wide text-muted-foreground uppercase";
 
 export default function TeamPage() {
   const user = useUser();
@@ -87,40 +79,23 @@ export default function TeamPage() {
               No one to show yet.
             </p>
           ) : (
-            <Table className="max-xl:block">
-              <TableHeader className="max-xl:hidden">
-                <TableRow>
-                  <TableHead>Person</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Projects</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="max-xl:block">
+            <>
+              <div
+                aria-hidden
+                className={`${columns} border-b pb-2 max-lg:hidden`}
+              >
+                <span className={heading}>Person</span>
+                <span className={heading}>Role</span>
+                <span className={heading}>Projects</span>
+                <span className={`${heading} text-right`}>Actions</span>
+              </div>
+              <ul aria-label="Team" className="divide-y">
                 {team.data?.map((member) => {
                   const isYou = member.id === currentUserId;
                   return (
-                    <TableRow
-                      key={member.id}
-                      className="max-xl:flex max-xl:flex-col max-xl:gap-3 max-xl:py-4"
-                    >
-                      <TableCell className={stackedCell}>
-                        <Person person={member} isYou={isYou} />
-                      </TableCell>
-                      <TableCell className={stackedCell}>
-                        <span className={mobileLabel}>Role</span>
-                        <RoleSelect member={member} isYou={isYou} />
-                      </TableCell>
-                      <TableCell className={stackedCell}>
-                        <span className={mobileLabel}>Projects</span>
-                        <ProjectMemberships
-                          member={member}
-                          projects={projects.data ?? []}
-                        />
-                      </TableCell>
-                      <TableCell
-                        className={`${stackedCell} xl:w-px xl:whitespace-nowrap`}
-                      >
+                    <li key={member.id} className={`${columns} py-3`}>
+                      <Person person={member} isYou={isYou} />
+                      <div className="justify-self-end lg:col-start-4 lg:row-start-1">
                         <MemberActions
                           member={member}
                           isYou={isYou}
@@ -129,12 +104,23 @@ export default function TeamPage() {
                             setEditingId(member.id);
                           }}
                         />
-                      </TableCell>
-                    </TableRow>
+                      </div>
+                      <div className="col-span-2 flex min-w-0 flex-wrap items-center gap-1.5 lg:contents">
+                        <div className="max-lg:contents lg:col-start-2 lg:row-start-1">
+                          <RoleSelect member={member} isYou={isYou} />
+                        </div>
+                        <div className="min-w-0 max-lg:contents lg:col-start-3 lg:row-start-1">
+                          <ProjectMemberships
+                            member={member}
+                            projects={projects.data ?? []}
+                          />
+                        </div>
+                      </div>
+                    </li>
                   );
                 })}
-              </TableBody>
-            </Table>
+              </ul>
+            </>
           )}
         </CardContent>
       </Card>

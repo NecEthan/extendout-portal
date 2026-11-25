@@ -25,7 +25,7 @@ export function MemberActions({
   return (
     <>
       {confirming ? (
-        <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <span className="text-sm">Delete {displayName(member)}?</span>
           <Button
             size="sm"
@@ -47,24 +47,29 @@ export function MemberActions({
           </Button>
         </div>
       ) : (
-        <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+        <div className="flex items-center justify-end gap-1">
           <Button
-            size="sm"
-            variant="outline"
+            size="icon-sm"
+            variant="ghost"
             aria-label={`Edit ${member.email}`}
+            title="Edit"
             onClick={onEdit}
           >
-            <Pencil /> Edit
+            <Pencil />
           </Button>
-          {!isYou && (
+          {/* Keeps the Edit buttons lined up on your own row. */}
+          {isYou ? (
+            <span className="size-9 md:size-7" />
+          ) : (
             <Button
-              size="sm"
-              variant="outline"
+              size="icon-sm"
+              variant="ghost"
               aria-label={`Delete ${member.email}`}
+              title="Delete"
               className="text-destructive hover:text-destructive"
               onClick={() => setConfirming(true)}
             >
-              <Trash2 /> Delete
+              <Trash2 />
             </Button>
           )}
         </div>

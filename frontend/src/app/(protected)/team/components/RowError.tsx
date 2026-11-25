@@ -11,5 +11,5 @@ export function RowError({
 }) {
   const message = getErrorMessage(source, fallback);
   if (!message) return null;
-  return <p className="mt-1 text-xs text-destructive">{message}</p>;
+  return <p className="mt-1 basis-full text-xs text-destructive">{message}</p>;
 }
