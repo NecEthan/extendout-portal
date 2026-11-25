@@ -9,13 +9,16 @@ import { PageHeader } from "@/components/portal/PageHeader";
 import { Person } from "@/components/team/Person";
 import { useUser } from "@/hooks/useUser";
 import { useProjects } from "@/hooks/useProjects";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useTeam } from "@/hooks/useTeam";
+import type { TeamRoleFilter } from "@/interfaces";
 import { firstErrorMessage } from "@/lib/errorMessage";
 import { AddUserForm } from "./add/AddUserForm";
 import { EditUserForm } from "./edit/EditUserForm";
 import { MemberActions } from "./components/MemberActions";
 import { ProjectMemberships } from "./components/ProjectMemberships";
 import { RoleSelect } from "./components/RoleSelect";
+import { TeamFilters } from "./components/TeamFilters";
 
 // One line per person on wide screens. Narrower, two lines: the person and
 // the Edit/Delete buttons, then role and projects side by side.
@@ -27,12 +30,18 @@ const heading =
 export default function TeamPage() {
   const user = useUser();
   const isAdmin = user.data?.role === "admin";
-  const team = useTeam({ enabled: isAdmin });
+  const [search, setSearch] = useState("");
+  const [role, setRole] = useState<TeamRoleFilter>("all");
+  const team = useTeam({
+    search: useDebouncedValue(search),
+    role,
+    enabled: isAdmin,
+  });
   const projects = useProjects();
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   // Becomes undefined on its own if the person being edited is deleted.
-  const editing = team.data?.find((m) => m.id === editingId);
+  const editing = team.data?.members.find((m) => m.id === editingId);
 
   const error = firstErrorMessage([
     [team, "Failed to load the team"],
@@ -44,6 +53,8 @@ export default function TeamPage() {
     return <ErrorAlert message="Only admins can view the team." />;
   }
   const currentUserId = user.data.id;
+  const shown = team.data?.members ?? [];
+  const filtered = search.trim() !== "" || role !== "all";
 
   return (
     <>
@@ -74,12 +85,19 @@ export default function TeamPage() {
       <ErrorAlert message={error} />
       <Card className="mt-4">
         <CardContent>
-          {team.data && team.data.length === 0 ? (
+          {team.data && team.data.counts.all === 0 && !filtered ? (
             <p className="py-6 text-center text-sm text-muted-foreground">
               No one to show yet.
             </p>
           ) : (
             <>
+              <TeamFilters
+                search={search}
+                onSearch={setSearch}
+                role={role}
+                onRole={setRole}
+                counts={team.data?.counts}
+              />
               <div
                 aria-hidden
                 className={`${columns} border-b pb-2 max-lg:hidden`}
@@ -90,7 +108,7 @@ export default function TeamPage() {
                 <span className={`${heading} text-right`}>Actions</span>
               </div>
               <ul aria-label="Team" className="divide-y">
-                {team.data?.map((member) => {
+                {shown.map((member) => {
                   const isYou = member.id === currentUserId;
                   return (
                     <li key={member.id} className={`${columns} py-3`}>
@@ -120,6 +138,21 @@ export default function TeamPage() {
                   );
                 })}
               </ul>
+              {team.data && shown.length === 0 && (
+                <div className="flex flex-col items-center gap-2 py-8 text-center text-sm text-muted-foreground">
+                  <p>No one matches.</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSearch("");
+                      setRole("all");
+                    }}
+                  >
+                    Clear filters
+                  </Button>
+                </div>
+              )}
             </>
           )}
         </CardContent>

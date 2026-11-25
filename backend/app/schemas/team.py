@@ -22,6 +22,23 @@ class TeamMemberResponse(MemberResponse):
     project_ids: list[int]
 
 
+class RoleCounts(BaseModel):
+    """How many people match the search, in total and per role."""
+
+    all: int
+    admin: int
+    builder: int
+    client: int
+
+
+class TeamListResponse(BaseModel):
+    """GET /team: the matching people, sorted A–Z, and per-role counts (which
+    ignore the role filter, so every filter button shows its number)."""
+
+    members: list[TeamMemberResponse]
+    counts: RoleCounts
+
+
 class CreateTeamMemberRequest(BaseModel):
     """Admin creates an account. This is the only way accounts are created.
     People log in with a code emailed to them, so there's no password."""

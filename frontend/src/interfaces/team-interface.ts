@@ -13,6 +13,16 @@ export interface TeamMember extends Member {
   project_ids: number[];
 }
 
+/** Role filter for GET /team. */
+export type TeamRoleFilter = UserRole | "all";
+
+/** GET /team: matching people (sorted A–Z by the backend) and how many match
+ * the search per role (ignoring the role filter). */
+export interface TeamList {
+  members: TeamMember[];
+  counts: Record<TeamRoleFilter, number>;
+}
+
 /** Body for POST /team (admin only): create an account for someone. There's
  * no password: they log in with a code emailed to them. */
 export interface NewUser {

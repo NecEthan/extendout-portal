@@ -42,7 +42,7 @@ What the portal does today. Screens that still show sample data are listed in [o
 
 ## Team and project membership (admin only)
 
-19. Admins can list every user with their role and project memberships (`GET /team`) and create accounts (`POST /team`). A duplicate email returns `409`.
+19. Admins can list every user with their role and project memberships (`GET /team`, searched by name or email, filtered by role and sorted A–Z on the server) and create accounts (`POST /team`). A duplicate email returns `409`.
 20. Admins can change a user's role (`PATCH /team/{user_id}`), except their own.
 21. Admins can list, add and remove the members of a project (`/projects/{id}/members`).
 22. Builders and clients cannot see the Team page or any project's member list (`403`).

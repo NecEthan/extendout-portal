@@ -15,10 +15,15 @@ async def make_user(db):
     """Factory: make_user(role, projects=[...]) -> User. Cleaned up afterwards."""
     created: list[uuid.UUID] = []
 
-    async def _make(role: str = "client", projects: tuple[int, ...] = ()) -> User:
+    async def _make(
+        role: str = "client",
+        projects: tuple[int, ...] = (),
+        name: str | None = "",
+        email: str | None = None,
+    ) -> User:
         user = User(
-            email=f"team+{uuid.uuid4().hex[:8]}@example.com",
-            name=f"Team {role}",
+            email=email or f"team+{uuid.uuid4().hex[:8]}@example.com",
+            name=f"Team {role}" if name == "" else name,
             role=role,
         )
         db.add(user)
@@ -53,11 +58,62 @@ async def test_admin_sees_everyone_with_projects(admin_client, make_user, make_p
     loner = await make_user("client")
     member = await make_user("builder", projects=(TEST_PROJECT_ID, other_project))
 
-    by_id = {m["id"]: m for m in (await admin_client.get("/team")).json()}
+    by_id = {m["id"]: m for m in (await admin_client.get("/team")).json()["members"]}
     assert by_id[str(loner.id)]["project_ids"] == []
     assert by_id[str(member.id)]["project_ids"] == sorted(
         [TEST_PROJECT_ID, other_project]
     )
+
+
+async def test_team_search_role_and_sorting(admin_client, make_user):
+    # A word no other user in the shared test database has.
+    tag = f"zq{uuid.uuid4().hex[:8]}"
+    await make_user("client", name=f"bea {tag}")
+    await make_user("builder", name=f"Adam {tag}")
+    await make_user("client", name=None, email=f"carl.{tag}@example.com")
+    await make_user("admin", name="Someone Else")
+
+    resp = await admin_client.get("/team", params={"search": tag.upper()})
+    assert resp.status_code == 200
+    body = resp.json()
+    # A–Z ignoring case; no name sorts by email.
+    assert [m["name"] or m["email"] for m in body["members"]] == [
+        f"Adam {tag}",
+        f"bea {tag}",
+        f"carl.{tag}@example.com",
+    ]
+    # Counts follow the search but not the role filter.
+    assert body["counts"] == {"all": 3, "admin": 0, "builder": 1, "client": 2}
+
+    clients = (
+        await admin_client.get("/team", params={"search": tag, "role": "client"})
+    ).json()
+    assert [m["role"] for m in clients["members"]] == ["client", "client"]
+    assert clients["counts"]["all"] == 3
+
+    # Every word must match, in the name or the email.
+    both = (await admin_client.get("/team", params={"search": f"bea {tag}"})).json()
+    assert [m["name"] for m in both["members"]] == [f"bea {tag}"]
+    email = (await admin_client.get("/team", params={"search": f"carl.{tag}@"})).json()
+    assert len(email["members"]) == 1
+
+
+async def test_team_search_treats_wildcards_as_text(admin_client, make_user):
+    tag = f"zq{uuid.uuid4().hex[:8]}"
+    await make_user("client", name=f"{tag} 100%")
+    await make_user("client", name=f"{tag} 1000")
+
+    body = (await admin_client.get("/team", params={"search": f"{tag} 100%"})).json()
+    assert [m["name"] for m in body["members"]] == [f"{tag} 100%"]
+    assert (await admin_client.get("/team", params={"search": f"{tag} _"})).json()[
+        "members"
+    ] == []
+
+
+async def test_team_rejects_unknown_role_and_long_search(admin_client):
+    assert (await admin_client.get("/team", params={"role": "boss"})).status_code == 422
+    resp = await admin_client.get("/team", params={"search": "a" * 321})
+    assert resp.status_code == 422
 
 
 # ── PATCH /team/{user_id} ─────────────────────────────────────────────────────
@@ -205,7 +261,7 @@ async def test_admin_creates_user_who_can_log_in(
     assert body["role"] == "builder"
     assert body["project_ids"] == []
 
-    listed = [m["email"] for m in (await admin_client.get("/team")).json()]
+    listed = [m["email"] for m in (await admin_client.get("/team")).json()["members"]]
     assert email in listed
 
     sent = await client.post("/auth/request-code", json={"email": email})
@@ -339,7 +395,7 @@ async def test_admin_deletes_user(admin_client, db, make_user, make_project):
     # Their documents stay in the project, without an owner.
     kept = await db.get(Document, document_id)
     assert kept is not None and kept.owner_id is None
-    listed = [m["id"] for m in (await admin_client.get("/team")).json()]
+    listed = [m["id"] for m in (await admin_client.get("/team")).json()["members"]]
     assert str(user_id) not in listed
 
     await db.delete(kept)

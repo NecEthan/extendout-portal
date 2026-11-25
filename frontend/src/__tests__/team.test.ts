@@ -1,4 +1,4 @@
-import { deleteTeamMember, updateTeamMember } from "@/lib/api/team";
+import { deleteTeamMember, listTeam, updateTeamMember } from "@/lib/api/team";
 import { ApiError } from "@/lib/api/apiError";
 import { lastRequest, respond } from "@/test-utils/mockApi";
 
@@ -11,6 +11,23 @@ const member = {
 };
 
 describe("team API", () => {
+  it("asks the backend to search and filter, leaving out an empty search", async () => {
+    const list = {
+      members: [member],
+      counts: { all: 1, admin: 0, builder: 1, client: 0 },
+    };
+    respond(200, list);
+    await expect(
+      listTeam({ search: "  sam ", role: "builder" })
+    ).resolves.toEqual(list);
+    expect(lastRequest().url).toBe("/team");
+    expect(lastRequest().params).toEqual({ search: "sam", role: "builder" });
+
+    respond(200, list);
+    await listTeam({ search: "  ", role: "all" });
+    expect(lastRequest().params).toEqual({ search: undefined, role: "all" });
+  });
+
   it("sends only the changed fields when editing someone", async () => {
     respond(200, member);
     await expect(

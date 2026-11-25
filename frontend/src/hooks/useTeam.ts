@@ -1,5 +1,15 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { NewUser, TeamMemberUpdate, UserRole } from "@/interfaces";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import type {
+  NewUser,
+  TeamMemberUpdate,
+  TeamRoleFilter,
+  UserRole,
+} from "@/interfaces";
 import {
   addProjectMember,
   createUser,
@@ -11,8 +21,23 @@ import {
   updateTeamMember,
 } from "@/lib/api/team";
 
-export function useTeam({ enabled = true }: { enabled?: boolean } = {}) {
-  return useQuery({ queryKey: ["team"], queryFn: listTeam, enabled });
+/** The Team page list. Keeps showing the last results while a new search
+ * loads, so the list doesn't flash empty. */
+export function useTeam({
+  search,
+  role,
+  enabled = true,
+}: {
+  search: string;
+  role: TeamRoleFilter;
+  enabled?: boolean;
+}) {
+  return useQuery({
+    queryKey: ["team", { search, role }],
+    queryFn: () => listTeam({ search, role }),
+    placeholderData: keepPreviousData,
+    enabled,
+  });
 }
 
 export function useProjectMembers(projectId: number) {

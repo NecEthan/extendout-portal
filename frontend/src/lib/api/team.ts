@@ -1,16 +1,27 @@
 import type {
   Member,
   NewUser,
+  TeamList,
   TeamMember,
   TeamMemberUpdate,
+  TeamRoleFilter,
   UserRole,
 } from "@/interfaces";
 import { apiRoutes } from "./apiRoutes";
 import { api } from "./axiosClient";
 
-/** All team endpoints are admin only. */
-export async function listTeam(): Promise<TeamMember[]> {
-  const { data } = await api.get<TeamMember[]>(apiRoutes.team.list);
+/** All team endpoints are admin only. The backend searches, filters and
+ * sorts. */
+export async function listTeam({
+  search,
+  role,
+}: {
+  search: string;
+  role: TeamRoleFilter;
+}): Promise<TeamList> {
+  const { data } = await api.get<TeamList>(apiRoutes.team.list, {
+    params: { search: search.trim() || undefined, role },
+  });
   return data;
 }
 
