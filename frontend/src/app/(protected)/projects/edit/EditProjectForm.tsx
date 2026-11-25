@@ -11,7 +11,6 @@ import type { Project } from "@/interfaces";
 export function EditProjectForm({ project }: { project: Project }) {
   const updateProject = useUpdateProject(project.id);
   const [editing, setEditing] = useState(false);
-  const [saved, setSaved] = useState(false);
 
   return (
     <>
@@ -21,7 +20,6 @@ export function EditProjectForm({ project }: { project: Project }) {
         autoFocus={false}
         locked={!editing}
         onEdit={() => {
-          setSaved(false);
           setEditing(true);
         }}
         pending={updateProject.isPending}
@@ -30,16 +28,10 @@ export function EditProjectForm({ project }: { project: Project }) {
           updateProject.mutate(values, {
             onSuccess: () => {
               setEditing(false);
-              setSaved(true);
             },
           })
         }
       />
-      {saved && (
-        <p role="status" className="-mt-2 text-sm text-muted-foreground">
-          Changes saved.
-        </p>
-      )}
     </>
   );
 }
