@@ -13,10 +13,13 @@ import { RowError } from "./RowError";
 export function MemberActions({
   member,
   isYou,
+  isEditing,
   onEdit,
 }: {
   member: TeamMember;
   isYou: boolean;
+  /** The Edit panel is open; Edit closes it again. */
+  isEditing: boolean;
   onEdit: () => void;
 }) {
   const deleteMember = useDeleteTeamMember();
@@ -50,9 +53,10 @@ export function MemberActions({
         <div className="flex items-center justify-end gap-1">
           <Button
             size="icon-sm"
-            variant="ghost"
+            variant={isEditing ? "secondary" : "ghost"}
             aria-label={`Edit ${member.email}`}
-            title="Edit"
+            aria-expanded={isEditing}
+            title={isEditing ? "Close" : "Edit"}
             onClick={onEdit}
           >
             <Pencil />

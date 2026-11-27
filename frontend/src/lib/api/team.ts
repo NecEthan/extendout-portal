@@ -5,7 +5,6 @@ import type {
   TeamMember,
   TeamMemberUpdate,
   TeamRoleFilter,
-  UserRole,
 } from "@/interfaces";
 import { apiRoutes } from "./apiRoutes";
 import { api } from "./axiosClient";
@@ -27,16 +26,6 @@ export async function listTeam({
 
 export async function createUser(body: NewUser): Promise<TeamMember> {
   const { data } = await api.post<TeamMember>(apiRoutes.team.list, body);
-  return data;
-}
-
-export async function updateRole(
-  userId: string,
-  role: UserRole
-): Promise<TeamMember> {
-  const { data } = await api.patch<TeamMember>(apiRoutes.team.member(userId), {
-    role,
-  });
   return data;
 }
 

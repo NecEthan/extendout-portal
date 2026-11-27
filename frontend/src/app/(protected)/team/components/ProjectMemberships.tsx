@@ -8,7 +8,8 @@ import { RowError } from "./RowError";
 import { rowSelectClass } from "./styles";
 import { NativeSelect } from "@/components/ui/native-select";
 
-/** The projects someone belongs to, with remove (×) and add-to-project. */
+/** In the Edit panel: the projects someone belongs to, with remove (×) and
+ * add-to-project. Each change saves straight away. */
 export function ProjectMemberships({
   member,
   projects,
@@ -30,12 +31,12 @@ export function ProjectMemberships({
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-1.5 max-lg:contents">
+      <div className="flex flex-wrap items-center gap-1.5">
         {member.project_ids.map((projectId) => (
           <Badge
             key={projectId}
             variant="outline"
-            className="max-w-full min-w-0 gap-1"
+            className="max-w-full min-w-0 gap-1 text-foreground"
           >
             <span className="truncate">{projectName(projectId)}</span>
             <button

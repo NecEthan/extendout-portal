@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ErrorAlert } from "@/components/ui/error-alert";
 import { PageHeader } from "@/components/portal/PageHeader";
-import { Person } from "@/components/team/Person";
+import { Person, RoleBadge } from "@/components/team/Person";
 import { useUser } from "@/hooks/useUser";
 import { useProjects } from "@/hooks/useProjects";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -16,14 +16,14 @@ import { firstErrorMessage } from "@/lib/errorMessage";
 import { AddUserForm } from "./add/AddUserForm";
 import { EditUserForm } from "./edit/EditUserForm";
 import { MemberActions } from "./components/MemberActions";
-import { ProjectMemberships } from "./components/ProjectMemberships";
-import { RoleSelect } from "./components/RoleSelect";
+import { ProjectList } from "./components/ProjectList";
 import { TeamFilters } from "./components/TeamFilters";
 
-// One line per person on wide screens. Narrower, two lines: the person and
-// the Edit/Delete buttons, then role and projects side by side.
+// Rows are read-only (changes happen in the Edit panel, which opens under the
+// row). One line per person on wide screens. Narrower, two lines: the person
+// and the Edit/Delete buttons, then role and projects side by side.
 const columns =
-  "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 lg:grid-cols-[minmax(0,15rem)_7rem_minmax(0,1fr)_auto]";
+  "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 lg:grid-cols-[minmax(0,16rem)_6rem_minmax(0,1fr)_auto]";
 const heading =
   "text-xs font-medium tracking-wide text-muted-foreground uppercase";
 
@@ -40,8 +40,6 @@ export default function TeamPage() {
   const projects = useProjects();
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  // Becomes undefined on its own if the person being edited is deleted.
-  const editing = team.data?.members.find((m) => m.id === editingId);
 
   const error = firstErrorMessage([
     [team, "Failed to load the team"],
@@ -74,14 +72,6 @@ export default function TeamPage() {
         }
       />
       {adding && <AddUserForm onDone={() => setAdding(false)} />}
-      {editing && (
-        <EditUserForm
-          key={editing.id}
-          member={editing}
-          isYou={editing.id === currentUserId}
-          onDone={() => setEditingId(null)}
-        />
-      )}
       <ErrorAlert message={error} />
       <Card className="mt-4">
         <CardContent>
@@ -110,6 +100,7 @@ export default function TeamPage() {
               <ul aria-label="Team" className="divide-y">
                 {shown.map((member) => {
                   const isYou = member.id === currentUserId;
+                  const isEditing = member.id === editingId;
                   return (
                     <li key={member.id} className={`${columns} py-3`}>
                       <Person person={member} isYou={isYou} />
@@ -117,23 +108,34 @@ export default function TeamPage() {
                         <MemberActions
                           member={member}
                           isYou={isYou}
+                          isEditing={isEditing}
                           onEdit={() => {
                             setAdding(false);
-                            setEditingId(member.id);
+                            setEditingId(isEditing ? null : member.id);
                           }}
                         />
                       </div>
-                      <div className="col-span-2 flex min-w-0 flex-wrap items-center gap-1.5 lg:contents">
-                        <div className="max-lg:contents lg:col-start-2 lg:row-start-1">
-                          <RoleSelect member={member} isYou={isYou} />
+                      <div className="col-span-2 flex min-w-0 items-center gap-3 lg:contents">
+                        <div className="shrink-0 lg:col-start-2 lg:row-start-1">
+                          <RoleBadge role={member.role} />
                         </div>
-                        <div className="min-w-0 max-lg:contents lg:col-start-3 lg:row-start-1">
-                          <ProjectMemberships
+                        <div className="min-w-0 lg:col-start-3 lg:row-start-1">
+                          <ProjectList
                             member={member}
                             projects={projects.data ?? []}
                           />
                         </div>
                       </div>
+                      {isEditing && (
+                        <div className="col-span-full">
+                          <EditUserForm
+                            member={member}
+                            isYou={isYou}
+                            projects={projects.data ?? []}
+                            onDone={() => setEditingId(null)}
+                          />
+                        </div>
+                      )}
                     </li>
                   );
                 })}

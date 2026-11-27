@@ -27,11 +27,11 @@ setup("seed and authenticate", async ({ page, request }) => {
   if (!created.ok() && created.status() !== 409) {
     throw new Error(`create user failed: ${created.status()}`);
   }
-  const team: { id: string; email: string }[] = await ok(
-    await request.get(`${API}/team`),
+  const team: { members: { id: string; email: string }[] } = await ok(
+    await request.get(`${API}/team`, { params: { search: E2E_EMAIL } }),
     "list team"
   );
-  const builder = team.find((m) => m.email === E2E_EMAIL);
+  const builder = team.members.find((m) => m.email === E2E_EMAIL);
   if (!builder) throw new Error("E2E builder not found after creating it");
 
   // A fresh project per run, with the builder as a member, so specs never

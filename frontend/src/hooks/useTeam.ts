@@ -4,12 +4,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import type {
-  NewUser,
-  TeamMemberUpdate,
-  TeamRoleFilter,
-  UserRole,
-} from "@/interfaces";
+import type { NewUser, TeamMemberUpdate, TeamRoleFilter } from "@/interfaces";
 import {
   addProjectMember,
   createUser,
@@ -17,7 +12,6 @@ import {
   listProjectMembers,
   listTeam,
   removeProjectMember,
-  updateRole,
   updateTeamMember,
 } from "@/lib/api/team";
 
@@ -58,15 +52,6 @@ function useInvalidateTeam() {
     // An admin may have edited their own name or email.
     queryClient.invalidateQueries({ queryKey: ["user"] });
   };
-}
-
-export function useUpdateRole() {
-  const invalidate = useInvalidateTeam();
-  return useMutation({
-    mutationFn: ({ userId, role }: { userId: string; role: UserRole }) =>
-      updateRole(userId, role),
-    onSuccess: invalidate,
-  });
 }
 
 export function useAddProjectMember() {
