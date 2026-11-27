@@ -89,7 +89,13 @@ async def process_document(ctx: dict, document_version_id: str) -> None:
 
         # ── Phase 3: chunk + embed ────────────────────────────────────────────
         raw_chunks = chunk_text(text)
-        embeddings = await generate_embeddings(raw_chunks, max_retries=settings.openai_worker_max_retries) if raw_chunks else []
+        embeddings = (
+            await generate_embeddings(
+                raw_chunks, max_retries=settings.openai_worker_max_retries
+            )
+            if raw_chunks
+            else []
+        )
 
         # ── Phase 4: persist results atomically ──────────────────────────────
         await persist_results(version_id, document_id, raw_chunks, embeddings)

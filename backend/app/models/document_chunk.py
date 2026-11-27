@@ -1,4 +1,5 @@
 import uuid
+from typing import TYPE_CHECKING
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import ForeignKey, Integer, Text, UniqueConstraint
@@ -6,6 +7,9 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+
+if TYPE_CHECKING:  # type names in relationship() annotations only
+    from app.models.document_version import DocumentVersion
 
 
 class DocumentChunk(Base):

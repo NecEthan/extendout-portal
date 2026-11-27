@@ -54,7 +54,9 @@ async def test_process_document_idempotency(auth_client, db):
 
 async def test_crash_recovery_no_duplicate_chunks(auth_client, db):
     """Stale chunks from a partial crash are replaced, not duplicated."""
-    doc_id = await upload_doc(auth_client, "Crash Recovery Doc", DOC_TEXT, "policy.docx")
+    doc_id = await upload_doc(
+        auth_client, "Crash Recovery Doc", DOC_TEXT, "policy.docx"
+    )
     version = await get_version(db, doc_id)
     version_id = version.id
 

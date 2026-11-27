@@ -49,7 +49,9 @@ async def test_process_document_retry_then_success(auth_client, db):
 
 async def test_process_document_permanent_failure(auth_client, db):
     """All MAX_TRIES attempts fail → version=FAILED, job=FAILED."""
-    doc_id = await upload_doc(auth_client, "Permanent Failure Doc", DOC_TEXT, "policy.docx")
+    doc_id = await upload_doc(
+        auth_client, "Permanent Failure Doc", DOC_TEXT, "policy.docx"
+    )
     version = await get_version(db, doc_id)
     version_id = version.id
 
@@ -75,4 +77,3 @@ async def test_process_document_permanent_failure(auth_client, db):
     job = result.scalar_one()
     assert job.status == "FAILED"
     assert "disk full" in job.last_error
-

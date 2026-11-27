@@ -8,7 +8,10 @@ from app.schemas.query import Citation, LLMAnswer
 async def fetch_context_chunks(
     db: AsyncSession, top_chunk_ids: list
 ) -> tuple[list, dict[tuple, tuple]]:
-    """Fetch chunk rows from DB in RRF order. Returns (ordered_chunks, metadata_by_key)."""
+    """Fetch chunk rows from DB in RRF order.
+
+    Returns (ordered_chunks, metadata_by_key).
+    """
     stmt = (
         select(
             DocumentChunk.id,

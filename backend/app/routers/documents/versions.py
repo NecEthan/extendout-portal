@@ -80,7 +80,7 @@ async def upload_document_version(
         raise HTTPException(status_code=503, detail=STORAGE_UNAVAILABLE_DETAIL) from exc
 
     try:
-        # get max number of existing versions for this document to determine the next version number
+        # The next version number is one more than the highest so far.
         ver_result = await db.execute(
             select(func.max(DocumentVersion.version_number)).where(
                 DocumentVersion.document_id == document_id

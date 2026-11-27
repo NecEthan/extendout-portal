@@ -1,4 +1,5 @@
-"""Version activation logic, shared by the worker pipeline and manual activation endpoint."""
+"""Version activation logic, shared by the worker pipeline and the manual
+activation endpoint."""
 
 import uuid
 
@@ -25,9 +26,7 @@ async def activate_version(
     Raises DocumentDeletedError if the document was deleted mid-processing.
     """
     # Guard: abort if document was deleted mid-processing.
-    doc_result = await db.execute(
-        select(Document.id).where(Document.id == document_id)
-    )
+    doc_result = await db.execute(select(Document.id).where(Document.id == document_id))
     if doc_result.scalar_one_or_none() is None:
         raise DocumentDeletedError(
             f"Document {document_id} was deleted — aborting activation"
@@ -58,4 +57,3 @@ async def activate_version(
         .where(ProcessingJob.document_version_id == version_id)
         .values(status="COMPLETE")
     )
-

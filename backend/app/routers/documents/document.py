@@ -102,9 +102,7 @@ async def delete_document(
 
     # 3. Versions (FK → document)
     await db.execute(
-        delete(DocumentVersion).where(
-            DocumentVersion.document_id == document_id
-        )
+        delete(DocumentVersion).where(DocumentVersion.document_id == document_id)
     )
 
     # 4. Document.

@@ -9,9 +9,9 @@ from alembic import context
 from app.config import settings
 from app.database import Base
 
-_db_url = settings.database_url.replace("postgresql://", "postgresql+asyncpg://", 1).replace(
-    "postgres://", "postgresql+asyncpg://", 1
-)
+_db_url = settings.database_url.replace(
+    "postgresql://", "postgresql+asyncpg://", 1
+).replace("postgres://", "postgresql+asyncpg://", 1)
 
 config = context.config
 config.set_main_option("sqlalchemy.url", _db_url)

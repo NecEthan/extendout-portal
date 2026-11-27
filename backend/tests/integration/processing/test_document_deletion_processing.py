@@ -5,7 +5,8 @@ if the document was deleted mid-processing.
 
 Race condition scenario (concurrent transactions):
   1. Worker Phase 1 commits (job=PROCESSING, version in memory).
-  2. Worker Phase 4 opens transaction, flushes chunks (FK passes — DELETE not yet committed).
+  2. Worker Phase 4 opens transaction, flushes chunks (FK passes — DELETE not
+     yet committed).
   3. DELETE endpoint commits (document + all children hard-deleted).
   4. Worker calls activate_version → document no longer exists → DocumentDeletedError.
   5. Worker transaction rolls back — chunks discarded, version never ACTIVE.
@@ -55,9 +56,7 @@ async def _create_document(db, user_id: uuid.UUID) -> tuple[Document, DocumentVe
 async def _hard_delete(db, doc_id: uuid.UUID, version_id: uuid.UUID) -> None:
     """Delete document and all children in FK order."""
     await db.execute(
-        sa_delete(ProcessingJob).where(
-            ProcessingJob.document_version_id == version_id
-        )
+        sa_delete(ProcessingJob).where(ProcessingJob.document_version_id == version_id)
     )
     await db.execute(sa_delete(DocumentVersion).where(DocumentVersion.id == version_id))
     await db.execute(sa_delete(Document).where(Document.id == doc_id))
@@ -93,8 +92,6 @@ async def test_worker_produces_no_chunks_when_document_deleted(db, test_user):
 
     db.expire_all()
     result = await db.execute(
-        select(DocumentChunk).where(
-            DocumentChunk.document_version_id == version_id
-        )
+        select(DocumentChunk).where(DocumentChunk.document_version_id == version_id)
     )
     assert result.scalars().all() == []

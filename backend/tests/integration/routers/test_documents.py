@@ -8,7 +8,6 @@ import uuid
 from unittest.mock import patch
 
 import pytest
-
 from sqlalchemy import select, update
 
 from app.models.base import Document, DocumentVersion, ProcessingJob
@@ -200,11 +199,15 @@ async def test_admin_can_upload_to_any_project(admin_client, make_project):
 
 async def test_non_member_cannot_list_project(auth_client, make_project):
     outsider_project = await make_project(member=None)
-    response = await auth_client.get("/documents", params={"project_id": outsider_project})
+    response = await auth_client.get(
+        "/documents", params={"project_id": outsider_project}
+    )
     assert response.status_code == 403
 
 
-async def test_user_only_sees_member_project_docs(auth_client, admin_client, make_project):
+async def test_user_only_sees_member_project_docs(
+    auth_client, admin_client, make_project
+):
     outsider_project = await make_project(member=None)
     with (
         patch("app.services.storage.upload_bytes"),
@@ -238,7 +241,9 @@ async def test_admin_sees_all_project_docs(admin_client, make_project):
             data={"title": "Admin Visible", "project_id": outsider_project},
         )
 
-    response = await admin_client.get("/documents", params={"project_id": outsider_project})
+    response = await admin_client.get(
+        "/documents", params={"project_id": outsider_project}
+    )
     assert response.status_code == 200
     assert [d["title"] for d in response.json()["items"]] == ["Admin Visible"]
 
@@ -371,7 +376,9 @@ async def test_list_documents_filtered_by_project(auth_client, make_project, tes
             data={"title": "Doc B", "project_id": other_project},
         )
 
-    response = await auth_client.get("/documents", params={"project_id": TEST_PROJECT_ID})
+    response = await auth_client.get(
+        "/documents", params={"project_id": TEST_PROJECT_ID}
+    )
     assert response.status_code == 200
     body = response.json()
     titles = [d["title"] for d in body["items"]]

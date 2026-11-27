@@ -4,19 +4,18 @@ import uuid
 from typing import NoReturn
 
 import openai
-
 import structlog
 from arq import Retry
 
 from app.config import settings
-from app.workers.failure import persist_failure, reset_job_for_retry
 from app.workers.constants import RETRY_DELAYS
+from app.workers.failure import persist_failure, reset_job_for_retry
 
 # Errors that will never succeed on retry — fail immediately.
 _NON_RETRYABLE = (
-    ValueError,                   # unsupported content type from extract_text
-    openai.AuthenticationError,   # bad API key
-    openai.BadRequestError,       # malformed request (e.g. input too large)
+    ValueError,  # unsupported content type from extract_text
+    openai.AuthenticationError,  # bad API key
+    openai.BadRequestError,  # malformed request (e.g. input too large)
 )
 
 logger = structlog.get_logger(__name__)
@@ -36,7 +35,9 @@ async def handle_process_job_error(
     Always raises.
     """
     error_msg = f"{type(exc).__name__}: {exc}"[:500]
-    logger.exception("Version %s failed (attempt %d/%d)", version_id, job_try, max_tries)
+    logger.exception(
+        "Version %s failed (attempt %d/%d)", version_id, job_try, max_tries
+    )
 
     if isinstance(exc, _NON_RETRYABLE):
         logger.error("non_retryable_error", version_id=str(version_id))

@@ -27,8 +27,12 @@ async def reap_stale_processing_jobs() -> None:
     threshold = datetime.now(UTC) - _STALE_THRESHOLD
     async with AsyncSessionLocal() as db:
         result = await db.execute(
-            select(ProcessingJob, DocumentVersion.document_id, DocumentVersion.storage_key)
-            .join(DocumentVersion, ProcessingJob.document_version_id == DocumentVersion.id)
+            select(
+                ProcessingJob, DocumentVersion.document_id, DocumentVersion.storage_key
+            )
+            .join(
+                DocumentVersion, ProcessingJob.document_version_id == DocumentVersion.id
+            )
             .where(ProcessingJob.status == "PROCESSING")
             .where(ProcessingJob.updated_at < threshold)
         )
@@ -55,7 +59,8 @@ async def reap_stale_processing_jobs() -> None:
                 )
                 keys_to_delete.append(storage_key)
                 logger.error(
-                    "Reaped stale job for version %s — max attempts exhausted, marked FAILED",
+                    "Reaped stale job for version %s — max attempts exhausted, "
+                    "marked FAILED",
                     job.document_version_id,
                 )
 

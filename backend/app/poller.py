@@ -24,10 +24,9 @@ async def _dispatch_stale_jobs(pool: ArqRedis) -> None:
         queued_count = len(jobs)
         logger.info("queue_depth", queued_count=queued_count)
         for job in jobs:
-            # If error occurs after job is enqueued, the job status will not be set to DISPATCHED
-            # resulting in a job being enqueued twice
-            # enqueue job internally checks if a job with the same _job_id already exists
-            # if does then returns None
+            # If something fails after the enqueue, the job isn't marked DISPATCHED
+            # and gets enqueued again; arq skips a _job_id it already has
+            # (enqueue_job returns None), so it isn't run twice.
             await pool.enqueue_job(
                 "process_document",
                 str(job.document_version_id),

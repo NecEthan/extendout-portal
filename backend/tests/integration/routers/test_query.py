@@ -177,7 +177,9 @@ async def test_query_returns_answer_and_citation(auth_client, db, indexed_docume
     assert "updated_at" in citation
 
 
-async def test_query_citation_includes_all_required_fields(auth_client, indexed_document):
+async def test_query_citation_includes_all_required_fields(
+    auth_client, indexed_document
+):
     doc, version, chunk = indexed_document
 
     mock_emb = _mock_embedding_call()
@@ -228,9 +230,7 @@ async def test_embedding_unavailable_returns_503(auth_client, indexed_document):
     mock_emb = AsyncMock(side_effect=oai.OpenAIError("embedding outage"))
 
     with patch("app.routers.query.generate_embeddings", new=mock_emb):
-        response = await auth_client.post(
-            "/query", json={"question": "leave days?"}
-        )
+        response = await auth_client.post("/query", json={"question": "leave days?"})
 
     assert response.status_code == 503
     assert "openai" not in response.json()["detail"].lower()
@@ -353,7 +353,9 @@ async def test_search_excludes_superseded_versions(auth_client, db, test_user):
 # ── Permission isolation ──────────────────────────────────────────────────────
 
 
-async def test_restricted_document_not_visible_to_other_user(auth_client, db, test_user):
+async def test_restricted_document_not_visible_to_other_user(
+    auth_client, db, test_user
+):
     """User A must never see User B's document in query results."""
     # Create User B and their document.
     user_b = User(

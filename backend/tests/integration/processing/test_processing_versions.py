@@ -100,5 +100,3 @@ async def test_previous_version_protected_on_failure(auth_client, db, test_user)
         select(DocumentVersion).where(DocumentVersion.id == v1_id)
     )
     assert result.scalar_one().status == "SUPERSEDED"
-
-

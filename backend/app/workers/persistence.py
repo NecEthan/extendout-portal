@@ -6,8 +6,8 @@ from sqlalchemy import delete, func, update
 
 from app.database import AsyncSessionLocal
 from app.models.base import DocumentChunk, DocumentVersion
-from app.services.chunker import estimate_tokens
 from app.services.activation import activate_version
+from app.services.chunker import estimate_tokens
 
 
 async def persist_results(
@@ -48,7 +48,3 @@ async def persist_results(
         await activate_version(db, version_id, document_id)
 
         await db.commit()
-
-
-
-

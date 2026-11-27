@@ -81,7 +81,8 @@ class FakeRedis:
 
 @pytest.fixture(autouse=True)
 def _arq_app_state():
-    """Set app.state.arq_pool so get_arq_pool doesn't crash (lifespan doesn't run in tests)."""
+    """Set app.state.arq_pool so get_arq_pool doesn't crash (lifespan doesn't
+    run in tests)."""
     app.state.arq_pool = FakeRedis()
     yield
     try:

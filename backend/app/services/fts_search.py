@@ -49,12 +49,9 @@ async def fts_search(
     version_rank_map = {row.version_id: i + 1 for i, row in enumerate(version_rows)}
     fts_version_ids = list(version_rank_map.keys())
 
-    chunks_stmt = select(
-        DocumentChunk.id, DocumentChunk.document_version_id
-    ).where(DocumentChunk.document_version_id.in_(fts_version_ids))
+    chunks_stmt = select(DocumentChunk.id, DocumentChunk.document_version_id).where(
+        DocumentChunk.document_version_id.in_(fts_version_ids)
+    )
     chunk_rows = (await db.execute(chunks_stmt)).all()
 
-    return [
-        (row.id, version_rank_map[row.document_version_id])
-        for row in chunk_rows
-    ]
+    return [(row.id, version_rank_map[row.document_version_id]) for row in chunk_rows]

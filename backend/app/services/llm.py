@@ -13,7 +13,8 @@ from app.schemas.query import LLMAnswer
 logger = structlog.get_logger(__name__)
 
 _SYSTEM_PROMPT = (
-    "You are the ExtendOut Portal assistant. Answer questions using ONLY the provided context.\n"
+    "You are the ExtendOut Portal assistant. "
+    "Answer questions using ONLY the provided context.\n"
     "The context is text extracted from documents uploaded to the project. Each "
     "part starts with a '[Source: <title> v<version>]' line.\n"
     "Rules:\n"
@@ -88,9 +89,7 @@ def _log_llm_call(completion, duration_ms: float) -> None:
         prompt_tokens = int(usage.prompt_tokens)
         completion_tokens = int(usage.completion_tokens)
         total_tokens = prompt_tokens + completion_tokens
-        estimated_cost_usd = round(
-            _estimate_cost(prompt_tokens, completion_tokens), 8
-        )
+        estimated_cost_usd = round(_estimate_cost(prompt_tokens, completion_tokens), 8)
         logger.info(
             "llm_call",
             model=settings.chat_model,

@@ -51,9 +51,7 @@ async def test_delete_removes_document(auth_client, db):
     assert r.status_code == 204
 
     db.expire_all()
-    result = await db.execute(
-        select(Document).where(Document.id == uuid.UUID(doc_id))
-    )
+    result = await db.execute(select(Document).where(Document.id == uuid.UUID(doc_id)))
     assert result.scalar_one_or_none() is None
 
 
@@ -65,9 +63,7 @@ async def test_delete_removes_all_versions(auth_client, db):
 
     db.expire_all()
     result = await db.execute(
-        select(DocumentVersion).where(
-            DocumentVersion.document_id == uuid.UUID(doc_id)
-        )
+        select(DocumentVersion).where(DocumentVersion.document_id == uuid.UUID(doc_id))
     )
     assert result.scalars().all() == []
 
@@ -99,9 +95,7 @@ async def test_delete_removes_all_chunks(auth_client, db):
 
     db.expire_all()
     result = await db.execute(
-        select(DocumentChunk).where(
-            DocumentChunk.document_version_id == version_id
-        )
+        select(DocumentChunk).where(DocumentChunk.document_version_id == version_id)
     )
     assert result.scalars().all() == []
 
@@ -121,9 +115,7 @@ async def test_delete_removes_processing_jobs(auth_client, db):
 
     db.expire_all()
     result = await db.execute(
-        select(ProcessingJob).where(
-            ProcessingJob.document_version_id == version_id
-        )
+        select(ProcessingJob).where(ProcessingJob.document_version_id == version_id)
     )
     assert result.scalar_one_or_none() is None
 
@@ -149,9 +141,7 @@ async def test_delete_removes_completed_job(auth_client, db):
     await auth_client.delete(f"/documents/{doc_id}")
 
     db.expire_all()
-    result = await db.execute(
-        select(ProcessingJob).where(ProcessingJob.id == job_id)
-    )
+    result = await db.execute(select(ProcessingJob).where(ProcessingJob.id == job_id))
     assert result.scalar_one_or_none() is None
 
 
@@ -270,16 +260,12 @@ async def test_delete_removes_all_versions_and_chunks(auth_client, db):
 
     db.expire_all()
     result = await db.execute(
-        select(DocumentVersion).where(
-            DocumentVersion.document_id == uuid.UUID(doc_id)
-        )
+        select(DocumentVersion).where(DocumentVersion.document_id == uuid.UUID(doc_id))
     )
     assert result.scalars().all() == []
 
     for vid in version_ids:
         result = await db.execute(
-            select(DocumentChunk).where(
-                DocumentChunk.document_version_id == vid
-            )
+            select(DocumentChunk).where(DocumentChunk.document_version_id == vid)
         )
         assert result.scalars().all() == []

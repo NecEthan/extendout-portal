@@ -25,8 +25,12 @@ async def upload_doc(
 ) -> uuid.UUID:
     """Upload ``text`` inside a .docx via the API; return the doc id."""
     with (
-        patch("app.services.storage.upload_bytes"),  # mock file upload to minio without returning anything
-        patch("arq.connections.ArqRedis.enqueue_job"),  # don't leak real jobs onto the dev redis queue
+        patch(
+            "app.services.storage.upload_bytes"
+        ),  # mock file upload to minio without returning anything
+        patch(
+            "arq.connections.ArqRedis.enqueue_job"
+        ),  # don't leak real jobs onto the dev redis queue
     ):
         response = await auth_client.post(
             "/documents",

@@ -3,8 +3,8 @@ import pytest
 from app.services.documents import (
     ALLOWED_CONTENT_TYPES,
     compute_hash,
-    generate_storage_key,
     detect_content_type,
+    generate_storage_key,
     read_and_validate,
 )
 from tests.helpers.files import DOCX_CT as _DOCX_CT

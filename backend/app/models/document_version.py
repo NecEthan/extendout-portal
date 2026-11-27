@@ -2,14 +2,23 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from app.models.document import Document
     from app.models.document_chunk import DocumentChunk
     from app.models.processing_job import ProcessingJob
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, Text, UniqueConstraint, func, text
+from sqlalchemy import (
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Text,
+    UniqueConstraint,
+    func,
+    text,
+)
 from sqlalchemy.dialects.postgresql import TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -44,9 +53,9 @@ class DocumentVersion(Base):
     )
     search_vector: Mapped[Any | None] = mapped_column(TSVECTOR, nullable=True)
 
-    document: Mapped["Document"] = relationship(back_populates="versions")
-    chunks: Mapped[list["DocumentChunk"]] = relationship(back_populates="version")
-    processing_jobs: Mapped[list["ProcessingJob"]] = relationship(
+    document: Mapped[Document] = relationship(back_populates="versions")
+    chunks: Mapped[list[DocumentChunk]] = relationship(back_populates="version")
+    processing_jobs: Mapped[list[ProcessingJob]] = relationship(
         back_populates="document_version"
     )
 

@@ -226,9 +226,7 @@ async def test_activate_superseded_version(auth_client, db, test_user):
     doc_id, v1_id, v2_id = await _upload_and_setup_versions(auth_client, db)
 
     # v2 is SUPERSEDED — activate it.
-    response = await auth_client.patch(
-        f"/documents/{doc_id}/versions/{v2_id}/activate"
-    )
+    response = await auth_client.patch(f"/documents/{doc_id}/versions/{v2_id}/activate")
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "ACTIVE"
@@ -275,9 +273,7 @@ async def test_activate_404_non_member(auth_client, admin_client, db, make_proje
     )
     v1 = result.scalar_one()
 
-    response = await auth_client.patch(
-        f"/documents/{doc_id}/versions/{v1.id}/activate"
-    )
+    response = await auth_client.patch(f"/documents/{doc_id}/versions/{v1.id}/activate")
     assert response.status_code == 404
 
 
@@ -303,9 +299,7 @@ async def test_member_can_activate_other_users_doc(auth_client, admin_client, db
     )
     await db.commit()
 
-    response = await auth_client.patch(
-        f"/documents/{doc_id}/versions/{v1.id}/activate"
-    )
+    response = await auth_client.patch(f"/documents/{doc_id}/versions/{v1.id}/activate")
     assert response.status_code == 200
     assert response.json()["status"] == "ACTIVE"
 

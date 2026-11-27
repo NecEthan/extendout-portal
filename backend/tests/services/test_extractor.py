@@ -57,7 +57,8 @@ def test_pdf_extracts_text():
     """
     # 80 chars — safely above the 50-char/page threshold.
     page_text = (
-        "Hello ExtendOut Portal. This is a document text extraction test with content.\n"
+        "Hello ExtendOut Portal. This is a document text extraction test with "
+        "content.\n"
     )
     mock_doc = _mock_fitz_doc([page_text])
 
@@ -118,24 +119,11 @@ def test_scanned_pdf_ocr_unavailable_returns_empty():
     """If pytesseract/Pillow aren't installed, OCR returns empty string gracefully."""
     content = _make_blank_pdf()
 
-    with patch("builtins.__import__", side_effect=ImportError("no module")):
-        # Use the internal function directly; patch the import inside it.
-        pass
-
-    # Directly test _ocr_pdf with mocked imports
-    from app.services import extractor
-
-    original = extractor._ocr_pdf
-
-    def _fake_ocr(doc):
-        raise ImportError("pytesseract not available")
-
-    # Wrap so ImportError is caught by the function itself
-    with patch.object(extractor, "_ocr_pdf", side_effect=None, wraps=None) as m:
-        m.return_value = ""
+    # A None entry in sys.modules makes `import pytesseract` raise ImportError.
+    with patch.dict("sys.modules", {"pytesseract": None}):
         result = extract_text(content, "application/pdf")
 
-    assert isinstance(result, str)
+    assert result == ""
 
 
 def test_text_pdf_does_not_call_ocr():

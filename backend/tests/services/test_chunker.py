@@ -69,7 +69,8 @@ def test_large_text_produces_multiple_chunks():
 
 
 def test_chunk_size_within_reasonable_bound():
-    # No chunk should exceed target_chars by more than one unit (~500 chars for a sentence).
+    # No chunk should exceed target_chars by more than one unit
+    # (~500 chars for a sentence).
     text = ("word " * 400 + "\n\n") * 10
     result = chunk_text(text)
     for chunk in result:

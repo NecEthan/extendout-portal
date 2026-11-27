@@ -1,11 +1,16 @@
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, Integer, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+
+if TYPE_CHECKING:  # type names in relationship() annotations only
+    from app.models.document_version import DocumentVersion
+    from app.models.user import User
 
 
 class Document(Base):
@@ -18,7 +23,9 @@ class Document(Base):
     owner_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )
-    source_type: Mapped[str] = mapped_column(Text, nullable=False)  # upload | google_docs
+    source_type: Mapped[str] = mapped_column(
+        Text, nullable=False
+    )  # upload | google_docs
     # Access is granted per project via project_members (admins see everything).
     # Nullable only for legacy documents uploaded before projects existed.
     project_id: Mapped[int | None] = mapped_column(

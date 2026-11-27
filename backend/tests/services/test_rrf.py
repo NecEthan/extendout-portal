@@ -5,7 +5,6 @@ These tests have no database dependency — pure Python only.
 
 import uuid
 
-
 from app.services.rrf import rrf_combine
 
 # Stable UUIDs for deterministic tests.
@@ -32,7 +31,8 @@ def test_only_fts_results():
 
 
 def test_overlap_boosts_score():
-    # B appears in both lists — should score higher than A (vector only) and C (FTS only).
+    # B appears in both lists, so it should score higher than A (vector only)
+    # and C (FTS only).
     vector = [(A, 1), (B, 2)]
     fts = [(B, 1), (C, 2)]
     results = rrf_combine(vector, fts)
