@@ -11,7 +11,7 @@ What the portal does today. Screens that still show sample data are listed in [o
 
 1. There is no public sign-up. Admins create accounts on the Team page (`POST /team`) with email, role (`admin`, `builder` or `client`) and an optional name. There are no passwords.
 2. Users log in by entering their email and then a 6-digit code emailed to them (valid 10 minutes, single use, 5 wrong tries per code, 3 codes per email per 15 minutes). The response is the same whether or not the email has an account.
-3. Logging in creates a server-side session. The session id is sent as an `HttpOnly` cookie (`Secure` + `SameSite=None` in production, `SameSite=Lax` in development).
+3. Logging in creates a server-side session. The session id is sent as an `HttpOnly` cookie (`SameSite=Lax`, plus `Secure` in production).
 4. Sessions expire 400 days after login (fixed, not sliding) and can be invalidated server-side at any time.
 5. Logging out invalidates the session immediately.
 6. Users can fetch their own profile (`GET /auth/user`).

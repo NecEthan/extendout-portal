@@ -25,7 +25,7 @@ Admin-only UI (the Team page and sidebar link, the project Team tab, **New proje
 
 The session lives on the server. The browser holds only the session id in an `HttpOnly` cookie, so JavaScript (and therefore an XSS bug) can't read it. Requests include it automatically via `credentials: "include"`.
 
-In production the cookie is `Secure` and `SameSite=None` (the frontend and API are on different sites, so the cookie must be sent cross-site); in development it's `SameSite=Lax`.
+The cookie is `SameSite=Lax`, and `Secure` in production. The frontend (`portal.extendout.co.uk`) and API (`api.extendout.co.uk`) share a domain, so the cookie is first-party and is sent with the frontend's API calls; the API must stay on an `extendout.co.uk` subdomain, or browsers stop sending it.
 
 ### File uploads
 

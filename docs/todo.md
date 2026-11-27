@@ -1,9 +1,5 @@
 # To Do
 
-## Login error messages
-
-- [ ] Fix the login error messages for the account lock and "try again in 1 minute".
-
 ## Store session tokens hashed
 
 - [ ] Store `sha256(token)` instead of the token: `create_session` still returns the raw token for the cookie, but saves only its hash; `get_valid_session` and `invalidate_session` hash the cookie value before looking it up.

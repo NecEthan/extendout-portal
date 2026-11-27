@@ -5,7 +5,7 @@ Answers the same whether or not the email has an account, so the form can't be
 used to find out who does. Codes are only sent to accounts an admin created.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,13 +13,15 @@ from app.config import settings
 from app.dependencies import get_arq_pool, get_db
 from app.limiter import ip_key, limiter
 from app.models.base import User
+from app.routers.auth.errors import too_many
 from app.schemas.auth import RequestCodeRequest
 from app.services.email import EmailSendError, send_login_code
 from app.services.login_codes import (
-    allow_code_request,
+    code_request_wait_seconds,
     discard_code,
-    is_locked,
     issue_code,
+    lockout_seconds_left,
+    try_again_in,
 )
 
 router = APIRouter(tags=["auth"])
@@ -38,17 +40,18 @@ async def request_code(
     # Audited; the code itself is never recorded.
     request.state.audit_details = {"email": body.email}
 
-    locked = await is_locked(redis, body.email)
-    if locked:
-        raise HTTPException(
-            status_code=429,
-            detail="Too many wrong codes. Wait 15 minutes and try again.",
+    locked_for = await lockout_seconds_left(redis, body.email)
+    if locked_for:
+        raise too_many(
+            f"Too many wrong codes, so sign-in is paused. {try_again_in(locked_for)}",
+            locked_for,
         )
-    allowed = await allow_code_request(redis, body.email)
-    if not allowed:
-        raise HTTPException(
-            status_code=429,
-            detail="Too many codes requested. Wait a few minutes and try again.",
+    wait = await code_request_wait_seconds(redis, body.email)
+    if wait:
+        raise too_many(
+            f"You've asked for several codes. Use the newest one in your email, "
+            f"or {try_again_in(wait).lower()}",
+            wait,
         )
 
     user = await db.scalar(select(User).where(func.lower(User.email) == body.email))

@@ -78,7 +78,23 @@ async def test_too_many_code_requests_are_refused(client, test_user):
         assert (await _request_code(client, test_user.email)).status_code == 202
     response = await _request_code(client, test_user.email)
     assert response.status_code == 429
-    assert "Too many codes requested" in response.json()["detail"]
+    # The window is 15 minutes, so that's the wait shown.
+    assert response.json()["detail"] == (
+        "You've asked for several codes. Use the newest one in your email, "
+        "or try again in 15 minutes."
+    )
+    assert response.headers["retry-after"] == "900"
+
+
+async def test_code_request_wait_shows_the_time_left(client, test_user, redis):
+    for _ in range(3):
+        assert (await _request_code(client, test_user.email)).status_code == 202
+    redis.ttl_seconds[f"login_code_requests:{test_user.email}"] = 61
+    response = await _request_code(client, test_user.email)
+    assert response.json()["detail"].endswith("try again in 2 minutes.")
+    redis.ttl_seconds[f"login_code_requests:{test_user.email}"] = 30
+    response = await _request_code(client, test_user.email)
+    assert response.json()["detail"].endswith("try again in 1 minute.")
 
 
 async def test_email_failure_is_reported_and_no_code_is_left(client, test_user, redis):
@@ -101,6 +117,8 @@ async def test_correct_code_logs_in_for_400_days(client, db, test_user, redis):
     assert response.status_code == 200
     assert response.json()["id"] == str(test_user.id)
     assert f"Max-Age={400 * 24 * 3600}" in response.headers["set-cookie"]
+    # Site and API share a domain, so the cookie is first-party: Lax, not None.
+    assert "samesite=lax" in response.headers["set-cookie"].lower()
 
     session = await db.scalar(select(Session).where(Session.user_id == test_user.id))
     expected = datetime.now(UTC) + timedelta(days=400)
@@ -168,9 +186,17 @@ async def test_locks_after_too_many_wrong_codes(client, test_user, redis):
     # Locked: no new code is sent, and even a valid code is refused.
     response = await _request_code(client, test_user.email)
     assert response.status_code == 429
-    assert "Too many wrong codes" in response.json()["detail"]
+    assert response.json()["detail"] == (
+        "Too many wrong codes, so sign-in is paused. Try again in 15 minutes."
+    )
+    assert response.headers["retry-after"] == "900"
     code = await issue_code(redis, test_user.email)
     assert (await _verify(client, test_user.email, code)).status_code == 429
+
+    # Shows the time actually left, not the full lock.
+    redis.ttl_seconds[f"login_fail:{test_user.email}"] = 200
+    response = await _verify(client, test_user.email, code)
+    assert response.json()["detail"].endswith("Try again in 4 minutes.")
 
 
 async def test_successful_login_resets_the_wrong_code_count(client, test_user, redis):

@@ -1,22 +1,37 @@
-FROM node:20-alpine
+# Production image. Builds with all dependencies, then runs Next's standalone
+# server (output: "standalone" in next.config.mjs), which bundles only the
+# node_modules the app actually uses, so the final image is small.
 
+FROM node:20-alpine AS build
 WORKDIR /app
+ENV NEXT_TELEMETRY_DISABLED=1
 
-# Install dependencies
 COPY package*.json ./
 RUN npm ci
 
-# Copy source and build. NEXT_PUBLIC_* values are fixed into the browser code
-# at build time, so the API address must be passed in as a build argument
-# (Railway passes service variables to ARGs of the same name).
+# NEXT_PUBLIC_* values are fixed into the browser code at build time, so the
+# API address must be passed in as a build argument (Railway passes service
+# variables to ARGs of the same name).
 COPY . .
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN npm run build
 
+
+FROM node:20-alpine
+WORKDIR /app
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    HOSTNAME=0.0.0.0 \
+    PORT=3000
+
+# The standalone server doesn't include public/ or the static JS/CSS; copy
+# them next to it so it can serve them.
+COPY --from=build --chown=node:node /app/.next/standalone ./
+COPY --from=build --chown=node:node /app/.next/static ./.next/static
+COPY --from=build --chown=node:node /app/public ./public
+
+USER node
 EXPOSE 3000
-
-ENV NEXT_TELEMETRY_DISABLED=1
-ENV NODE_ENV=production
-
-CMD ["npm", "start"]
+# Listens on $PORT (Railway sets it; 3000 by default).
+CMD ["node", "server.js"]

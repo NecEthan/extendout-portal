@@ -42,6 +42,12 @@ class FakeRedis:
         self.ttl_seconds[key] = seconds
         return True
 
+    async def ttl(self, key):
+        """Like Redis: -2 if the key doesn't exist, -1 if it has no expiry."""
+        if key not in self.values and key not in self.hashes:
+            return -2
+        return self.ttl_seconds.get(key, -1)
+
     async def delete(self, *keys):
         deleted = 0
         for key in keys:

@@ -10,7 +10,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.audit.middleware import AuditMiddleware
 from app.config import settings
-from app.limiter import global_rate_limit, limiter
+from app.limiter import RATE_LIMITED, global_rate_limit, limiter
 from app.logging_config import configure_logging
 from app.middleware import RequestLoggingMiddleware
 from app.poller import run_poller
@@ -64,8 +64,9 @@ def rate_limit_exceeded_handler(
     # endpoint in this API responds with {"detail": ...} on failure, so the
     # frontend's error parsing (which reads body.detail) only works if we
     # normalize the shape here.
-    detail = f"Rate limit exceeded: {exc.detail}"
-    response = JSONResponse({"detail": detail}, status_code=429)
+    # Every limit is per minute; the limit itself (e.g. "20 per 1 minute") is
+    # in the logs, not shown to people.
+    response = JSONResponse({"detail": RATE_LIMITED}, status_code=429)
     limiter_state = request.app.state.limiter
     return limiter_state._inject_headers(response, request.state.view_rate_limit)
 

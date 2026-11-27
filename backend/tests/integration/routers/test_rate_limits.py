@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from app.config import settings
-from app.limiter import limiter
+from app.limiter import RATE_LIMITED, limiter
 from tests.fixtures.auth import TEST_PROJECT_ID
 from tests.helpers.files import docx_upload
 
@@ -58,7 +58,7 @@ async def test_upload_limit_is_per_user(auth_client, admin_client, no_storage):
 
     blocked = await _upload(auth_client)
     assert blocked.status_code == 429
-    assert blocked.json()["detail"].startswith("Rate limit exceeded")
+    assert blocked.json()["detail"] == RATE_LIMITED
 
     # A different user has their own budget.
     assert (await _upload(admin_client)).status_code == 202
@@ -133,7 +133,7 @@ async def test_backstop_limits_other_routes(auth_client):
         assert (await auth_client.get("/projects")).status_code == 200
     blocked = await auth_client.get("/projects")
     assert blocked.status_code == 429
-    assert blocked.json()["detail"].startswith("Rate limit exceeded")
+    assert blocked.json()["detail"] == RATE_LIMITED
 
 
 async def test_health_is_never_limited(client):

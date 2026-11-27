@@ -33,20 +33,38 @@ def _hash(email: str, code: str) -> str:
     return hashlib.sha256(f"{email}:{code}".encode()).hexdigest()
 
 
-async def is_locked(redis, email: str) -> bool:
-    fail_count = await redis.get(_lockout_key(email))
-    if fail_count is None:
-        return False
-    return int(fail_count) >= settings.login_lockout_after_wrong_codes
+async def _seconds_left(redis, key: str, fallback: int) -> int:
+    """How long until ``key`` expires (``fallback`` if Redis can't say)."""
+    ttl = await redis.ttl(key)
+    return ttl if ttl > 0 else fallback
 
 
-async def allow_code_request(redis, email: str) -> bool:
-    """Count a code request; False once the email has asked too often."""
+async def lockout_seconds_left(redis, email: str) -> int:
+    """Seconds until the email can log in again after too many wrong codes;
+    0 if it isn't locked."""
+    key = _lockout_key(email)
+    fail_count = await redis.get(key)
+    if fail_count is None or int(fail_count) < settings.login_lockout_after_wrong_codes:
+        return 0
+    return await _seconds_left(redis, key, settings.login_lockout_seconds)
+
+
+async def code_request_wait_seconds(redis, email: str) -> int:
+    """Count a code request. Returns 0 if it's allowed, otherwise the seconds
+    until the email can ask again."""
     key = _requests_key(email)
     count = await redis.incr(key)
     if count == 1:
         await redis.expire(key, settings.login_code_window_seconds)
-    return count <= settings.login_code_requests_per_window
+    if count <= settings.login_code_requests_per_window:
+        return 0
+    return await _seconds_left(redis, key, settings.login_code_window_seconds)
+
+
+def try_again_in(seconds: int) -> str:
+    """'Try again in 1 minute.' / 'Try again in 12 minutes.' (rounded up)."""
+    minutes = max(1, -(-seconds // 60))
+    return f"Try again in {minutes} minute{'' if minutes == 1 else 's'}."
 
 
 async def issue_code(redis, email: str) -> str:

@@ -9,6 +9,8 @@ export const STATUS_STYLES: Record<string, string> = {
   REVIEW_REQUIRED: "bg-orange-100 text-orange-800",
 };
 
-export function isProcessing(status: DocumentVersionStatus | string | null | undefined) {
+export function isProcessing(
+  status: DocumentVersionStatus | string | null | undefined
+) {
   return status === "PROCESSING";
 }

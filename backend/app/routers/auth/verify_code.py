@@ -9,13 +9,15 @@ from app.config import settings
 from app.dependencies import get_arq_pool, get_db, set_request_user
 from app.limiter import ip_key, limiter
 from app.models.base import User
+from app.routers.auth.errors import too_many
 from app.schemas.auth import UserResponse, VerifyCodeRequest
 from app.services.auth import create_session
 from app.services.login_codes import (
     check_code,
     clear_failures,
-    is_locked,
+    lockout_seconds_left,
     record_failure,
+    try_again_in,
 )
 
 router = APIRouter(tags=["auth"])
@@ -33,11 +35,11 @@ async def verify_code(
     # Audited on success and failure; the code itself is never recorded.
     request.state.audit_details = {"email": body.email}
 
-    locked = await is_locked(redis, body.email)
-    if locked:
-        raise HTTPException(
-            status_code=429,
-            detail="Too many wrong codes. Wait 15 minutes and try again.",
+    locked_for = await lockout_seconds_left(redis, body.email)
+    if locked_for:
+        raise too_many(
+            f"Too many wrong codes, so sign-in is paused. {try_again_in(locked_for)}",
+            locked_for,
         )
 
     user = None
@@ -49,8 +51,7 @@ async def verify_code(
         raise HTTPException(
             status_code=401,
             detail=(
-                "That code is wrong or has expired. "
-                "Check the email or send a new code."
+                "That code is wrong or has expired. Check the email or send a new code."
             ),
         )
 
@@ -64,7 +65,9 @@ async def verify_code(
         value=session.session_token,
         httponly=True,
         secure=is_production,
-        samesite="none" if is_production else "lax",
+        # The site and API share a domain (portal. / api.extendout.co.uk),
+        # so the cookie is first-party and Lax works everywhere.
+        samesite="lax",
         max_age=settings.session_max_age_days * 24 * 3600,
         path="/",
     )

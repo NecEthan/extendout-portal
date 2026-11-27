@@ -46,6 +46,10 @@ upload_limit = limiter.shared_limit(
 )
 
 
+# What people see when any limit is hit (all limits are per minute).
+RATE_LIMITED = "Too many requests. Wait a minute and try again."
+
+
 # Routes that must never be throttled by the backstop. Docker checks every few seconds
 _BACKSTOP_EXEMPT_PATHS = {"/health"}
 
@@ -64,4 +68,6 @@ def global_rate_limit(request: Request) -> None:
     # hit() records this request and returns True if still within the limit.
     allowed = limiter.limiter.hit(limit, "global", session_or_ip_key(request))
     if not allowed:
-        raise HTTPException(status_code=429, detail=f"Rate limit exceeded: {limit}")
+        raise HTTPException(
+            status_code=429, detail=RATE_LIMITED, headers={"Retry-After": "60"}
+        )
